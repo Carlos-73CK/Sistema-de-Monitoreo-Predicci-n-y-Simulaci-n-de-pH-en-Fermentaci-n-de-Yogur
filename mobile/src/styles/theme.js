@@ -1,34 +1,48 @@
-const colors = {
-  background: '#F6F8F7',
-  surface: '#FFFFFF',
-  surfaceMuted: '#EDF4F1',
-  border: '#DCE7E2',
-  text: '#1B2B26',
-  textMuted: '#667A72',
-  primary: '#157F63',
-  primarySoft: '#DDF4EC',
+export const colors = {
+  primary: '#2563EB',
+  primaryDark: '#1E3A8A',
+  primarySoft: '#DBEAFE',
+  secondary: '#0F766E',
+  secondarySoft: '#CCFBF1',
   info: '#2563EB',
-  warning: '#D97706',
-  warningSoft: '#FFF3D7',
-  danger: '#DC2626',
-  dangerSoft: '#FDE2E2',
-  success: '#16875E',
-  successSoft: '#DFF6EA',
-  optimalPh: '#16875E',
-  thermalLow: '#2563EB',
-  thermalHigh: '#DC2626',
+  background: '#F8FAFC',
+  surface: '#FFFFFF',
+  surfaceMuted: '#F1F5F9',
+  border: '#CBD5E1',
+  borderSoft: '#E2E8F0',
+  text: '#0F172A',
+  textMuted: '#64748B',
+  textInverse: '#FFFFFF',
+  success: '#27AE60',
+  successSoft: '#E8F7EF',
+  warning: '#DD6B20',
+  warningSoft: '#FFF4E5',
+  danger: '#C53030',
+  dangerSoft: '#FDECEC',
+  neutral: '#334155',
+  neutralSoft: '#E2E8F0',
 };
 
-const typography = {
+export const typography = {
   title: {
     fontSize: 26,
     lineHeight: 32,
     fontWeight: '700',
   },
+  h1: {
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: '700',
+  },
+  h2: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+  },
   subtitle: {
     fontSize: 16,
     lineHeight: 22,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   body: {
     fontSize: 14,
@@ -38,7 +52,7 @@ const typography = {
   caption: {
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   metric: {
     fontSize: 30,
@@ -47,7 +61,7 @@ const typography = {
   },
 };
 
-const spacing = {
+export const spacing = {
   xs: 4,
   sm: 8,
   md: 12,
@@ -56,15 +70,20 @@ const spacing = {
   xxl: 32,
 };
 
-const radii = {
+export const radius = {
   sm: 6,
   md: 8,
   lg: 12,
 };
 
-const shadows = {
+export const borders = {
+  thin: 1,
+  focus: 2,
+};
+
+export const shadows = {
   card: {
-    shadowColor: '#0F241D',
+    shadowColor: '#0F172A',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 14,
@@ -72,35 +91,50 @@ const shadows = {
   },
 };
 
-const thermalStatus = {
-  min: 41,
-  max: 43,
-  optimal: 42,
+export const laboratoryLimits = {
+  temperatureMin: 41,
+  temperatureMax: 43,
+  temperatureSetPoint: 42,
+  phCutoff: 4.5,
 };
 
-export const theme = {
+const theme = {
   colors,
   typography,
   spacing,
-  radii,
+  radius,
+  radii: radius,
+  borders,
   shadows,
-  thermalStatus,
+  laboratoryLimits,
+  thermalStatus: {
+    min: laboratoryLimits.temperatureMin,
+    max: laboratoryLimits.temperatureMax,
+    optimal: laboratoryLimits.temperatureSetPoint,
+  },
 };
 
 export function getTemperatureColor(value) {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return colors.text;
+    return colors.textMuted;
   }
 
-  if (value < thermalStatus.min) {
-    return colors.thermalLow;
-  }
-
-  if (value > thermalStatus.max) {
-    return colors.thermalHigh;
+  if (
+    value < laboratoryLimits.temperatureMin ||
+    value > laboratoryLimits.temperatureMax
+  ) {
+    return colors.warning;
   }
 
   return colors.success;
+}
+
+export function getPhColor(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return colors.textMuted;
+  }
+
+  return value <= laboratoryLimits.phCutoff ? colors.danger : colors.primary;
 }
 
 export default theme;

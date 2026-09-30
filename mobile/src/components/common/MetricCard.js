@@ -1,52 +1,83 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import theme from '../../styles/theme';
+import theme, { getPhColor, getTemperatureColor } from '../../styles/theme';
 
 export default function MetricCard({
+  titulo,
+  valor,
+  unidad,
+  subtitulo,
+  tipo,
+  estado,
+  accentColor,
+  style,
   label,
   value,
   unit,
   helperText,
-  status = 'normal',
-  accentColor,
+  status,
 }) {
-  const resolvedAccent = accentColor || getAccentColor(status);
+  const resolvedTitle = titulo || label;
+  const resolvedValue = valor ?? value;
+  const resolvedUnit = unidad || unit;
+  const resolvedSubtitle = subtitulo || helperText;
+  const resolvedAccent =
+    accentColor || getMetricAccent(tipo, estado || status, resolvedValue);
 
   return (
-    <View style={[styles.card, { borderLeftColor: resolvedAccent }]}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={[styles.card, { borderLeftColor: resolvedAccent }, style]}>
+      {resolvedTitle ? <Text style={styles.title}>{resolvedTitle}</Text> : null}
       <View style={styles.valueRow}>
-        <Text style={[styles.value, { color: resolvedAccent }]}>{value}</Text>
-        {unit ? <Text style={styles.unit}>{unit}</Text> : null}
+        <Text style={[styles.value, { color: resolvedAccent }]}>
+          {resolvedValue ?? '--'}
+        </Text>
+        {resolvedUnit ? <Text style={styles.unit}>{resolvedUnit}</Text> : null}
       </View>
-      {helperText ? <Text style={styles.helper}>{helperText}</Text> : null}
+      {resolvedSubtitle ? (
+        <Text style={styles.subtitle}>{resolvedSubtitle}</Text>
+      ) : null}
     </View>
   );
 }
 
-function getAccentColor(status) {
+function getMetricAccent(tipo, estado, rawValue) {
+  const numericValue = Number(String(rawValue).replace(',', '.'));
+
+  if (tipo === 'ph') {
+    return getPhColor(numericValue);
+  }
+
+  if (tipo === 'temperatura' || tipo === 'temperature') {
+    return getTemperatureColor(numericValue);
+  }
+
   const statusColors = {
     normal: theme.colors.primary,
+    optimo: theme.colors.success,
     success: theme.colors.success,
+    alerta: theme.colors.warning,
     warning: theme.colors.warning,
+    corte: theme.colors.danger,
     danger: theme.colors.danger,
-    info: theme.colors.info,
+    info: theme.colors.primary,
   };
 
-  return statusColors[status] || theme.colors.primary;
+  return statusColors[estado] || theme.colors.primary;
 }
 
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    minWidth: 144,
+    minWidth: 148,
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radii.md,
+    borderColor: theme.colors.borderSoft,
     borderLeftWidth: 5,
+    borderRadius: theme.radius.md,
+    borderWidth: theme.borders.thin,
     padding: theme.spacing.lg,
     ...theme.shadows.card,
   },
-  label: {
+  title: {
     ...theme.typography.caption,
     color: theme.colors.textMuted,
     textTransform: 'uppercase',
@@ -62,10 +93,10 @@ const styles = StyleSheet.create({
   unit: {
     ...theme.typography.subtitle,
     color: theme.colors.textMuted,
-    marginLeft: theme.spacing.xs,
     marginBottom: 3,
+    marginLeft: theme.spacing.xs,
   },
-  helper: {
+  subtitle: {
     ...theme.typography.caption,
     color: theme.colors.textMuted,
     marginTop: theme.spacing.sm,
