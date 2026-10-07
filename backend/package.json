@@ -1,14 +1,14 @@
 {
   "name": "prediyogur-backend",
   "version": "1.0.0",
-  "description": "Servidor backend y API REST para el sistema PrediYogur",
+  "description": "Servidor backend y API REST para el sistema PrediYogur - ULEAM",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js"
   },
   "dependencies": {
-    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -23,6 +23,7 @@
     "express",
     "nodejs",
     "postgresql",
+    "uleam",
     "api"
   ],
   "author": "Juan Murillo",
