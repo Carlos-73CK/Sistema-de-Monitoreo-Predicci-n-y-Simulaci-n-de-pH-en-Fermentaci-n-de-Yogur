@@ -155,6 +155,18 @@ export default function DashboardScreen({ navigation }) {
         >
           <Text style={styles.primaryButtonText}>Nuevo Ensayo</Text>
         </Pressable>
+        <Pressable
+          style={[styles.button, styles.infoButton]}
+          onPress={() => navigation.navigate('Monitoreo')}
+        >
+          <Text style={styles.infoButtonText}>Monitoreo en Vivo (Ensayo Activo)</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.button, styles.simulateButton]}
+          onPress={() => navigation.navigate('Simulacion')}
+        >
+          <Text style={styles.simulateButtonText}>Simulador Cinético ("What-If")</Text>
+        </Pressable>
         <Pressable style={[styles.button, styles.secondaryButton]} onPress={logout}>
           <Text style={styles.secondaryButtonText}>Cerrar Sesion</Text>
         </Pressable>
@@ -398,6 +410,24 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     ...theme.typography.body,
     color: theme.colors.danger,
+    fontWeight: '700',
+  },
+  infoButton: {
+    backgroundColor: theme.colors.info,
+  },
+  infoButtonText: {
+    ...theme.typography.body,
+    color: theme.colors.surface,
+    fontWeight: '700',
+  },
+  simulateButton: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.primary,
+    borderWidth: 1.5,
+  },
+  simulateButtonText: {
+    ...theme.typography.body,
+    color: theme.colors.primary,
     fontWeight: '700',
   },
 });
