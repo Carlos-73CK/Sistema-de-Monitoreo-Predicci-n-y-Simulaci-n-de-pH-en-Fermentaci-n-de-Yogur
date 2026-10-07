@@ -6,6 +6,8 @@ import { AuthContext } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import NuevoEnsayoScreen from '../screens/NuevoEnsayoScreen';
+import MonitoreoScreen from '../screens/MonitoreoScreen';
+import SimulacionScreen from '../screens/SimulacionScreen';
 
 const Stack = createStackNavigator();
 
@@ -41,6 +43,16 @@ export default function AppNavigator() {
             name="NuevoEnsayo"
             component={NuevoEnsayoScreen}
             options={{ title: 'Nuevo Ensayo de Fermentación' }}
+          />
+          <Stack.Screen
+            name="Monitoreo"
+            component={MonitoreoScreen}
+            options={{ title: 'Monitoreo de pH y Temperatura' }}
+          />
+          <Stack.Screen
+            name="Simulacion"
+            component={SimulacionScreen}
+            options={{ title: 'Simulación Cinética (What-If)' }}
           />
         </>
       )}
