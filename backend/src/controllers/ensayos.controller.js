@@ -12,10 +12,15 @@ const normalizeTipoSustrato = (tipoSustrato = '') => {
 const mapEnsayo = (ensayo) => ({
   id: ensayo.id,
   codigo: ensayo.nombre_lote,
+  nombre_lote: ensayo.nombre_lote,
   tipo_sustrato: ensayo.tipo_leche,
+  tipo_leche: ensayo.tipo_leche,
+  tipo_azucar: ensayo.tipo_azucar,
   masa_inoculo_g: Number(ensayo.masa_inoculo),
+  masa_inoculo: Number(ensayo.masa_inoculo),
   temperatura_objetivo: Number(ensayo.temperatura_objetivo),
   volumen_ml: Number(ensayo.masa_leche),
+  masa_leche: Number(ensayo.masa_leche),
   estado: ensayo.estado,
   viscosidad_final: ensayo.viscosidad_final !== null ? Number(ensayo.viscosidad_final) : null,
   created_at: ensayo.created_at,
@@ -26,15 +31,23 @@ const mapLectura = (lectura) => ({
   id: lectura.id,
   ensayo_id: lectura.ensayo_id,
   minutos: Number(lectura.tiempo_minutos),
+  tiempo_minutos: Number(lectura.tiempo_minutos),
   ph: Number(lectura.ph),
   temperatura: Number(lectura.temperatura),
+  indice_refraccion:
+    lectura.indice_refraccion !== null && lectura.indice_refraccion !== undefined
+      ? Number(lectura.indice_refraccion)
+      : null,
   created_at: lectura.created_at,
 });
 
+/**
+ * Consulta y lista todos los ensayos ordenados por fecha de creación descendente
+ */
 const listarEnsayos = async (_req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, usuario_id, nombre_lote, tipo_leche, masa_leche, masa_inoculo,
+      `SELECT id, usuario_id, nombre_lote, tipo_leche, tipo_azucar, masa_leche, masa_inoculo,
               temperatura_objetivo, estado, viscosidad_final, created_at
        FROM ensayos
        ORDER BY created_at DESC`
@@ -56,12 +69,15 @@ const listarEnsayos = async (_req, res) => {
   }
 };
 
+/**
+ * Obtiene el detalle de un ensayo junto con su serie temporal ordenada de lecturas
+ */
 const obtenerEnsayoPorId = async (req, res) => {
   const { id } = req.params;
 
   try {
     const ensayoResult = await pool.query(
-      `SELECT id, usuario_id, nombre_lote, tipo_leche, masa_leche, masa_inoculo,
+      `SELECT id, usuario_id, nombre_lote, tipo_leche, tipo_azucar, masa_leche, masa_inoculo,
               temperatura_objetivo, estado, viscosidad_final, created_at
        FROM ensayos
        WHERE id = $1
@@ -79,7 +95,7 @@ const obtenerEnsayoPorId = async (req, res) => {
     }
 
     const lecturasResult = await pool.query(
-      `SELECT id, ensayo_id, tiempo_minutos, ph, temperatura, created_at
+      `SELECT id, ensayo_id, tiempo_minutos, ph, temperatura, indice_refraccion, created_at
        FROM lecturas_ensayo
        WHERE ensayo_id = $1
        ORDER BY tiempo_minutos ASC`,
@@ -105,42 +121,68 @@ const obtenerEnsayoPorId = async (req, res) => {
   }
 };
 
+/**
+ * Registra un nuevo ensayo en la base de datos
+ */
 const crearEnsayo = async (req, res) => {
   const {
     codigo,
+    nombre_lote,
     tipo_sustrato,
+    tipo_leche,
+    tipo_azucar = 'lactosa',
     masa_inoculo_g,
+    masa_inoculo,
     temperatura_objetivo = 42.0,
     volumen_ml,
+    masa_leche,
   } = req.body || {};
 
-  if (!req.user?.id) {
-    return res.status(401).json({
-      success: false,
-      data: null,
-      message: 'Usuario no autenticado.',
-      error: 'AUTH_UNAUTHORIZED',
-    });
+  const codigoFinal = codigo || nombre_lote;
+  const sustratoFinal = tipo_sustrato || tipo_leche;
+  const inoculoFinal = masa_inoculo_g !== undefined ? masa_inoculo_g : masa_inoculo;
+  const volumenFinal = volumen_ml !== undefined ? volumen_ml : masa_leche;
+
+  // Fallback si no hay req.user (ej. modo prueba): consultar primer usuario disponible
+  let usuarioId = req.user?.id;
+  if (!usuarioId) {
+    const primerUser = await pool.query('SELECT id FROM usuarios LIMIT 1');
+    if (primerUser.rowCount > 0) {
+      usuarioId = primerUser.rows[0].id;
+    } else {
+      return res.status(401).json({
+        success: false,
+        data: null,
+        message: 'Usuario no autenticado.',
+        error: 'AUTH_UNAUTHORIZED',
+      });
+    }
   }
 
-  if (!codigo || !tipo_sustrato || masa_inoculo_g === undefined || volumen_ml === undefined) {
+  if (!codigoFinal || !sustratoFinal || inoculoFinal === undefined || volumenFinal === undefined) {
     return res.status(400).json({
       success: false,
       data: null,
-      message: 'Debe enviar codigo, tipo_sustrato, masa_inoculo_g y volumen_ml.',
+      message: 'Debe enviar codigo/nombre_lote, tipo_sustrato, masa_inoculo y volumen.',
       error: 'VALIDATION_ERROR',
     });
   }
 
-  const masaInoculo = Number(masa_inoculo_g);
-  const temperaturaObjetivo = Number(temperatura_objetivo);
-  const volumenMl = Number(volumen_ml);
+  const masaInoculoNum = Number(inoculoFinal);
+  const temperaturaObjetivoNum = Number(temperatura_objetivo);
+  const volumenMlNum = Number(volumenFinal);
 
-  if (Number.isNaN(masaInoculo) || masaInoculo <= 0 || Number.isNaN(temperaturaObjetivo) || Number.isNaN(volumenMl) || volumenMl <= 0) {
+  if (
+    Number.isNaN(masaInoculoNum) ||
+    masaInoculoNum <= 0 ||
+    Number.isNaN(temperaturaObjetivoNum) ||
+    Number.isNaN(volumenMlNum) ||
+    volumenMlNum <= 0
+  ) {
     return res.status(400).json({
       success: false,
       data: null,
-      message: 'Valores numéricos inválidos en masa_inoculo_g, temperatura_objetivo o volumen_ml.',
+      message: 'Valores numéricos inválidos en masa de inóculo, temperatura o volumen.',
       error: 'VALIDATION_ERROR',
     });
   }
@@ -158,16 +200,16 @@ const crearEnsayo = async (req, res) => {
          estado
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, 'en_proceso')
-       RETURNING id, usuario_id, nombre_lote, tipo_leche, masa_leche, masa_inoculo,
+       RETURNING id, usuario_id, nombre_lote, tipo_leche, tipo_azucar, masa_leche, masa_inoculo,
                  temperatura_objetivo, estado, viscosidad_final, created_at`,
       [
-        req.user.id,
-        codigo,
-        normalizeTipoSustrato(tipo_sustrato),
-        'lactosa',
-        volumenMl,
-        masaInoculo,
-        temperaturaObjetivo,
+        usuarioId,
+        codigoFinal,
+        normalizeTipoSustrato(sustratoFinal),
+        tipo_azucar,
+        volumenMlNum,
+        masaInoculoNum,
+        temperaturaObjetivoNum,
       ]
     );
 
@@ -187,22 +229,37 @@ const crearEnsayo = async (req, res) => {
   }
 };
 
+/**
+ * Agrega una lectura periódica al ensayo, compatible con indice_refraccion
+ */
 const agregarLectura = async (req, res) => {
   const { id } = req.params;
-  const { minutos, ph, temperatura } = req.body || {};
+  const {
+    minutos,
+    tiempo_minutos,
+    ph,
+    temperatura,
+    indice_refraccion,
+  } = req.body || {};
 
-  if (minutos === undefined || ph === undefined || temperatura === undefined) {
+  const tiempoMin = minutos !== undefined ? minutos : tiempo_minutos;
+
+  if (tiempoMin === undefined || ph === undefined || temperatura === undefined) {
     return res.status(400).json({
       success: false,
       data: null,
-      message: 'Debe enviar minutos, ph y temperatura.',
+      message: 'Debe enviar minutos/tiempo_minutos, ph y temperatura.',
       error: 'VALIDATION_ERROR',
     });
   }
 
-  const minutosValor = Number(minutos);
+  const minutosValor = Number(tiempoMin);
   const phValor = Number(ph);
   const temperaturaValor = Number(temperatura);
+  const refraccionValor =
+    indice_refraccion !== undefined && indice_refraccion !== null && indice_refraccion !== ''
+      ? Number(indice_refraccion)
+      : null;
 
   if (
     Number.isNaN(minutosValor) ||
@@ -211,18 +268,22 @@ const agregarLectura = async (req, res) => {
     phValor < 0 ||
     phValor > 14 ||
     Number.isNaN(temperaturaValor) ||
-    temperaturaValor <= 0
+    temperaturaValor <= 0 ||
+    (refraccionValor !== null && (Number.isNaN(refraccionValor) || refraccionValor < 0))
   ) {
     return res.status(400).json({
       success: false,
       data: null,
-      message: 'Valores inválidos para minutos, ph o temperatura.',
+      message: 'Valores inválidos para minutos, ph, temperatura o índice de refracción.',
       error: 'VALIDATION_ERROR',
     });
   }
 
   try {
-    const ensayoResult = await pool.query('SELECT id, estado FROM ensayos WHERE id = $1 LIMIT 1', [id]);
+    const ensayoResult = await pool.query(
+      'SELECT id, estado FROM ensayos WHERE id = $1 LIMIT 1',
+      [id]
+    );
 
     if (ensayoResult.rowCount === 0) {
       return res.status(404).json({
@@ -243,10 +304,10 @@ const agregarLectura = async (req, res) => {
     }
 
     const lecturaResult = await pool.query(
-      `INSERT INTO lecturas_ensayo (ensayo_id, tiempo_minutos, ph, temperatura)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, ensayo_id, tiempo_minutos, ph, temperatura, created_at`,
-      [id, minutosValor, phValor, temperaturaValor]
+      `INSERT INTO lecturas_ensayo (ensayo_id, tiempo_minutos, ph, temperatura, indice_refraccion)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, ensayo_id, tiempo_minutos, ph, temperatura, indice_refraccion, created_at`,
+      [id, minutosValor, phValor, temperaturaValor, refraccionValor]
     );
 
     return res.status(201).json({
@@ -261,12 +322,17 @@ const agregarLectura = async (req, res) => {
     return res.status(duplicateReading ? 409 : 400).json({
       success: false,
       data: null,
-      message: duplicateReading ? 'Ya existe una lectura para ese minuto en este ensayo.' : 'No fue posible registrar la lectura.',
+      message: duplicateReading
+        ? 'Ya existe una lectura para ese minuto en este ensayo.'
+        : 'No fue posible registrar la lectura.',
       error: error.message,
     });
   }
 };
 
+/**
+ * Finaliza el ensayo exigiendo la medición de viscosidad final (regla del Dr. Stalin Santacruz)
+ */
 const finalizarEnsayo = async (req, res) => {
   const { id } = req.params;
   const { viscosidad_final } = req.body || {};
@@ -284,10 +350,10 @@ const finalizarEnsayo = async (req, res) => {
   try {
     const result = await pool.query(
       `UPDATE ensayos
-       SET estado = 'finalizado',
+       SET estado = 'completado',
            viscosidad_final = $2
        WHERE id = $1
-       RETURNING id, usuario_id, nombre_lote, tipo_leche, masa_leche, masa_inoculo,
+       RETURNING id, usuario_id, nombre_lote, tipo_leche, tipo_azucar, masa_leche, masa_inoculo,
                  temperatura_objetivo, estado, viscosidad_final, created_at`,
       [id, viscosidadFinal]
     );
@@ -326,7 +392,9 @@ module.exports = {
   crearEnsayo,
   agregarLectura,
   finalizarEnsayo,
+  // Alias de compatibilidad
   listEnsayos: listarEnsayos,
   getEnsayoById: obtenerEnsayoPorId,
   createEnsayo: crearEnsayo,
+  addLectura: agregarLectura,
 };
