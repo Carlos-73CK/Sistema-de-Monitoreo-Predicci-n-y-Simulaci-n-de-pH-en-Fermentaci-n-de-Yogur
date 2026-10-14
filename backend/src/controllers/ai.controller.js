@@ -12,6 +12,10 @@ const {
   insertarMuestrasFeedback,
   contarFeedback,
 } = require('../ai/sqliteStore');
+const {
+  validarParametrosSimulacion,
+  validarLoteFeedback,
+} = require('../validators/fermentationValidator');
 
 /**
  * Retorna las métricas científicas de validación del modelo (R², RMSE, MAE)
@@ -58,38 +62,50 @@ const getExperimentalDataset = (_req, res) => {
  * Predice un punto cinético específico (pH y Brix a tiempo t) y tiempo de corte
  */
 const predictPoint = (req, res) => {
-  const {
-    temperatura = 42,
-    temperatura_c,
-    masa_inoculo_g = 18.75,
-    masa_inoculo,
-    volumen_ml = 250,
-    minutos = 0,
-    tipo_sustrato = 'vaca',
-  } = req.body || {};
+  const { minutos = 0 } = req.body || {};
+  const minutosNum = Number(minutos);
 
-  const temp = temperatura_c !== undefined ? temperatura_c : temperatura;
-  const inoc = masa_inoculo !== undefined ? masa_inoculo : masa_inoculo_g;
+  if (Number.isNaN(minutosNum) || minutosNum < 0 || minutosNum > 720) {
+    return res.status(400).json({
+      success: false,
+      data: null,
+      message: 'El tiempo de predicción debe ser un número entre 0 y 720 minutos (máx 12h).',
+      error: 'VALIDATION_ERROR',
+    });
+  }
+
+  const validacion = validarParametrosSimulacion(req.body);
+  if (!validacion.esValido) {
+    return res.status(400).json({
+      success: false,
+      data: null,
+      message: 'Parámetros fisicoquímicos fuera de rango biológico.',
+      errores: validacion.errores,
+      error: 'VALIDATION_ERROR',
+    });
+  }
+
+  const params = validacion.parametrosSaneados;
 
   try {
     const punto = predecirPunto({
-      temperaturaC: temp,
-      masaInoculoG: inoc,
-      volumenMl: volumen_ml,
-      minutos,
-      tipoSustrato: tipo_sustrato,
+      temperaturaC: params.temperaturaC,
+      masaInoculoG: params.masaInoculoG,
+      volumenMl: params.volumenMl,
+      minutos: minutosNum,
+      tipoSustrato: params.tipoSustrato,
     });
 
     const corte = predecirTiempoCorte({
-      temperaturaC: temp,
-      masaInoculoG: inoc,
-      volumenMl: volumen_ml,
+      temperaturaC: params.temperaturaC,
+      masaInoculoG: params.masaInoculoG,
+      volumenMl: params.volumenMl,
     });
 
     const viscosidad = predecirViscosidad({
-      temperaturaC: temp,
-      masaInoculoG: inoc,
-      volumenMl: volumen_ml,
+      temperaturaC: params.temperaturaC,
+      masaInoculoG: params.masaInoculoG,
+      volumenMl: params.volumenMl,
     });
 
     return res.status(200).json({
@@ -98,6 +114,7 @@ const predictPoint = (req, res) => {
         punto,
         corte,
         viscosidad,
+        advertencias: validacion.advertencias,
       },
       message: 'Predicción cinética generada con éxito.',
       error: null,
@@ -117,37 +134,38 @@ const predictPoint = (req, res) => {
  * Opcionalmente la persiste de forma automática en SQLite local
  */
 const simulateTrajectory = (req, res) => {
-  const {
-    temperatura = 42,
-    temperatura_c,
-    masa_inoculo_g = 18.75,
-    masa_inoculo,
-    volumen_ml = 250,
-    tipo_sustrato = 'vaca',
-    intervalo_minutos = 15,
-    guardar = true,
-  } = req.body || {};
+  const validacion = validarParametrosSimulacion(req.body);
+  if (!validacion.esValido) {
+    return res.status(400).json({
+      success: false,
+      data: null,
+      message: 'Parámetros de simulación fuera de rango aceptable.',
+      errores: validacion.errores,
+      error: 'VALIDATION_ERROR',
+    });
+  }
 
-  const temp = temperatura_c !== undefined ? temperatura_c : temperatura;
-  const inoc = masa_inoculo !== undefined ? masa_inoculo : masa_inoculo_g;
+  const params = validacion.parametrosSaneados;
+  const intervaloMin = Math.max(5, Math.min(60, Number(req.body?.intervalo_minutos) || 15));
+  const guardar = req.body?.guardar !== false;
 
   try {
     const trayectoria = generarTrayectoria({
-      temperaturaC: temp,
-      masaInoculoG: inoc,
-      volumenMl: volumen_ml,
-      tipoSustrato: tipo_sustrato,
-      intervaloMinutos: intervalo_minutos,
+      temperaturaC: params.temperaturaC,
+      masaInoculoG: params.masaInoculoG,
+      volumenMl: params.volumenMl,
+      tipoSustrato: params.tipoSustrato,
+      intervaloMinutos: intervaloMin,
     });
 
     // Guardar en el historial de SQLite local si guardar es true
     if (guardar) {
       try {
         guardarPrediccion({
-          tipo_sustrato,
-          temperatura_c: temp,
-          masa_inoculo_g: inoc,
-          volumen_ml,
+          tipo_sustrato: params.tipoSustrato,
+          temperatura_c: params.temperaturaC,
+          masa_inoculo_g: params.masaInoculoG,
+          volumen_ml: params.volumenMl,
           porcentaje_inoculo: trayectoria.configuracion.porcentajeInoculo,
           tiempo_corte_horas: trayectoria.prediccionCorte.tiempoCorteHoras,
           tiempo_corte_minutos: trayectoria.prediccionCorte.tiempoCorteMinutos,
@@ -162,7 +180,10 @@ const simulateTrajectory = (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: trayectoria,
+      data: {
+        ...trayectoria,
+        advertencias: validacion.advertencias,
+      },
       message: 'Simulación cinética generada y almacenada en SQLite con éxito.',
       error: null,
     });
@@ -204,56 +225,38 @@ const getSavedSimulations = (req, res) => {
 
 /**
  * Feedback Loop: Recibe un nuevo lote real finalizado para incorporarlo al dataset
- * y reentrenar/recalibrar el modelo de IA dinámicamente
+ * y reentrenar/recalibrar el modelo de IA dinámicamente con validación fisicoquímica estricta
  */
 const submitFeedbackBatch = (req, res) => {
-  const {
-    lote_id,
-    temperatura_c = 42,
-    masa_inoculo_g = 18.75,
-    volumen_ml = 250,
-    viscosidad_final,
-    lecturas = [],
-  } = req.body || {};
+  const validacion = validarLoteFeedback(req.body);
 
-  if (!lote_id || !Array.isArray(lecturas) || lecturas.length === 0) {
+  if (!validacion.esValido) {
     return res.status(400).json({
       success: false,
       data: null,
-      message: 'Debe enviar lote_id y un arreglo de lecturas para el aprendizaje.',
-      error: 'VALIDATION_ERROR',
+      message: 'Validación fisicoquímica fallida para el lote experimental.',
+      errores: validacion.errores,
+      error: 'DATA_VALIDATION_ERROR',
     });
   }
 
   try {
-    const porcentajeInoculo = ((Number(masa_inoculo_g) || 18.75) / (Number(volumen_ml) || 250)) * 100;
+    const { lecturasSaneadas, metadata } = validacion;
+    const totalInsertadas = insertarMuestrasFeedback(lecturasSaneadas);
 
-    const muestras = lecturas.map((lec) => ({
-      loteId: lote_id,
-      temperaturaIncubacionC: Number(temperatura_c) || 42,
-      porcentajeInoculo,
-      masaInoculoG: Number(masa_inoculo_g) || 18.75,
-      tiempoMinutos: Number(lec.tiempo_minutos !== undefined ? lec.tiempo_minutos : lec.minutos),
-      phReal: Number(lec.ph),
-      indiceRefraccionReal: lec.indice_refraccion !== undefined ? Number(lec.indice_refraccion) : null,
-      temperaturaRealMedida: lec.temperatura !== undefined ? Number(lec.temperatura) : null,
-      viscosidadFinalReal: viscosidad_final !== undefined ? Number(viscosidad_final) : null,
-    }));
-
-    const totalInsertadas = insertarMuestrasFeedback(muestras);
-
-    // Recalcular métricas de IA con el dataset ampliado
+    // Recalcular métricas de IA con el dataset ampliado y verificado
     const metricasActualizadas = evaluarMetricasModelo();
 
     return res.status(201).json({
       success: true,
       data: {
-        lote_id,
+        lote_id: metadata.loteId,
         muestras_agregadas: totalInsertadas,
+        metadata_lote: metadata,
         metricas_recalibradas: metricasActualizadas.metricasValidacion,
         dataset_actualizado: metricasActualizadas.datasetInfo,
       },
-      message: `¡Aprendizaje continuo exitoso! Se agregaron ${totalInsertadas} muestras al modelo predictivo.`,
+      message: `¡Aprendizaje continuo exitoso! Se validaron e incorporaron ${totalInsertadas} muestras fisicoquímicas al modelo predictivo.`,
       error: null,
     });
   } catch (error) {

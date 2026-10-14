@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { validarLecturaFisicoquimica } = require('../validators/fermentationValidator');
 
 /**
  * Registra una lectura periódica manual para un ensayo específico
@@ -8,50 +9,19 @@ const pool = require('../config/db');
  */
 const createLecturaManual = async (req, res) => {
   const { id: ensayoId } = req.params;
-  const {
-    tiempo_minutos,
-    minutos,
-    ph,
-    temperatura,
-    indice_refraccion,
-  } = req.body || {};
 
-  const tiempoMin = tiempo_minutos !== undefined ? tiempo_minutos : minutos;
-
-  if (tiempoMin === undefined || ph === undefined || temperatura === undefined) {
-    return res.status(400).json({
-      success: false,
-      data: null,
-      message: 'Debe enviar tiempo_minutos (o minutos), ph y temperatura.',
-      error: 'VALIDATION_ERROR',
-    });
-  }
-
-  const minutosNum = Number(tiempoMin);
-  const phNum = Number(ph);
-  const tempNum = Number(temperatura);
-  const refraccionNum =
-    indice_refraccion !== undefined && indice_refraccion !== null && indice_refraccion !== ''
-      ? Number(indice_refraccion)
-      : null;
-
-  if (
-    Number.isNaN(minutosNum) ||
-    minutosNum < 0 ||
-    Number.isNaN(phNum) ||
-    phNum < 0 ||
-    phNum > 14 ||
-    Number.isNaN(tempNum) ||
-    tempNum <= 0 ||
-    (refraccionNum !== null && (Number.isNaN(refraccionNum) || refraccionNum < 0))
-  ) {
+  const validacion = validarLecturaFisicoquimica(req.body);
+  if (!validacion.esValido) {
     return res.status(400).json({
       success: false,
       data: null,
       message: 'Valores fisicoquímicos no válidos para la lectura.',
+      errores: validacion.errores,
       error: 'VALIDATION_ERROR',
     });
   }
+
+  const { minutos: minutosNum, ph: phNum, temperatura: tempNum, indice_refraccion: refraccionNum } = validacion.datosSaneados;
 
   try {
     // 1. Validar que el ensayo exista y esté activo
@@ -140,16 +110,36 @@ const importarLecturas = async (req, res) => {
     });
   }
 
+  // Validar todas las lecturas fisicoquímicamente antes de abrir transacción en BD
+  const lecturasSaneadas = [];
+  const erroresValidacion = [];
+
+  for (let i = 0; i < lecturas.length; i++) {
+    const val = validarLecturaFisicoquimica(lecturas[i]);
+    if (!val.esValido) {
+      erroresValidacion.push(`Lectura #${i + 1}: ${val.errores.join(' | ')}`);
+    } else {
+      lecturasSaneadas.push(val.datosSaneados);
+    }
+  }
+
+  if (erroresValidacion.length > 0) {
+    return res.status(400).json({
+      success: false,
+      data: null,
+      message: 'El lote contiene lecturas fisicoquímicamente inválidas.',
+      errores: erroresValidacion,
+      error: 'VALIDATION_ERROR',
+    });
+  }
+
   try {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
       const lecturasInsertadas = [];
-      for (const lec of lecturas) {
-        const t = lec.tiempo_minutos !== undefined ? lec.tiempo_minutos : lec.minutos;
-        const refr = lec.indice_refraccion !== undefined ? lec.indice_refraccion : null;
-
+      for (const lec of lecturasSaneadas) {
         const resLec = await client.query(
           `INSERT INTO lecturas_ensayo (ensayo_id, tiempo_minutos, ph, temperatura, indice_refraccion)
            VALUES ($1, $2, $3, $4, $5)
@@ -158,7 +148,7 @@ const importarLecturas = async (req, res) => {
                  temperatura = EXCLUDED.temperatura,
                  indice_refraccion = EXCLUDED.indice_refraccion
            RETURNING id, ensayo_id, tiempo_minutos, ph, temperatura, indice_refraccion, created_at`,
-          [ensayoId, Number(t), Number(lec.ph), Number(lec.temperatura), refr !== null ? Number(refr) : null]
+          [ensayoId, lec.minutos, lec.ph, lec.temperatura, lec.indice_refraccion]
         );
         lecturasInsertadas.push(resLec.rows[0]);
       }

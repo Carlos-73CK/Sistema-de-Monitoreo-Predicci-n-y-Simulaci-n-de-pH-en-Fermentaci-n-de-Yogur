@@ -135,17 +135,33 @@ function insertarMuestrasFeedback(muestras) {
   let contador = 0;
 
   for (const m of muestras) {
+    const ph = Number(m.phReal !== undefined ? m.phReal : m.ph);
+    const tempIncub = Number(m.temperaturaIncubacionC || m.temperatura_c || 42);
+    const inocPct = Number(m.porcentajeInoculo || m.porcentaje_inoculo || 7.5);
+    const tMin = Number(m.tiempoMinutos !== undefined ? m.tiempoMinutos : (m.tiempo_minutos || 0));
+
+    // Filtro defensivo: Descartar anomalías extremas o NaN
+    if (
+      Number.isNaN(ph) || ph < 3.5 || ph > 7.5 ||
+      Number.isNaN(tempIncub) || tempIncub < 15 || tempIncub > 55 ||
+      Number.isNaN(inocPct) || inocPct <= 0 || inocPct > 25 ||
+      Number.isNaN(tMin) || tMin < 0 || tMin > 1440
+    ) {
+      console.warn('[SQLite Feedback] Muestra descartada por anomalía fisicoquímica:', m);
+      continue;
+    }
+
     insert.run(
-      m.loteId || m.lote_id || 'LOTE-NUEVO',
-      Number(m.temperaturaIncubacionC || m.temperatura_c || 42),
-      Number(m.porcentajeInoculo || m.porcentaje_inoculo || 7.5),
+      String(m.loteId || m.lote_id || 'LOTE-NUEVO').trim(),
+      tempIncub,
+      inocPct,
       Number(m.masaInoculoG || m.masa_inoculo_g || 18.75),
-      Number(m.tiempoMinutos || m.tiempo_minutos || 0),
-      Number(m.tiempoHoras || m.tiempo_horas || (m.tiempoMinutos / 60) || 0),
-      Number(m.phReal || m.ph || 4.6),
-      m.indiceRefraccionReal !== undefined ? Number(m.indiceRefraccionReal) : null,
-      m.temperaturaRealMedida !== undefined ? Number(m.temperaturaRealMedida) : null,
-      m.viscosidadFinalReal !== undefined ? Number(m.viscosidadFinalReal) : null,
+      tMin,
+      Number(m.tiempoHoras || m.tiempo_horas || (tMin / 60) || 0),
+      ph,
+      m.indiceRefraccionReal !== undefined && m.indiceRefraccionReal !== null ? Number(m.indiceRefraccionReal) : null,
+      m.temperaturaRealMedida !== undefined && m.temperaturaRealMedida !== null ? Number(m.temperaturaRealMedida) : null,
+      m.viscosidadFinalReal !== undefined && m.viscosidadFinalReal !== null ? Number(m.viscosidadFinalReal) : null,
       creadoEn
     );
     contador++;

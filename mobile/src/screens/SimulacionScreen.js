@@ -14,6 +14,7 @@ export default function SimulacionScreen() {
   const [sustrato, setSustrato] = useState('vaca');
   const [masaInoculo, setMasaInoculo] = useState('18.75');
   const [temperatura, setTemperatura] = useState('42');
+  const [errorValidacion, setErrorValidacion] = useState(null);
 
   const [resultado, setResultado] = useState(() =>
     simulationService.simularAcidificacion({
@@ -25,9 +26,19 @@ export default function SimulacionScreen() {
   );
 
   const handleSimular = (nuevaMasa = masaInoculo, nuevaTemp = temperatura) => {
-    const masa = parseFloat(nuevaMasa) || 18.75;
-    const temp = parseFloat(nuevaTemp) || 42;
+    const masa = parseFloat(nuevaMasa);
+    const temp = parseFloat(nuevaTemp);
 
+    if (isNaN(masa) || masa < 0.5 || masa > 50) {
+      setErrorValidacion('Masa de inóculo inválida. Debe estar entre 0.5 g y 50 g (para 250 mL).');
+      return;
+    }
+    if (isNaN(temp) || temp < 20 || temp > 52) {
+      setErrorValidacion('Temperatura fuera de rango biológico. Debe estar entre 20 °C y 52 °C.');
+      return;
+    }
+
+    setErrorValidacion(null);
     const res = simulationService.simularAcidificacion({
       tipoSustrato: sustrato,
       masaInoculoG: masa,
@@ -38,6 +49,7 @@ export default function SimulacionScreen() {
   };
 
   const aplicarPresets = (masaPreset, tempPreset) => {
+    setErrorValidacion(null);
     setMasaInoculo(String(masaPreset));
     setTemperatura(String(tempPreset));
     handleSimular(masaPreset, tempPreset);
@@ -142,6 +154,11 @@ export default function SimulacionScreen() {
             <Text style={styles.inputHint}>Ventana óptima: 41 - 43 °C</Text>
           </View>
         </View>
+        {errorValidacion && (
+          <View style={{ backgroundColor: '#FEE2E2', padding: 10, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: '#EF4444' }}>
+            <Text style={{ color: '#991B1B', fontSize: 13, fontWeight: '600' }}>⚠️ {errorValidacion}</Text>
+          </View>
+        )}
 
         <Pressable style={styles.btnSimular} onPress={() => handleSimular()}>
           <Text style={styles.btnSimularText}>⚡ Ejecutar Simulación Cinética</Text>

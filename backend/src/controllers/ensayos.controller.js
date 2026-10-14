@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { validarLecturaFisicoquimica } = require('../validators/fermentationValidator');
 
 const normalizeTipoSustrato = (tipoSustrato = '') => {
   const normalizado = String(tipoSustrato).trim().toLowerCase();
@@ -234,50 +235,19 @@ const crearEnsayo = async (req, res) => {
  */
 const agregarLectura = async (req, res) => {
   const { id } = req.params;
-  const {
-    minutos,
-    tiempo_minutos,
-    ph,
-    temperatura,
-    indice_refraccion,
-  } = req.body || {};
 
-  const tiempoMin = minutos !== undefined ? minutos : tiempo_minutos;
-
-  if (tiempoMin === undefined || ph === undefined || temperatura === undefined) {
+  const validacion = validarLecturaFisicoquimica(req.body);
+  if (!validacion.esValido) {
     return res.status(400).json({
       success: false,
       data: null,
-      message: 'Debe enviar minutos/tiempo_minutos, ph y temperatura.',
+      message: 'Valores inválidos para la lectura fisicoquímica.',
+      errores: validacion.errores,
       error: 'VALIDATION_ERROR',
     });
   }
 
-  const minutosValor = Number(tiempoMin);
-  const phValor = Number(ph);
-  const temperaturaValor = Number(temperatura);
-  const refraccionValor =
-    indice_refraccion !== undefined && indice_refraccion !== null && indice_refraccion !== ''
-      ? Number(indice_refraccion)
-      : null;
-
-  if (
-    Number.isNaN(minutosValor) ||
-    minutosValor < 0 ||
-    Number.isNaN(phValor) ||
-    phValor < 0 ||
-    phValor > 14 ||
-    Number.isNaN(temperaturaValor) ||
-    temperaturaValor <= 0 ||
-    (refraccionValor !== null && (Number.isNaN(refraccionValor) || refraccionValor < 0))
-  ) {
-    return res.status(400).json({
-      success: false,
-      data: null,
-      message: 'Valores inválidos para minutos, ph, temperatura o índice de refracción.',
-      error: 'VALIDATION_ERROR',
-    });
-  }
+  const { minutos: minutosValor, ph: phValor, temperatura: temperaturaValor, indice_refraccion: refraccionValor } = validacion.datosSaneados;
 
   try {
     const ensayoResult = await pool.query(
@@ -338,11 +308,11 @@ const finalizarEnsayo = async (req, res) => {
   const { viscosidad_final } = req.body || {};
 
   const viscosidadFinal = Number(viscosidad_final);
-  if (viscosidad_final === undefined || Number.isNaN(viscosidadFinal) || viscosidadFinal <= 0) {
+  if (viscosidad_final === undefined || Number.isNaN(viscosidadFinal) || viscosidadFinal < 150 || viscosidadFinal > 5500) {
     return res.status(400).json({
       success: false,
       data: null,
-      message: 'Debe enviar viscosidad_final como número mayor a 0.',
+      message: 'Debe enviar viscosidad_final como número válido dentro del rango de laboratorio [150 - 5500 mPa·s].',
       error: 'VALIDATION_ERROR',
     });
   }

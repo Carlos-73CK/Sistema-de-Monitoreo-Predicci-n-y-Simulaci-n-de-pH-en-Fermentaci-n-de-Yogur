@@ -8,12 +8,15 @@ const errorHandler = (err, req, res, next) => {
 
   console.error(`[Error] ${req.method} ${req.originalUrl}:`, err.message || err);
 
+  const isProduction = process.env.NODE_ENV === 'production';
   const responseBody = {
     status: 'error',
-    message: err.message || 'Error interno del servidor',
+    message: isProduction && statusCode === 500
+      ? 'Error interno del servidor. Por favor, contacte al administrador.'
+      : (err.message || 'Error interno del servidor'),
   };
 
-  if (process.env.NODE_ENV !== 'production' && err.stack) {
+  if (!isProduction && err.stack) {
     responseBody.stack = err.stack;
   }
 
