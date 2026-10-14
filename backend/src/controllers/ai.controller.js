@@ -4,6 +4,7 @@ const {
   predecirViscosidad,
   generarTrayectoria,
   evaluarMetricasModelo,
+  recalibrarTrayectoriaDinamica,
 } = require('../ai/fermentationPredictor');
 const { EXPERIMENTAL_BATCHES } = require('../ai/dataset');
 const {
@@ -15,6 +16,7 @@ const {
 const {
   validarParametrosSimulacion,
   validarLoteFeedback,
+  validarRecalibracionDinamica,
 } = require('../validators/fermentationValidator');
 
 /**
@@ -272,6 +274,66 @@ const submitFeedbackBatch = (req, res) => {
   }
 };
 
+/**
+ * Recalibra dinámicamente la trayectoria de fermentación a partir de lecturas observadas en tiempo real
+ */
+const recalibrateDynamicTrajectory = (req, res) => {
+  const validacion = validarRecalibracionDinamica(req.body);
+  if (!validacion.esValido) {
+    return res.status(400).json({
+      success: false,
+      data: null,
+      message: 'Parámetros o lecturas fuera de rango fisicoquímico.',
+      errores: validacion.errores,
+      error: 'VALIDATION_ERROR',
+    });
+  }
+
+  try {
+    const rec = recalibrarTrayectoriaDinamica({
+      configuracion: validacion.configuracionSaneada,
+      lecturas: validacion.lecturasSaneadas,
+      intervaloMinutos: 15,
+    });
+
+    const adelantoORetraso = rec.deltaMinutos < -3 ? 'adelanto' : (rec.deltaMinutos > 3 ? 'retraso' : 'nominal');
+    let confianza = 'Baja (± 30 min)';
+    if (rec.margenIncertidumbreMinutos <= 5) confianza = 'Muy Alta (± 4 min)';
+    else if (rec.margenIncertidumbreMinutos <= 10) confianza = 'Alta (± 8 min)';
+    else if (rec.margenIncertidumbreMinutos <= 20) confianza = 'Media (± 15 min)';
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...rec,
+        prediccionCorte: {
+          tiempoCorteInicialMinutos: rec.tiempoCorteInicialMinutos,
+          tiempoCorteInicialHoras: rec.tiempoCorteInicialHoras,
+          tiempoCorteRecalibradoMinutos: rec.tiempoCorteRecalibradoMinutos,
+          tiempoCorteRecalibradoHoras: rec.tiempoCorteRecalibradoHoras,
+          diferenciaMinutos: rec.deltaMinutos,
+          adelantoORetraso,
+          razonVelocidad: rec.factorVelocidadKinetic,
+          margenIncertidumbreMinutos: rec.margenIncertidumbreMinutos,
+          confianzaEstimacion: confianza,
+          diagnostico: rec.diagnostico,
+        },
+        curvaRecalibrada: rec.curvaProyeccion,
+        curvaTeoricaInicial: rec.curvaTeoricaOriginal,
+      },
+      message: 'Recalibración dinámica en tiempo real completada con éxito.',
+      error: null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message: 'Error al recalibrar la trayectoria.',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getModelMetrics,
   getExperimentalDataset,
@@ -279,4 +341,5 @@ module.exports = {
   simulateTrajectory,
   getSavedSimulations,
   submitFeedbackBatch,
+  recalibrateDynamicTrajectory,
 };

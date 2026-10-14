@@ -45,6 +45,68 @@ export default function MonitoreoScreen({ route, navigation }) {
   const fueraDeRangoTermico = tempActual < 41.0 || tempActual > 43.0;
   const phCorteAlcanzado = phActual <= 4.5;
 
+  // 🎯 Estimación y Recalibración Dinámica en Vuelo hacia pH 4.50
+  const calcularEstimacionDinamica = () => {
+    if (lecturas.length < 2) {
+      return {
+        tiempoCorteMinutos: 255,
+        tiempoCorteHoras: 4.25,
+        minutosRestantes: 255,
+        diferenciaMinutos: 0,
+        ritmo: 1.0,
+        confianza: 'Estimación Teórica (± 30 min)',
+        diagnostico: 'A la espera de lecturas a 60 y 120 min para recalibrar en vuelo.'
+      };
+    }
+
+    const t0 = lecturas[0];
+    const tk = lecturas[lecturas.length - 1];
+
+    if (tk.ph <= 4.50) {
+      return {
+        tiempoCorteMinutos: tk.minutos,
+        tiempoCorteHoras: parseFloat((tk.minutos / 60).toFixed(2)),
+        minutosRestantes: 0,
+        diferenciaMinutos: tk.minutos - 255,
+        ritmo: parseFloat((255 / (tk.minutos || 1)).toFixed(2)),
+        confianza: 'Corte Alcanzado (100%)',
+        diagnostico: '¡Punto de corte crítico pH 4.50 alcanzado! Suspender incubación.'
+      };
+    }
+
+    const deltaT = tk.minutos - t0.minutos;
+    const deltaPh = t0.ph - tk.ph;
+
+    // Velocidad promedio observada (caída de pH / minuto)
+    const tasa = deltaT > 0 && deltaPh > 0 ? deltaPh / deltaT : 0.0068;
+    const phRestante = Math.max(0, tk.ph - 4.50);
+    const minRestantes = Math.max(1, Math.round(phRestante / (tasa || 0.0068)));
+    const corteEstimado = tk.minutos + minRestantes;
+    const dif = corteEstimado - 255;
+    const razon = parseFloat(((deltaPh / (deltaT || 1)) / 0.0068).toFixed(2));
+
+    let confianza = 'Baja (± 25 min)';
+    if (lecturas.length >= 4 || tk.minutos >= 180) confianza = 'Muy Alta (± 5 min)';
+    else if (lecturas.length >= 3 || tk.minutos >= 120) confianza = 'Alta (± 10 min)';
+    else if (lecturas.length >= 2) confianza = 'Media (± 18 min)';
+
+    let diagnostico = 'Acidificación a ritmo estándar nominal de laboratorio.';
+    if (dif < -5) diagnostico = `⚡ Acidificación rápida (${Math.abs(dif)} min antes). Vigilar baño maría.`;
+    else if (dif > 5) diagnostico = `❄️ Acidificación lenta (+${dif} min de retraso). Verificar temperatura.`;
+
+    return {
+      tiempoCorteMinutos: corteEstimado,
+      tiempoCorteHoras: parseFloat((corteEstimado / 60).toFixed(2)),
+      minutosRestantes: minRestantes,
+      diferenciaMinutos: dif,
+      ritmo: razon > 0 ? razon : 1.0,
+      confianza,
+      diagnostico
+    };
+  };
+
+  const estimacion = calcularEstimacionDinamica();
+
   const handleAgregarLectura = () => {
     const minutos = parseFloat(minutosInput);
     const ph = parseFloat(phInput);
@@ -142,6 +204,36 @@ export default function MonitoreoScreen({ route, navigation }) {
           </Text>
           <Text style={styles.metricaMeta}>Óptimo: 42.0 °C</Text>
         </View>
+      </View>
+
+      {/* Tarjeta de Recalibración Dinámica en Vivo (IA) */}
+      <View style={styles.recalibracionCard}>
+        <View style={styles.recalibracionHeader}>
+          <Text style={styles.recalibracionTitulo}>🎯 Recalibración IA en Vuelo</Text>
+          <View style={styles.recalibracionBadge}>
+            <Text style={styles.recalibracionBadgeTexto}>{estimacion.confianza}</Text>
+          </View>
+        </View>
+
+        <View style={styles.recalibracionGrid}>
+          <View style={styles.recalibracionItem}>
+            <Text style={styles.recalibracionLabel}>Tiempo Corte pH 4.5</Text>
+            <Text style={styles.recalibracionValDestacado}>{estimacion.tiempoCorteHoras} h</Text>
+            <Text style={styles.recalibracionSub}>~{estimacion.tiempoCorteMinutos} min</Text>
+          </View>
+          <View style={styles.recalibracionItem}>
+            <Text style={styles.recalibracionLabel}>Variación vs Teórico</Text>
+            <Text style={[
+              styles.recalibracionVal,
+              estimacion.diferenciaMinutos < -3 ? { color: '#059669' } : (estimacion.diferenciaMinutos > 3 ? { color: '#d97706' } : { color: '#0284c7' })
+            ]}>
+              {estimacion.diferenciaMinutos > 0 ? `+${estimacion.diferenciaMinutos}` : estimacion.diferenciaMinutos} min
+            </Text>
+            <Text style={styles.recalibracionSub}>Ritmo: {estimacion.ritmo}x</Text>
+          </View>
+        </View>
+
+        <Text style={styles.diagnosticoTexto}>{estimacion.diagnostico}</Text>
       </View>
 
       {/* Formulario de Nueva Lectura */}
@@ -425,5 +517,81 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 13,
     color: '#4a5568',
+  },
+  recalibracionCard: {
+    backgroundColor: '#f0f9ff',
+    borderColor: '#bae6fd',
+    borderWidth: 1.5,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+  },
+  recalibracionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  recalibracionTitulo: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0369a1',
+  },
+  recalibracionBadge: {
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#7dd3fc',
+  },
+  recalibracionBadgeTexto: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#0369a1',
+  },
+  recalibracionGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  recalibracionItem: {
+    flex: 0.48,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  recalibracionLabel: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  recalibracionValDestacado: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0284c7',
+    marginVertical: 2,
+  },
+  recalibracionVal: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginVertical: 2,
+  },
+  recalibracionSub: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+  },
+  diagnosticoTexto: {
+    fontSize: 12,
+    color: '#0c4a6e',
+    backgroundColor: '#e0f2fe',
+    padding: 8,
+    borderRadius: 6,
+    lineHeight: 16,
   },
 });

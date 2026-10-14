@@ -351,6 +351,215 @@ function evaluarMetricasModelo() {
   };
 }
 
+/**
+ * RECALIBRACIÓN DINÁMICA EN TIEMPO REAL ("Data Assimilation in Flight")
+ * 
+ * Permite asimilar lecturas observadas (t_k, pH_k) a lo largo del ensayo
+ * y corregir la trayectoria predictiva restante, ajustando el tiempo estimado
+ * a pH 4.50 sobre la marcha a partir de la 2da o 3ra lectura real.
+ */
+function recalibrarTrayectoriaDinamica({
+  configuracion = {},
+  lecturas = [],
+  intervaloMinutos = 15,
+}) {
+  const {
+    temperaturaC = 42,
+    masaInoculoG = 18.75,
+    volumenMl = 250,
+    tipoSustrato = 'vaca',
+    tipoAzucar = 'lactosa',
+  } = configuracion;
+
+  // 1. Proyección teórica inicial (a priori)
+  const corteInicial = predecirTiempoCorte({
+    temperaturaC,
+    masaInoculoG,
+    volumenMl,
+    tipoAzucar,
+  });
+  const tCorteInicialMin = corteInicial.tiempoCorteMinutos;
+
+  // Curva teórica original (completa para comparar)
+  const trayectoriaTeorica = generarTrayectoria({
+    temperaturaC,
+    masaInoculoG,
+    volumenMl,
+    tipoSustrato,
+    tipoAzucar,
+    intervaloMinutos,
+  });
+
+  // 2. Procesar y ordenar lecturas reales observadas
+  const lecturasOrdenadas = [...lecturas]
+    .map((l) => ({
+      minutos: Number(l.minutos !== undefined ? l.minutos : l.tiempo_minutos) || 0,
+      ph: Number(l.ph),
+      temperatura: Number(l.temperatura !== undefined ? l.temperatura : (l.temperatura_c || temperaturaC)),
+      brix: l.brix !== undefined ? Number(l.brix) : (l.indice_refraccion !== undefined ? Number(l.indice_refraccion) : null),
+    }))
+    .filter((l) => !isNaN(l.minutos) && !isNaN(l.ph))
+    .sort((a, b) => a.minutos - b.minutos);
+
+  if (lecturasOrdenadas.length === 0) {
+    return {
+      estado: 'SIN_LECTURAS',
+      totalLecturas: 0,
+      tiempoCorteInicialMinutos: tCorteInicialMin,
+      tiempoCorteInicialHoras: corteInicial.tiempoCorteHoras,
+      tiempoCorteRecalibradoMinutos: tCorteInicialMin,
+      tiempoCorteRecalibradoHoras: corteInicial.tiempoCorteHoras,
+      deltaMinutos: 0,
+      factorVelocidadKinetic: 1.0,
+      margenIncertidumbreMinutos: 30,
+      corteAlcanzado: false,
+      curvaReal: [],
+      curvaProyeccion: trayectoriaTeorica.curva,
+      curvaTeoricaOriginal: trayectoriaTeorica.curva,
+      prediccionViscosidad: trayectoriaTeorica.prediccionViscosidad,
+      diagnostico: 'Modo a priori: Sin lecturas experimentales registradas. Proyección basada 100% en el modelo cinético estándar de Hill.',
+    };
+  }
+
+  const ultimaLectura = lecturasOrdenadas[lecturasOrdenadas.length - 1];
+  const tActual = ultimaLectura.minutos;
+  const phActual = ultimaLectura.ph;
+  const phInicialReal = lecturasOrdenadas[0].ph;
+
+  // Verificar si ya se alcanzó el corte crítico
+  if (phActual <= PH_CRITICO_CORTE) {
+    return {
+      estado: 'CORTE_CRITICO_ALCANZADO',
+      totalLecturas: lecturasOrdenadas.length,
+      tiempoCorteInicialMinutos: tCorteInicialMin,
+      tiempoCorteInicialHoras: corteInicial.tiempoCorteHoras,
+      tiempoCorteRecalibradoMinutos: tActual,
+      tiempoCorteRecalibradoHoras: Number((tActual / 60).toFixed(2)),
+      deltaMinutos: tActual - tCorteInicialMin,
+      factorVelocidadKinetic: 1.0,
+      margenIncertidumbreMinutos: 0,
+      corteAlcanzado: true,
+      ultimaLectura,
+      curvaReal: lecturasOrdenadas,
+      curvaProyeccion: [],
+      curvaTeoricaOriginal: trayectoriaTeorica.curva,
+      prediccionViscosidad: trayectoriaTeorica.prediccionViscosidad,
+      diagnostico: `🎯 ¡CORTE CRÍTICO ALCANZADO! pH actual = ${phActual.toFixed(2)}. Detenga la incubación inmediatamente y mida la viscosidad final (rotor 4, 60 rpm).`,
+    };
+  }
+
+  // 3. Cálculo de la cinética observada vs teórica
+  const puntoTeoricoActual = predecirPunto({
+    temperaturaC,
+    masaInoculoG,
+    volumenMl,
+    minutos: tActual,
+    tipoSustrato,
+    tipoAzucar,
+  });
+
+  const deltaPHTeorico = phInicialReal - puntoTeoricoActual.phPredicho;
+  const deltaPHReal = phInicialReal - phActual;
+
+  let factorVelocidad = 1.0;
+  if (deltaPHTeorico > 0.05 && tActual >= 30) {
+    factorVelocidad = deltaPHReal / deltaPHTeorico;
+    factorVelocidad = Math.max(0.4, Math.min(2.2, factorVelocidad));
+  }
+
+  // Velocidad instantánea en el último tramo medido
+  let velocidadInstantanea = 0.005;
+  if (lecturasOrdenadas.length >= 2) {
+    const penultima = lecturasOrdenadas[lecturasOrdenadas.length - 2];
+    const dt = tActual - penultima.minutos;
+    const dph = penultima.ph - phActual;
+    if (dt > 0 && dph > 0) {
+      velocidadInstantanea = dph / dt;
+    }
+  }
+
+  // 4. Proyección del tiempo restante necesario para llegar a pH 4.50
+  const phDistancia = Math.max(0, phActual - PH_CRITICO_CORTE);
+  const tiempoRestanteTeorico = Math.max(10, tCorteInicialMin - tActual);
+
+  const remHillAjustado = tiempoRestanteTeorico / factorVelocidad;
+  const remTangente = phDistancia / Math.max(velocidadInstantanea, 0.002);
+  const remCombinado = Math.round(0.60 * remHillAjustado + 0.40 * remTangente);
+
+  const tCorteRecalibradoMin = tActual + remCombinado;
+  const tCorteRecalibradoHoras = Number((tCorteRecalibradoMin / 60).toFixed(2));
+  const deltaMinutos = tCorteRecalibradoMin - tCorteInicialMin;
+
+  // Margen de incertidumbre decreciente conforme se tienen más datos
+  let margenIncertidumbre = 30;
+  if (lecturasOrdenadas.length === 1) margenIncertidumbre = 25;
+  else if (lecturasOrdenadas.length === 2) margenIncertidumbre = 15;
+  else if (lecturasOrdenadas.length === 3) margenIncertidumbre = 8;
+  else margenIncertidumbre = 4;
+
+  // 5. Construcción de la trayectoria proyectada hacia el futuro (t >= tActual)
+  const curvaProyeccion = [];
+  const tMaxFuturo = tCorteRecalibradoMin + 30;
+
+  for (let m = tActual; m <= tMaxFuturo; m += intervaloMinutos) {
+    if (m === tActual) {
+      curvaProyeccion.push({
+        minutos: m,
+        horas: Number((m / 60).toFixed(2)),
+        phPredicho: Number(phActual.toFixed(2)),
+        esPuntoReal: true,
+        proyectado: false,
+      });
+    } else {
+      const frac = Math.min((m - tActual) / Math.max(remCombinado, 1), 1.0);
+      let phProy = PH_CRITICO_CORTE + (phActual - PH_CRITICO_CORTE) * Math.pow(1 - frac, 1.6);
+      if (m > tCorteRecalibradoMin) {
+        phProy = PH_CRITICO_CORTE - 0.002 * (m - tCorteRecalibradoMin);
+      }
+      curvaProyeccion.push({
+        minutos: m,
+        horas: Number((m / 60).toFixed(2)),
+        phPredicho: Number(phProy.toFixed(2)),
+        esPuntoReal: false,
+        proyectado: true,
+      });
+    }
+  }
+
+  // 6. Diagnóstico y orientación pedagógica
+  let estadoCinetic = 'NOMINAL';
+  let mensaje = '';
+  if (Math.abs(deltaMinutos) <= 7) {
+    estadoCinetic = 'EN_LINEA';
+    mensaje = `✅ Cinética en curso nominal. La acidificación real coincide con el modelo estándar (Ritmo: ${(factorVelocidad * 100).toFixed(0)}%). Corte proyectado a los ${tCorteRecalibradoMin} min (${tCorteRecalibradoHoras} h).`;
+  } else if (deltaMinutos < -7) {
+    estadoCinetic = 'ACELERADO';
+    mensaje = `⚡ ¡Cinética acelerada! La muestra acidifica un ${((factorVelocidad - 1) * 100).toFixed(0)}% más rápido que lo previsto. El corte se adelantará ~${Math.abs(deltaMinutos)} minutos. Prepárese para enfriar a las ${tCorteRecalibradoHoras} h (${tCorteRecalibradoMin} min).`;
+  } else {
+    estadoCinetic = 'RALENTIZADO';
+    mensaje = `⚠️ Cinética ralentizada. La acidificación avanza un ${((1 - factorVelocidad) * 100).toFixed(0)}% más lento (posible baja térmica o menor viabilidad bacteriana). El corte se retrasará ~${deltaMinutos} minutos (~${tCorteRecalibradoHoras} h).`;
+  }
+
+  return {
+    estado: estadoCinetic,
+    totalLecturas: lecturasOrdenadas.length,
+    ultimaLectura,
+    tiempoCorteInicialMinutos: tCorteInicialMin,
+    tiempoCorteInicialHoras: corteInicial.tiempoCorteHoras,
+    tiempoCorteRecalibradoMinutos: tCorteRecalibradoMin,
+    tiempoCorteRecalibradoHoras: tCorteRecalibradoHoras,
+    deltaMinutos,
+    factorVelocidadKinetic: Number(factorVelocidad.toFixed(2)),
+    margenIncertidumbreMinutos: margenIncertidumbre,
+    corteAlcanzado: false,
+    curvaReal: lecturasOrdenadas,
+    curvaProyeccion,
+    curvaTeoricaOriginal: trayectoriaTeorica.curva,
+    prediccionViscosidad: trayectoriaTeorica.prediccionViscosidad,
+    diagnostico: mensaje,
+  };
+}
+
 module.exports = {
   PH_CRITICO_CORTE,
   calcularPorcentajeInoculo,
@@ -359,4 +568,5 @@ module.exports = {
   predecirViscosidad,
   generarTrayectoria,
   evaluarMetricasModelo,
+  recalibrarTrayectoriaDinamica,
 };

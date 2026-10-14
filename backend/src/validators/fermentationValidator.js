@@ -267,9 +267,49 @@ function validarLoteFeedback(body = {}) {
   };
 }
 
+/**
+ * Valida la entrada para recalibración dinámica en tiempo real
+ * @param {Object} body
+ * @returns {{ esValido: boolean, errores: string[], configuracionSaneada: Object, lecturasSaneadas: Array<Object> }}
+ */
+function validarRecalibracionDinamica(body = {}) {
+  const errores = [];
+  const configuracion = body.configuracion || body;
+  const lecturasRaw = body.lecturas || body.lecturas_en_curso || body.lecturasEnVivo || [];
+
+  const valParams = validarParametrosSimulacion(configuracion);
+  if (!valParams.esValido) {
+    errores.push(...valParams.errores);
+  }
+
+  if (!Array.isArray(lecturasRaw)) {
+    errores.push('El campo lecturas debe ser un arreglo de mediciones periódicas.');
+    return { esValido: false, errores, configuracionSaneada: null, lecturasSaneadas: [] };
+  }
+
+  const lecturasSaneadas = [];
+  for (let i = 0; i < lecturasRaw.length; i++) {
+    const item = lecturasRaw[i];
+    const valLectura = validarLecturaFisicoquimica(item);
+    if (!valLectura.esValido) {
+      errores.push(`Lectura #${i + 1}: ${valLectura.errores.join(' | ')}`);
+    } else {
+      lecturasSaneadas.push(valLectura.datosSaneados);
+    }
+  }
+
+  return {
+    esValido: errores.length === 0,
+    errores,
+    configuracionSaneada: valParams.parametrosSaneados,
+    lecturasSaneadas,
+  };
+}
+
 module.exports = {
   LIMITES,
   validarLecturaFisicoquimica,
   validarParametrosSimulacion,
   validarLoteFeedback,
+  validarRecalibracionDinamica,
 };

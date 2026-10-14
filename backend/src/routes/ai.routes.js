@@ -8,6 +8,7 @@ const {
   simulateTrajectory,
   getSavedSimulations,
   submitFeedbackBatch,
+  recalibrateDynamicTrajectory,
 } = require('../controllers/ai.controller');
 
 const router = express.Router();
@@ -35,6 +36,9 @@ router.get('/dataset', getExperimentalDataset);
 // Endpoints de predicción y simulación cinética ("What-If")
 router.post('/predict', predictPoint);
 router.post('/simulate', simulateTrajectory);
+
+// Recalibración Dinámica en Tiempo Real con Asimilación de Datos Observados
+router.post('/recalibrate', recalibrateDynamicTrajectory);
 
 // Historial de simulaciones en SQLite local
 router.get('/simulations', getSavedSimulations);

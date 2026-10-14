@@ -254,6 +254,7 @@
     <!-- Barra de Pestañas -->
     <div class="tabs-wrapper">
       <button class="tab-btn active" onclick="switchTab('simulador')">⚡ Simulador Cinético ("What-If")</button>
+      <button class="tab-btn" onclick="switchTab('monitoreo-vivo')">⏱️ Ensayo en Vivo & Recalibración IA</button>
       <button class="tab-btn" onclick="switchTab('bioquimica')">🧬 Bioquímica & Escala pH (ULEAM)</button>
       <button class="tab-btn" onclick="switchTab('feedback')">🧠 Aprendizaje Continuo (Feedback Loop)</button>
       <button class="tab-btn" onclick="switchTab('historial')">💾 Historial SQLite Local</button>
@@ -501,6 +502,203 @@
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- PESTAÑA 2: MONITOREO EN VIVO & RECALIBRACIÓN DINÁMICA (IDEA CIENTÍFICA DEL PROYECTO) -->
+    <div id="tab-monitoreo-vivo" class="tab-panel">
+      <div class="grid-main">
+
+        <!-- Columna Izquierda: Lote Activo y Registro de Lecturas Periódicas -->
+        <div>
+          <!-- Tarjeta 1: Parámetros del Ensayo en Curso -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">🔬 Ensayo Activo en Baño María</div>
+                <div class="card-subtitle">Monitoreo periódico en tiempo real con recálculo continuo de la IA</div>
+              </div>
+              <span class="badge badge-green" id="live-lote-badge">LOTE-CHV-LIVE</span>
+            </div>
+
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:16px; font-size:12.5px; line-height:1.6;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="color:#64748b; font-weight:600;">Sustrato:</span>
+                <strong>Leche de Vaca (250 mL)</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="color:#64748b; font-weight:600;">Inóculo Chivería:</span>
+                <strong>18.75 g (7.50%)</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="color:#64748b; font-weight:600;">Temp. de Incubación:</span>
+                <strong>42.0 °C (Baño María Cerrado)</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:#64748b; font-weight:600;">Carbohidrato:</span>
+                <strong>Lactosa Nativa</strong>
+              </div>
+            </div>
+
+            <!-- Botones de Escenarios Rápidos de Laboratorio -->
+            <div class="presets-label">⚡ Escenarios de Prueba en 1 Clic:</div>
+            <div class="presets-grid" style="margin-bottom:16px;">
+              <button type="button" class="btn-preset active" id="btn-scen-rapido" onclick="cargarEscenarioPrueba('acelerado')">
+                <div class="btn-preset-title"><span>⚡ Acelerado</span><span style="color:#059669; font-size:10px;">-35 min</span></div>
+                <div class="btn-preset-sub">Acidifica más rápido de lo previsto</div>
+              </button>
+              <button type="button" class="btn-preset" id="btn-scen-lento" onclick="cargarEscenarioPrueba('retrasado')">
+                <div class="btn-preset-title"><span>❄️ Enfriamiento</span><span style="color:#d97706; font-size:10px;">+40 min</span></div>
+                <div class="btn-preset-sub">Retraso por baja de temperatura</div>
+              </button>
+              <button type="button" class="btn-preset" id="btn-scen-nominal" onclick="cargarEscenarioPrueba('nominal')">
+                <div class="btn-preset-title"><span>⭐ Nominal</span><span style="color:#0284c7; font-size:10px;">4.25 h</span></div>
+                <div class="btn-preset-sub">Sigue fielmente la curva Hill</div>
+              </button>
+              <button type="button" class="btn-preset" id="btn-scen-reset" onclick="reiniciarEnsayoEnVivo()">
+                <div class="btn-preset-title"><span>🔄 Reiniciar</span></div>
+                <div class="btn-preset-sub">Volver a minuto 0 (T0)</div>
+              </button>
+            </div>
+
+            <!-- Formulario para agregar una lectura manual -->
+            <div style="border-top:1px solid #f1f5f9; padding-top:14px; margin-top:10px;">
+              <div style="font-weight:700; font-size:13px; color:#1e293b; margin-bottom:10px;">
+                ➕ Ingresar Lectura Periódica de Laboratorio:
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="live-input-min">Tiempo Transcurrido:</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('live-input-min', -15)">−</button>
+                    <input type="number" id="live-input-min" value="120" step="15" min="0" max="720">
+                    <button type="button" class="btn-step" onclick="ajustarValor('live-input-min', 15)">+</button>
+                  </div>
+                  <div class="input-hint"><span>Minutos</span></div>
+                </div>
+
+                <div class="form-group">
+                  <label for="live-input-ph">pH Medido:</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('live-input-ph', -0.05)">−</button>
+                    <input type="number" id="live-input-ph" value="5.25" step="0.01" min="3.8" max="7.2">
+                    <button type="button" class="btn-step" onclick="ajustarValor('live-input-ph', 0.05)">+</button>
+                  </div>
+                  <div class="input-hint"><span>pH-metro [3.8 – 7.2]</span></div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="live-input-temp">Temperatura Baño (°C):</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('live-input-temp', -0.5)">−</button>
+                    <input type="number" id="live-input-temp" value="42.0" step="0.1" min="20" max="52">
+                    <button type="button" class="btn-step" onclick="ajustarValor('live-input-temp', 0.5)">+</button>
+                  </div>
+                  <div class="input-hint"><span>Ventana: 41 - 43 °C</span></div>
+                </div>
+
+                <div class="form-group">
+                  <label for="live-input-brix">°Brix (Opcional):</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('live-input-brix', -0.5)">−</button>
+                    <input type="number" id="live-input-brix" value="7.5" step="0.1" min="3" max="18">
+                    <button type="button" class="btn-step" onclick="ajustarValor('live-input-brix', 0.5)">+</button>
+                  </div>
+                  <div class="input-hint"><span>Refráctometro</span></div>
+                </div>
+              </div>
+
+              <button class="btn-simulate" onclick="agregarLecturaEnVivo()" style="background:linear-gradient(135deg, #059669 0%, #10b981 100%); margin-top:8px;">
+                🔄 Registrar Lectura y Recalibrar IA
+              </button>
+            </div>
+
+            <!-- Tabla de Lecturas Registradas en Vivo -->
+            <div style="margin-top:18px;">
+              <div style="font-weight:700; font-size:12.5px; color:#334155; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <span>Lecturas del Ensayo Actual:</span>
+                <span id="live-total-count" style="font-size:11px; color:#0284c7; font-weight:800;">3 lecturas registradas</span>
+              </div>
+              <table class="milestones-table" style="font-size:12px;">
+                <thead>
+                  <tr>
+                    <th>Tiempo</th>
+                    <th>pH</th>
+                    <th>Temp</th>
+                    <th>°Brix</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="live-readings-tbody">
+                  <!-- Llenado dinámico -->
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Columna Derecha: Métricas Dinámicas y Gráfico Recalibrado -->
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">🎯 Recalibración Dinámica en Vuelo</div>
+                <div class="card-subtitle">Ajuste de la curva sigmoidal y tiempo estimado a pH 4.50 según mediciones reales</div>
+              </div>
+              <span class="badge badge-green" id="live-confidence-badge">Alta Certeza (± 8 min)</span>
+            </div>
+
+            <!-- Banner Dinámico Inteligente de Diagnóstico -->
+            <div id="live-alert-banner" class="alert-banner optimal" style="line-height:1.5;">
+              <span id="live-alert-icon">⚡</span>
+              <span id="live-alert-text">Cargando recalibración dinámica en tiempo real...</span>
+            </div>
+
+            <!-- KPIs de Recalibración Dinámica -->
+            <div class="kpis-row">
+              <div class="kpi-tile">
+                <span class="kpi-header">Corte Inicial Teórico</span>
+                <span class="kpi-number" id="live-kpi-teorico" style="color:#64748b;">4.25 h</span>
+                <span class="kpi-footer">255 minutos iniciales</span>
+              </div>
+
+              <div class="kpi-tile" style="border: 2px solid #0284c7; background: #f0f9ff;">
+                <span class="kpi-header" style="color:#0369a1;">🎯 Corte Recalibrado IA</span>
+                <span class="kpi-number" id="live-kpi-recalibrado" style="color:#0284c7;">3.85 h</span>
+                <span class="kpi-footer" id="live-kpi-minutos" style="color:#0369a1; font-weight:700;">~231 minutos</span>
+              </div>
+
+              <div class="kpi-tile">
+                <span class="kpi-header">Variación / Desvío</span>
+                <span class="kpi-number" id="live-kpi-delta" style="color:#059669;">-24 min</span>
+                <span class="kpi-footer" id="live-kpi-delta-sub" style="color:#059669; font-weight:700;">Se adelantó</span>
+              </div>
+
+              <div class="kpi-tile">
+                <span class="kpi-header">Ritmo Cinético Real</span>
+                <span class="kpi-number" id="live-kpi-ritmo" style="color:#f59e0b;">1.18x</span>
+                <span class="kpi-footer" style="color:#64748b;">vs velocidad estándar</span>
+              </div>
+            </div>
+
+            <!-- Gráfico Dinámico de Recalibración (Chart.js) -->
+            <div class="chart-box" style="height:360px;">
+              <canvas id="liveChart"></canvas>
+            </div>
+
+            <!-- Ficha Didáctica de la Recalibración -->
+            <div style="background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:14px; margin-top:16px; font-size:12px; color:#475569; line-height:1.6;">
+              <strong>💡 Cómo interpreta la IA las mediciones:</strong>
+              A partir de la segunda y tercera lectura periódica ingresada por el laboratorista, el algoritmo compara la caída real de pH frente a la curva teórica. Si la bacteria acidifica más rápido o si la temperatura del baño maría sufrió fluctuaciones, la IA <em>reajusta la curva punteada cian</em> y proyecta con exactitud el nuevo momento en que se alcanzará el <strong>pH 4.50 crítico</strong> para apagar el equipo a tiempo.
+            </div>
+
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- PESTAÑA 2: BIOQUÍMICA & ESCALA DE PH (AUDIO 3 DR. SANTACRUZ) -->
@@ -931,15 +1129,391 @@
       });
     }
 
+    // ==========================================
+    // ⏱️ ENSAYO EN VIVO Y RECALIBRACIÓN DINÁMICA
+    // ==========================================
+    let liveChartInstance = null;
+    let lecturasEnVivo = [
+      { tiempo_minutos: 0, ph: 6.25, temperatura: 42.0, indice_refraccion: 10.5 },
+      { tiempo_minutos: 60, ph: 5.95, temperatura: 42.1, indice_refraccion: 9.8 },
+      { tiempo_minutos: 120, ph: 5.15, temperatura: 42.0, indice_refraccion: 8.0 }
+    ];
+
+    function initLiveChart() {
+      const canvas = document.getElementById('liveChart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (liveChartInstance) {
+        liveChartInstance.destroy();
+      }
+
+      liveChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: 'Mediciones Reales en Vivo (pH)',
+              data: [],
+              borderColor: '#0284c7',
+              backgroundColor: '#0284c7',
+              borderWidth: 2.5,
+              pointRadius: 6,
+              pointHoverRadius: 8,
+              pointBackgroundColor: '#0284c7',
+              showLine: true,
+              tension: 0.15,
+              order: 1
+            },
+            {
+              label: '🎯 Proyección Recalibrada IA (Tiempo Real)',
+              data: [],
+              borderColor: '#06b6d4',
+              backgroundColor: 'rgba(6, 182, 212, 0.05)',
+              borderWidth: 2.8,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              pointHoverRadius: 5,
+              fill: false,
+              tension: 0.35,
+              order: 2
+            },
+            {
+              label: 'Curva Teórica Inicial (Hill 42°C)',
+              data: [],
+              borderColor: '#94a3b8',
+              backgroundColor: 'transparent',
+              borderWidth: 1.5,
+              borderDash: [3, 3],
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              fill: false,
+              tension: 0.35,
+              order: 3
+            },
+            {
+              label: '🎯 Límite Crítico pH 4.50 (Corte)',
+              data: [],
+              borderColor: '#ef4444',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              pointHoverRadius: 0,
+              fill: false,
+              order: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'nearest', intersect: false },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { font: { weight: 'bold', size: 12 }, padding: 12 }
+            },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              titleFont: { weight: 'bold', size: 13 },
+              bodyFont: { size: 12 },
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: pH ${context.parsed.y.toFixed(2)} (${context.parsed.x} min)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              title: { display: true, text: 'Tiempo Transcurrido (minutos)', font: { weight: 'bold', size: 12 } },
+              grid: { color: '#f1f5f9' },
+              min: 0,
+              ticks: { stepSize: 30 }
+            },
+            y: {
+              title: { display: true, text: 'Nivel de pH', font: { weight: 'bold', size: 12 } },
+              min: 4.0,
+              max: 6.8,
+              grid: { color: '#e2e8f0' }
+            }
+          }
+        }
+      });
+
+      renderizarTablaLecturasEnVivo();
+      ejecutarRecalibracionEnVivo();
+    }
+
+    function renderizarTablaLecturasEnVivo() {
+      const tbody = document.getElementById('live-readings-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      lecturasEnVivo.forEach((l, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${l.tiempo_minutos} min</strong> (${(l.tiempo_minutos/60).toFixed(1)} h)</td>
+          <td><span style="font-weight:800; color:#0284c7;">${l.ph.toFixed(2)}</span></td>
+          <td>${l.temperatura ? l.temperatura.toFixed(1) : '42.0'} °C</td>
+          <td>${l.indice_refraccion !== null && l.indice_refraccion !== undefined ? l.indice_refraccion.toFixed(1) + ' °Bx' : '--'}</td>
+          <td>
+            ${lecturasEnVivo.length > 1 ? `<button onclick="eliminarLecturaEnVivo(${idx})" style="background:#fee2e2; border:none; color:#b91c1c; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:11px;" title="Eliminar lectura">✕</button>` : '<span style="color:#94a3b8; font-size:11px;">T0</span>'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const countEl = document.getElementById('live-total-count');
+      if (countEl) countEl.innerText = `${lecturasEnVivo.length} ${lecturasEnVivo.length === 1 ? 'lectura registrada' : 'lecturas registradas'}`;
+
+      // Sugerir la siguiente lectura en los steppers
+      const ultima = lecturasEnVivo[lecturasEnVivo.length - 1];
+      if (ultima) {
+        const proxMin = Math.min(600, ultima.tiempo_minutos + (ultima.tiempo_minutos < 180 ? 60 : 30));
+        const phEst = Math.max(4.0, ultima.ph - (ultima.ph > 5.5 ? 0.30 : 0.45));
+        const minInput = document.getElementById('live-input-min');
+        const phInput = document.getElementById('live-input-ph');
+        if (minInput) minInput.value = proxMin;
+        if (phInput) phInput.value = phEst.toFixed(2);
+      }
+    }
+
+    async function ejecutarRecalibracionEnVivo() {
+      if (!liveChartInstance) return;
+
+      try {
+        const res = await fetch('/api/ai/recalibrate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lote_id: 'LOTE-CHV-LIVE',
+            tipo_sustrato: 'vaca',
+            tipo_azucar: 'lactosa',
+            temperatura_c: 42.0,
+            masa_inoculo_g: 18.75,
+            volumen_ml: 250,
+            lecturas_en_curso: lecturasEnVivo
+          })
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          console.warn('Recalibración falló:', data);
+          return;
+        }
+
+        const sim = data.data;
+        const pred = sim.prediccionCorte;
+
+        // Actualizar KPIs dinámicos
+        document.getElementById('live-kpi-teorico').innerText = pred.tiempoCorteInicialHoras + ' h';
+        document.getElementById('live-kpi-recalibrado').innerText = pred.tiempoCorteRecalibradoHoras + ' h';
+        document.getElementById('live-kpi-minutos').innerText = '~' + pred.tiempoCorteRecalibradoMinutos + ' minutos';
+
+        const deltaEl = document.getElementById('live-kpi-delta');
+        const deltaSub = document.getElementById('live-kpi-delta-sub');
+        const diff = pred.diferenciaMinutos;
+
+        if (diff < -3) {
+          deltaEl.innerText = `${diff} min`;
+          deltaEl.style.color = '#059669';
+          deltaSub.innerText = '⚡ Acidifica más rápido (Adelanto)';
+          deltaSub.style.color = '#059669';
+        } else if (diff > 3) {
+          deltaEl.innerText = `+${diff} min`;
+          deltaEl.style.color = '#d97706';
+          deltaSub.innerText = '❄️ Acidifica más lento (Retraso)';
+          deltaSub.style.color = '#d97706';
+        } else {
+          deltaEl.innerText = '0 min';
+          deltaEl.style.color = '#0284c7';
+          deltaSub.innerText = '⭐ Ritmo nominal exacto';
+          deltaSub.style.color = '#0284c7';
+        }
+
+        document.getElementById('live-kpi-ritmo').innerText = pred.razonVelocidad + 'x';
+
+        // Badge de certeza
+        const badge = document.getElementById('live-confidence-badge');
+        badge.innerText = pred.confianzaEstimacion;
+        if (pred.confianzaEstimacion.includes('Alta')) {
+          badge.className = 'badge badge-green';
+        } else if (pred.confianzaEstimacion.includes('Media')) {
+          badge.className = 'badge badge-blue';
+        } else {
+          badge.className = 'badge badge-amber';
+        }
+
+        // Banner de diagnóstico
+        const banner = document.getElementById('live-alert-banner');
+        const bannerIcon = document.getElementById('live-alert-icon');
+        const bannerText = document.getElementById('live-alert-text');
+
+        bannerText.innerText = pred.diagnostico;
+        if (pred.adelantoORetraso === 'adelanto') {
+          banner.className = 'alert-banner optimal';
+          bannerIcon.innerText = '⚡';
+        } else if (pred.adelantoORetraso === 'retraso') {
+          banner.className = 'alert-banner warning';
+          bannerIcon.innerText = '⚠️';
+        } else {
+          banner.className = 'alert-banner optimal';
+          bannerIcon.innerText = '✅';
+        }
+
+        // Actualizar datos del gráfico
+        const maxT = Math.max(pred.tiempoCorteRecalibradoMinutos + 30, pred.tiempoCorteInicialMinutos + 30, 270);
+        liveChartInstance.options.scales.x.max = maxT;
+
+        // Dataset 0: Mediciones Reales
+        liveChartInstance.data.datasets[0].data = lecturasEnVivo.map(l => ({ x: l.tiempo_minutos, y: l.ph }));
+
+        // Dataset 1: Proyección Recalibrada
+        liveChartInstance.data.datasets[1].data = (sim.curvaRecalibrada || []).map(p => ({ x: p.minutos, y: p.phPredicho }));
+
+        // Dataset 2: Curva Teórica Inicial
+        liveChartInstance.data.datasets[2].data = (sim.curvaTeoricaInicial || []).map(p => ({ x: p.minutos, y: p.phPredicho }));
+
+        // Dataset 3: Límite de corte 4.50
+        liveChartInstance.data.datasets[3].data = [{ x: 0, y: 4.50 }, { x: maxT, y: 4.50 }];
+
+        liveChartInstance.update();
+
+      } catch (err) {
+        console.error('Error en recalibración en vivo:', err);
+      }
+    }
+
+    function agregarLecturaEnVivo() {
+      const min = parseFloat(document.getElementById('live-input-min').value);
+      const ph = parseFloat(document.getElementById('live-input-ph').value);
+      const temp = parseFloat(document.getElementById('live-input-temp').value) || 42.0;
+      const brixVal = document.getElementById('live-input-brix').value;
+      const brix = brixVal ? parseFloat(brixVal) : null;
+
+      if (isNaN(min) || min < 0) {
+        alert('Por favor ingrese un tiempo en minutos válido (>= 0).');
+        return;
+      }
+      if (isNaN(ph) || ph < 3.8 || ph > 7.2) {
+        alert('El pH medido debe encontrarse dentro del rango de laboratorio [3.80 - 7.20].');
+        return;
+      }
+
+      // Si ya existe una lectura para ese minuto exacto, la reemplazamos
+      const idxExistente = lecturasEnVivo.findIndex(l => l.tiempo_minutos === min);
+      if (idxExistente >= 0) {
+        lecturasEnVivo[idxExistente] = { tiempo_minutos: min, ph, temperatura: temp, indice_refraccion: brix };
+      } else {
+        lecturasEnVivo.push({ tiempo_minutos: min, ph, temperatura: temp, indice_refraccion: brix });
+      }
+
+      lecturasEnVivo.sort((a, b) => a.tiempo_minutos - b.tiempo_minutos);
+      renderizarTablaLecturasEnVivo();
+      ejecutarRecalibracionEnVivo();
+    }
+
+    function eliminarLecturaEnVivo(idx) {
+      if (lecturasEnVivo.length <= 1) {
+        alert('Debe conservar al menos la lectura de partida en minuto 0.');
+        return;
+      }
+      lecturasEnVivo.splice(idx, 1);
+      renderizarTablaLecturasEnVivo();
+      ejecutarRecalibracionEnVivo();
+    }
+
+    function cargarEscenarioPrueba(tipo) {
+      document.querySelectorAll('#btn-scen-rapido, #btn-scen-lento, #btn-scen-nominal, #btn-scen-reset').forEach(b => b.classList.remove('active'));
+
+      if (tipo === 'acelerado') {
+        const btn = document.getElementById('btn-scen-rapido');
+        if (btn) btn.classList.add('active');
+        lecturasEnVivo = [
+          { tiempo_minutos: 0, ph: 6.25, temperatura: 42.0, indice_refraccion: 10.5 },
+          { tiempo_minutos: 60, ph: 5.95, temperatura: 42.1, indice_refraccion: 9.8 },
+          { tiempo_minutos: 120, ph: 5.15, temperatura: 42.0, indice_refraccion: 8.0 }
+        ];
+      } else if (tipo === 'retrasado') {
+        const btn = document.getElementById('btn-scen-lento');
+        if (btn) btn.classList.add('active');
+        lecturasEnVivo = [
+          { tiempo_minutos: 0, ph: 6.25, temperatura: 38.5, indice_refraccion: 10.5 },
+          { tiempo_minutos: 60, ph: 6.18, temperatura: 38.0, indice_refraccion: 10.1 },
+          { tiempo_minutos: 120, ph: 5.90, temperatura: 38.2, indice_refraccion: 9.5 }
+        ];
+      } else if (tipo === 'nominal') {
+        const btn = document.getElementById('btn-scen-nominal');
+        if (btn) btn.classList.add('active');
+        lecturasEnVivo = [
+          { tiempo_minutos: 0, ph: 6.25, temperatura: 42.0, indice_refraccion: 10.5 },
+          { tiempo_minutos: 60, ph: 6.02, temperatura: 42.0, indice_refraccion: 9.2 },
+          { tiempo_minutos: 120, ph: 5.48, temperatura: 42.0, indice_refraccion: 7.9 }
+        ];
+      }
+
+      renderizarTablaLecturasEnVivo();
+      ejecutarRecalibracionEnVivo();
+    }
+
+    function reiniciarEnsayoEnVivo() {
+      document.querySelectorAll('#btn-scen-rapido, #btn-scen-lento, #btn-scen-nominal, #btn-scen-reset').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById('btn-scen-reset');
+      if (btn) btn.classList.add('active');
+
+      lecturasEnVivo = [
+        { tiempo_minutos: 0, ph: 6.25, temperatura: 42.0, indice_refraccion: 10.5 }
+      ];
+
+      const minInput = document.getElementById('live-input-min');
+      const phInput = document.getElementById('live-input-ph');
+      const tempInput = document.getElementById('live-input-temp');
+      const brixInput = document.getElementById('live-input-brix');
+      if (minInput) minInput.value = 60;
+      if (phInput) phInput.value = '6.00';
+      if (tempInput) tempInput.value = '42.0';
+      if (brixInput) brixInput.value = '9.5';
+
+      renderizarTablaLecturasEnVivo();
+      ejecutarRecalibracionEnVivo();
+    }
+
     // Navegación de pestañas
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      event.currentTarget.classList.add('active');
-      document.getElementById('tab-' + tabId).classList.add('active');
+
+      const tabMap = {
+        'simulador': 0,
+        'monitoreo-vivo': 1,
+        'bioquimica': 2,
+        'feedback': 3,
+        'historial': 4,
+        'metricas': 5
+      };
+      const buttons = document.querySelectorAll('.tab-btn');
+      if (tabMap[tabId] !== undefined && buttons[tabMap[tabId]]) {
+        buttons[tabMap[tabId]].classList.add('active');
+      } else if (window.event && window.event.currentTarget) {
+        window.event.currentTarget.classList.add('active');
+      }
+
+      const panel = document.getElementById('tab-' + tabId);
+      if (panel) panel.classList.add('active');
 
       if (tabId === 'historial') cargarHistorial();
       if (tabId === 'metricas') cargarMetricas();
+      if (tabId === 'monitoreo-vivo') {
+        if (!liveChartInstance) {
+          initLiveChart();
+        } else {
+          liveChartInstance.resize();
+        }
+      }
     }
 
     // Ajuste de valores con botones (+/- 1)
@@ -1447,6 +2021,7 @@
     // Inicio
     window.addEventListener('DOMContentLoaded', () => {
       initChart();
+      initLiveChart();
       validarYActualizar();
       ejecutarSimulacion();
       cargarMetricas();
