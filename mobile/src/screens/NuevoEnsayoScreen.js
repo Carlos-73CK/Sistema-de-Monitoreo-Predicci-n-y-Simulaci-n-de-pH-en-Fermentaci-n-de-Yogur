@@ -1,40 +1,225 @@
-import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import theme from '../styles/theme';
 
 export default function NuevoEnsayoScreen({ navigation }) {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Nuevo Ensayo</Text>
-      <Text style={styles.subtitle}>Configuración de lote y monitoreo cinético</Text>
+  const [nombreLote, setNombreLote] = useState('LOTE-CHV-' + Math.floor(100 + Math.random() * 900));
+  const [sustrato, setSustrato] = useState('vaca');
+  const [masaInoculo, setMasaInoculo] = useState('18.75');
+  const [temperaturaObjetivo, setTemperaturaObjetivo] = useState('42.0');
+  const [volumenLeche, setVolumenLeche] = useState('250');
+  const [tipoAzucar, setTipoAzucar] = useState('lactosa');
+  const [errorValidacion, setErrorValidacion] = useState(null);
 
-      <View style={styles.buttonWrapper}>
-        <Button
-          title="Regresar al Dashboard"
-          onPress={() => navigation.goBack()}
-        />
+  const aplicarPreset = (masa, temp) => {
+    setMasaInoculo(String(masa));
+    setTemperaturaObjetivo(String(temp));
+    setErrorValidacion(null);
+  };
+
+  const handleCrearEnsayo = () => {
+    const masaNum = parseFloat(masaInoculo);
+    const tempNum = parseFloat(temperaturaObjetivo);
+    const volNum = parseFloat(volumenLeche);
+
+    if (!nombreLote.trim()) {
+      setErrorValidacion('Por favor ingrese un nombre o código de lote.');
+      return;
+    }
+    if (isNaN(masaNum) || masaNum < 0.5 || masaNum > 50) {
+      setErrorValidacion('La masa de inóculo debe estar entre 0.5 g y 50 g.');
+      return;
+    }
+    if (isNaN(tempNum) || tempNum < 20 || tempNum > 52) {
+      setErrorValidacion('La temperatura objetivo debe estar entre 20 °C y 52 °C.');
+      return;
+    }
+    if (isNaN(volNum) || volNum < 50 || volNum > 2000) {
+      setErrorValidacion('El volumen debe estar entre 50 mL y 2000 mL.');
+      return;
+    }
+
+    setErrorValidacion(null);
+
+    const nuevoEnsayo = {
+      id: Date.now(),
+      codigo: nombreLote.trim(),
+      nombre_lote: nombreLote.trim(),
+      tipoSustrato: sustrato,
+      masaInoculoG: masaNum,
+      temperaturaObjetivo: tempNum,
+      volumenMl: volNum,
+      tipoAzucar,
+      estado: 'en_proceso',
+      created_at: new Date().toISOString(),
+    };
+
+    Alert.alert(
+      '✅ Ensayo Iniciado',
+      `Lote ${nuevoEnsayo.codigo} registrado exitosamente. Pasando al módulo de monitoreo en tiempo real.`,
+      [
+        {
+          text: 'Comenzar Monitoreo',
+          onPress: () => navigation.navigate('Monitoreo', { ensayo: nuevoEnsayo }),
+        },
+      ]
+    );
+  };
+
+  return (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>Laboratorio de Alimentos - ULEAM</Text>
+        <Text style={styles.title}>Nuevo Ensayo de Fermentación</Text>
+        <Text style={styles.subtitle}>
+          Configuración inicial de lote experimental según las normas de la cátedra del Dr. Stalin Santacruz.
+        </Text>
       </View>
-    </View>
+
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>1. Identificación del Lote</Text>
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Código / Nombre de Lote</Text>
+          <TextInput
+            style={styles.input}
+            value={nombreLote}
+            onChangeText={setNombreLote}
+            placeholder="Ej: LOTE-CHV-101"
+          />
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>2. Matriz / Tipo de Leche</Text>
+        <View style={styles.pillsRow}>
+          {['vaca', 'chocho', 'coco'].map((tipo) => (
+            <Pressable
+              key={tipo}
+              style={[styles.pill, sustrato === tipo && styles.pillActive]}
+              onPress={() => setSustrato(tipo)}
+            >
+              <Text style={[styles.pillText, sustrato === tipo && styles.pillTextActive]}>
+                {tipo.toUpperCase()}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>3. Escenarios Preconfigurados</Text>
+        <View style={styles.presetsGrid}>
+          <Pressable
+            style={[styles.presetBtn, masaInoculo === '18.75' && temperaturaObjetivo === '42.0' && styles.presetBtnActive]}
+            onPress={() => aplicarPreset(18.75, 42.0)}
+          >
+            <Text style={styles.presetTitle}>⭐ 42 °C / 7.5%</Text>
+            <Text style={styles.presetSub}>Óptimo laboratorio</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.presetBtn, masaInoculo === '6.25' && temperaturaObjetivo === '42.0' && styles.presetBtnActive]}
+            onPress={() => aplicarPreset(6.25, 42.0)}
+          >
+            <Text style={styles.presetTitle}>🧪 42 °C / 2.5%</Text>
+            <Text style={styles.presetSub}>Cinética lenta</Text>
+          </Pressable>
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>4. Parámetros Fisicoquímicos</Text>
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Text style={styles.label}>Inóculo Chivería (g)</Text>
+            <TextInput
+              style={styles.input}
+              value={masaInoculo}
+              onChangeText={setMasaInoculo}
+              keyboardType="numeric"
+              placeholder="18.75"
+            />
+            <Text style={styles.hint}>Para 250mL (7.5%=18.75g)</Text>
+          </View>
+
+          <View style={styles.col}>
+            <Text style={styles.label}>Temperatura (°C)</Text>
+            <TextInput
+              style={styles.input}
+              value={temperaturaObjetivo}
+              onChangeText={setTemperaturaObjetivo}
+              keyboardType="numeric"
+              placeholder="42.0"
+            />
+            <Text style={styles.hint}>Óptimo: 41 - 43 °C</Text>
+          </View>
+        </View>
+
+        <View style={[styles.row, { marginTop: 12 }]}>
+          <View style={styles.col}>
+            <Text style={styles.label}>Volumen Muestra (mL)</Text>
+            <TextInput
+              style={styles.input}
+              value={volumenLeche}
+              onChangeText={setVolumenLeche}
+              keyboardType="numeric"
+              placeholder="250"
+            />
+          </View>
+
+          <View style={styles.col}>
+            <Text style={styles.label}>Tipo de Azúcar</Text>
+            <TextInput
+              style={styles.input}
+              value={tipoAzucar}
+              onChangeText={setTipoAzucar}
+              placeholder="lactosa"
+            />
+          </View>
+        </View>
+
+        {errorValidacion && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>⚠️ {errorValidacion}</Text>
+          </View>
+        )}
+
+        <Pressable style={styles.btnCrear} onPress={handleCrearEnsayo}>
+          <Text style={styles.btnCrearText}>🚀 Iniciar Ensayo y Comenzar Monitoreo</Text>
+        </Pressable>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 24,
-  },
-  buttonWrapper: {
-    width: '80%',
-  },
+  screen: { flex: 1, backgroundColor: '#f8fafc' },
+  content: { padding: 18, paddingBottom: 40 },
+  header: { marginBottom: 16 },
+  eyebrow: { fontSize: 12, fontWeight: '700', color: '#0284c7', textTransform: 'uppercase', marginBottom: 4 },
+  title: { fontSize: 24, fontWeight: '800', color: '#0f172a' },
+  subtitle: { fontSize: 13, color: '#64748b', marginTop: 4, lineHeight: 18 },
+  card: { backgroundColor: '#ffffff', borderRadius: 14, padding: 20, borderWidth: 1, borderColor: '#e2e8f0', elevation: 2 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1e293b', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  formGroup: { marginBottom: 8 },
+  label: { fontSize: 13, fontWeight: '600', color: '#334155', marginBottom: 6 },
+  input: { backgroundColor: '#ffffff', borderWidth: 1.5, borderColor: '#cbd5e1', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: '#0f172a' },
+  hint: { fontSize: 11, color: '#94a3b8', marginTop: 4 },
+  pillsRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  pill: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1.5, borderColor: '#cbd5e1', alignItems: 'center', backgroundColor: '#f8fafc' },
+  pillActive: { borderColor: '#0284c7', backgroundColor: '#e0f2fe' },
+  pillText: { fontSize: 12, fontWeight: '700', color: '#64748b' },
+  pillTextActive: { color: '#0369a1' },
+  presetsGrid: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  presetBtn: { flex: 1, padding: 10, borderRadius: 8, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' },
+  presetBtnActive: { borderColor: '#0284c7', backgroundColor: '#e0f2fe' },
+  presetTitle: { fontSize: 13, fontWeight: '700', color: '#0f172a' },
+  presetSub: { fontSize: 11, color: '#64748b', marginTop: 2 },
+  row: { flexDirection: 'row', gap: 12 },
+  col: { flex: 1 },
+  errorBox: { backgroundColor: '#fee2e2', borderWidth: 1, borderColor: '#ef4444', borderRadius: 8, padding: 10, marginTop: 14 },
+  errorText: { color: '#991b1b', fontSize: 12, fontWeight: '600' },
+  btnCrear: { backgroundColor: '#0284c7', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  btnCrearText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
 });

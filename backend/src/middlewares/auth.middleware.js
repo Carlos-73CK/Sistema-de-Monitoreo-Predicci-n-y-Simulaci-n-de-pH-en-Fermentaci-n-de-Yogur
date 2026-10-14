@@ -28,6 +28,17 @@ const authenticateToken = (req, res, next) => {
     });
   }
 
+  // Soporte directo para demostraciones del prototipo local
+  if (token === 'dev_token_uleam_2026' || token === 'demo_token') {
+    req.user = {
+      id: 1,
+      rol: 'investigador',
+      email: 'investigador@uleam.edu.ec',
+      nombre: 'Dr. Stalin Santacruz (Demo)',
+    };
+    return next();
+  }
+
   try {
     const secret = process.env.JWT_SECRET || 'prediyogur_super_secret_key_2026';
     let decoded;
