@@ -63,3 +63,18 @@ PrediYogur/
 - **Juan Murillo:** Backend (Node.js + Express)
 - **Jordan Mesa:** API REST e Integraciones
 - **Jinger Pérez:** Frontend y Visualización de Datos
+
+---
+
+## 🚀 Inicio Rápido y Documentación
+
+- **Arquitectura del Sistema**: Consulta [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) para ver diagramas de flujo, reglas del Dr. Stalin Santacruz y modelo de datos.
+- **Guía de Despliegue**: Consulta [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md) para levantar el proyecto con Docker o en local.
+- **Levantar con Docker**:
+  ```bash
+  npm run docker:up
+  ```
+- **Aprovisionar Base de Datos**:
+  ```bash
+  npm run db:init
+  ```
