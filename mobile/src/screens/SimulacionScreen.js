@@ -1,88 +1,137 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import simulationService from '../services/simulationService';
+import theme from '../styles/theme';
 
 export default function SimulacionScreen() {
   const [sustrato, setSustrato] = useState('vaca');
-  const [masaInoculo, setMasaInoculo] = useState('30');
+  const [masaInoculo, setMasaInoculo] = useState('18.75');
   const [temperatura, setTemperatura] = useState('42');
 
   const [resultado, setResultado] = useState(() =>
     simulationService.simularAcidificacion({
       tipoSustrato: 'vaca',
-      masaInoculoG: 30,
+      masaInoculoG: 18.75,
       temperaturaC: 42,
+      volumenMl: 250,
     })
   );
 
-  const handleSimular = () => {
-    const masa = parseFloat(masaInoculo) || 30;
-    const temp = parseFloat(temperatura) || 42;
+  const handleSimular = (nuevaMasa = masaInoculo, nuevaTemp = temperatura) => {
+    const masa = parseFloat(nuevaMasa) || 18.75;
+    const temp = parseFloat(nuevaTemp) || 42;
 
     const res = simulationService.simularAcidificacion({
       tipoSustrato: sustrato,
       masaInoculoG: masa,
       temperaturaC: temp,
+      volumenMl: 250,
     });
     setResultado(res);
   };
 
+  const aplicarPresets = (masaPreset, tempPreset) => {
+    setMasaInoculo(String(masaPreset));
+    setTemperatura(String(tempPreset));
+    handleSimular(masaPreset, tempPreset);
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={styles.titulo}>Simulador Cinético ("What-If")</Text>
-        <Text style={styles.descripcion}>
-          Proyecta la curva de acidificación y el tiempo para alcanzar el pH de corte (4.5) variando temperatura e inóculo Chivería.
+        <Text style={styles.eyebrow}>Laboratorio de Alimentos - ULEAM</Text>
+        <Text style={styles.title}>Simulador Cinético ("What-If")</Text>
+        <Text style={styles.subtitle}>
+          Calibrado con datos experimentales reales del Dr. Stalin Santacruz (250 g de leche de vaca con inóculo Chivería).
         </Text>
       </View>
 
-      {/* Selector de Sustrato */}
+      {/* Tarjeta de Configuración de Escenario */}
       <View style={styles.card}>
-        <Text style={styles.labelSeccion}>1. Matriz / Tipo de Leche</Text>
+        <Text style={styles.sectionTitle}>1. Selección de Sustrato / Matriz</Text>
         <View style={styles.sustratoRow}>
           {['vaca', 'chocho', 'coco'].map((tipo) => (
-            <TouchableOpacity
+            <Pressable
               key={tipo}
               style={[
-                styles.btnSustrato,
-                sustrato === tipo && styles.btnSustratoActivo,
+                styles.btnPill,
+                sustrato === tipo && styles.btnPillActive,
               ]}
               onPress={() => setSustrato(tipo)}
             >
               <Text
                 style={[
-                  styles.btnSustratoTexto,
-                  sustrato === tipo && styles.btnSustratoTextoActivo,
+                  styles.btnPillText,
+                  sustrato === tipo && styles.btnPillTextActive,
                 ]}
               >
                 {tipo.toUpperCase()}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </View>
 
-        {/* Inputs de Parámetros */}
-        <View style={styles.parametrosRow}>
-          <View style={styles.parametroCol}>
-            <Text style={styles.label}>Inóculo Chivería (g)</Text>
+        {/* Atajos de Ensayos Experimentales Reales */}
+        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.md }]}>
+          2. Escenarios Experimentales del Cliente
+        </Text>
+        <View style={styles.presetsGrid}>
+          <Pressable
+            style={[styles.presetBtn, masaInoculo === '18.75' && temperatura === '42' && styles.presetBtnActive]}
+            onPress={() => aplicarPresets(18.75, 42)}
+          >
+            <Text style={styles.presetTitle}>⭐ 42 °C / 7.5% Inóculo</Text>
+            <Text style={styles.presetSub}>Óptimo laboratorio (2639 mPa·s)</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.presetBtn, masaInoculo === '6.25' && temperatura === '42' && styles.presetBtnActive]}
+            onPress={() => aplicarPresets(6.25, 42)}
+          >
+            <Text style={styles.presetTitle}>🧪 42 °C / 2.5% Inóculo</Text>
+            <Text style={styles.presetSub}>Lenta acidificación (1454 mPa·s)</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.presetBtn, masaInoculo === '18.75' && temperatura === '40' && styles.presetBtnActive]}
+            onPress={() => aplicarPresets(18.75, 40)}
+          >
+            <Text style={styles.presetTitle}>⚠️ 40 °C / 7.5% Inóculo</Text>
+            <Text style={styles.presetSub}>Baja temperatura (786 mPa·s)</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.presetBtn, masaInoculo === '18.75' && temperatura === '44' && styles.presetBtnActive]}
+            onPress={() => aplicarPresets(18.75, 44)}
+          >
+            <Text style={styles.presetTitle}>🔥 44 °C / 7.5% Inóculo</Text>
+            <Text style={styles.presetSub}>Estrés térmico (796 mPa·s)</Text>
+          </Pressable>
+        </View>
+
+        {/* Inputs numéricos manuales */}
+        <View style={styles.inputsRow}>
+          <View style={styles.inputCol}>
+            <Text style={styles.inputLabel}>Inóculo Chivería (g)</Text>
             <TextInput
               style={styles.input}
               value={masaInoculo}
               onChangeText={setMasaInoculo}
               keyboardType="numeric"
-              placeholder="30"
+              placeholder="18.75"
             />
+            <Text style={styles.inputHint}>250g leche: 7.5%=18.75g, 2.5%=6.25g</Text>
           </View>
 
-          <View style={styles.parametroCol}>
-            <Text style={styles.label}>Temperatura (°C)</Text>
+          <View style={styles.inputCol}>
+            <Text style={styles.inputLabel}>Temperatura (°C)</Text>
             <TextInput
               style={styles.input}
               value={temperatura}
@@ -90,63 +139,76 @@ export default function SimulacionScreen() {
               keyboardType="numeric"
               placeholder="42"
             />
+            <Text style={styles.inputHint}>Ventana óptima: 41 - 43 °C</Text>
           </View>
         </View>
 
-        <TouchableOpacity style={styles.btnSimular} onPress={handleSimular}>
-          <Text style={styles.btnSimularTexto}>⚡ Ejecutar Simulación</Text>
-        </TouchableOpacity>
+        <Pressable style={styles.btnSimular} onPress={() => handleSimular()}>
+          <Text style={styles.btnSimularText}>⚡ Ejecutar Simulación Cinética</Text>
+        </Pressable>
       </View>
 
       {/* Alerta de Desviación Térmica */}
       {resultado.fueraDeRangoTermico && (
         <View style={styles.alertaCard}>
-          <Text style={styles.alertaTitulo}>⚠️ EFECTO CINÉTICO POR DESVIACIÓN TÉRMICA</Text>
+          <Text style={styles.alertaTitulo}>⚠️ ALERTA: DESVIACIÓN TÉRMICA DETECTADA</Text>
           <Text style={styles.alertaTexto}>{resultado.alertaTermica}</Text>
-          <Text style={styles.alertaSubtexto}>
-            Al operar fuera de 41 °C – 43 °C, la velocidad de fermentación bacteriana disminuye significativamente o sufre estrés térmico.
-          </Text>
         </View>
       )}
 
-      {/* Resultados Principales */}
-      <View style={styles.resultadosCard}>
-        <Text style={styles.labelSeccion}>Predicción de Corte (pH 4.5)</Text>
+      {/* Tarjeta de Predicción Reológica y Cinética */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Predicciones de Laboratorio Estimadas</Text>
 
-        <View style={styles.kpiRow}>
+        <View style={styles.kpiGrid}>
           <View style={styles.kpiBox}>
-            <Text style={styles.kpiLabel}>Tiempo Estimado</Text>
+            <Text style={styles.kpiLabel}>Tiempo hasta pH 4.5</Text>
             <Text style={styles.kpiValor}>{resultado.tiempoEstimadoHoras} h</Text>
             <Text style={styles.kpiSub}>~{resultado.tiempoEstimadoCorteMinutos} minutos</Text>
           </View>
 
           <View style={styles.kpiBox}>
-            <Text style={styles.kpiLabel}>pH Inicial Estimado</Text>
-            <Text style={styles.kpiValor}>{resultado.phInicial.toFixed(2)}</Text>
-            <Text style={styles.kpiSub}>Meta de corte: {resultado.phCorte.toFixed(2)}</Text>
+            <Text style={styles.kpiLabel}>Viscosidad Final</Text>
+            <Text
+              style={[
+                styles.kpiValor,
+                resultado.viscosidadEstimadaMpaS >= 2000
+                  ? { color: theme.colors.success }
+                  : resultado.viscosidadEstimadaMpaS < 1000
+                  ? { color: theme.colors.danger }
+                  : { color: theme.colors.info },
+              ]}
+            >
+              {resultado.viscosidadEstimadaMpaS}
+            </Text>
+            <Text style={styles.kpiSub}>mPa·s (rotor 4, 60 rpm)</Text>
           </View>
+        </View>
+
+        <View style={styles.diagnosticoBox}>
+          <Text style={styles.diagnosticoTexto}>{resultado.diagnosticoReologico}</Text>
         </View>
       </View>
 
-      {/* Proyección Temporal de la Curva */}
+      {/* Proyección Temporal de pH y Brix */}
       <View style={styles.card}>
-        <Text style={styles.labelSeccion}>Proyección Temporal de pH</Text>
+        <Text style={styles.sectionTitle}>Curva Cinética Paso a Paso</Text>
         <View style={styles.tablaHeader}>
-          <Text style={styles.tablaHeadCol}>Minutos</Text>
-          <Text style={styles.tablaHeadCol}>Horas</Text>
-          <Text style={styles.tablaHeadCol}>pH Estimado</Text>
-          <Text style={styles.tablaHeadCol}>Estado</Text>
+          <Text style={styles.th}>Tiempo</Text>
+          <Text style={styles.th}>pH Est.</Text>
+          <Text style={styles.th}>°Brix Est.</Text>
+          <Text style={styles.th}>Estado</Text>
         </View>
 
         {resultado.puntos.map((pt, idx) => (
           <View key={idx} style={styles.tablaFila}>
-            <Text style={styles.tablaCol}>{pt.minutos} min</Text>
-            <Text style={styles.tablaCol}>{(pt.minutos / 60).toFixed(1)} h</Text>
-            <Text style={[styles.tablaCol, pt.ph <= 4.5 && { color: '#e53e3e', fontWeight: 'bold' }]}>
+            <Text style={styles.td}>{pt.horas} h ({pt.minutos}m)</Text>
+            <Text style={[styles.td, pt.ph <= 4.6 && { color: theme.colors.danger, fontWeight: '700' }]}>
               {pt.ph.toFixed(2)}
             </Text>
-            <Text style={[styles.tablaCol, { fontSize: 11 }]}>
-              {pt.ph <= 4.5 ? 'CORTE' : 'Acidificando'}
+            <Text style={styles.td}>{pt.brix}°</Text>
+            <Text style={[styles.td, { fontSize: 11 }]}>
+              {pt.estado}
             </Text>
           </View>
         ))}
@@ -156,181 +218,217 @@ export default function SimulacionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: theme.colors.background,
   },
   content: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
   },
   header: {
-    marginBottom: 16,
+    marginBottom: theme.spacing.lg,
   },
-  titulo: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1a365d',
+  eyebrow: {
+    ...theme.typography.caption,
+    color: theme.colors.primary,
+    textTransform: 'uppercase',
+    fontWeight: '700',
+    marginBottom: theme.spacing.xs,
   },
-  descripcion: {
-    fontSize: 13,
-    color: '#4a5568',
-    marginTop: 4,
-    lineHeight: 18,
+  title: {
+    ...theme.typography.title,
+    color: theme.colors.text,
+  },
+  subtitle: {
+    ...theme.typography.body,
+    color: theme.colors.textMuted,
+    marginTop: theme.spacing.xs,
   },
   card: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 12,
-    elevation: 2,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.card,
   },
-  labelSeccion: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#2d3748',
-    marginBottom: 10,
+  sectionTitle: {
+    ...theme.typography.subtitle,
+    color: theme.colors.text,
+    fontWeight: '700',
+    marginBottom: theme.spacing.sm,
   },
   sustratoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    gap: theme.spacing.sm,
   },
-  btnSustrato: {
-    flex: 0.31,
-    paddingVertical: 10,
-    borderRadius: 6,
+  btnPill: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radii.sm,
     borderWidth: 1,
-    borderColor: '#cbd5e0',
+    borderColor: theme.colors.border,
     alignItems: 'center',
-    backgroundColor: '#edf2f7',
+    backgroundColor: theme.colors.surfaceMuted,
   },
-  btnSustratoActivo: {
-    backgroundColor: '#2b6cb0',
-    borderColor: '#2b6cb0',
+  btnPillActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
-  btnSustratoTexto: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#4a5568',
+  btnPillText: {
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: theme.colors.textMuted,
   },
-  btnSustratoTextoActivo: {
-    color: '#ffffff',
+  btnPillTextActive: {
+    color: theme.colors.surface,
   },
-  parametrosRow: {
+  presetsGrid: {
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.md,
+  },
+  presetBtn: {
+    backgroundColor: theme.colors.surfaceMuted,
+    borderRadius: theme.radii.sm,
+    padding: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  presetBtnActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  presetTitle: {
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  presetSub: {
+    fontSize: 11,
+    color: theme.colors.textMuted,
+  },
+  inputsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
-  parametroCol: {
-    flex: 0.48,
+  inputCol: {
+    flex: 1,
   },
-  label: {
-    fontSize: 12,
-    color: '#4a5568',
-    marginBottom: 4,
+  inputLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.text,
+    fontWeight: '600',
+    marginBottom: theme.spacing.xs,
   },
   input: {
+    minHeight: 44,
     borderWidth: 1,
-    borderColor: '#cbd5e0',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.md,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+    ...theme.typography.body,
+    color: theme.colors.text,
+  },
+  inputHint: {
+    fontSize: 10,
+    color: theme.colors.textMuted,
+    marginTop: 2,
   },
   btnSimular: {
-    backgroundColor: '#2b6cb0',
-    paddingVertical: 12,
-    borderRadius: 6,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radii.md,
+    paddingVertical: theme.spacing.md,
     alignItems: 'center',
-    marginTop: 4,
   },
-  btnSimularTexto: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
+  btnSimularText: {
+    ...theme.typography.body,
+    color: theme.colors.surface,
+    fontWeight: '700',
   },
   alertaCard: {
-    backgroundColor: '#fffaf0',
-    borderColor: '#dd6b20',
-    borderWidth: 1.5,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: theme.colors.warningSoft,
+    borderColor: theme.colors.warning,
+    borderWidth: 1,
+    borderRadius: theme.radii.md,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   alertaTitulo: {
-    color: '#c05621',
-    fontWeight: 'bold',
-    fontSize: 13,
-    marginBottom: 4,
+    ...theme.typography.caption,
+    color: theme.colors.warning,
+    fontWeight: '700',
+    marginBottom: 2,
   },
   alertaTexto: {
-    color: '#7b341e',
-    fontSize: 12,
+    ...theme.typography.caption,
+    color: theme.colors.text,
   },
-  alertaSubtexto: {
-    color: '#9c4221',
-    fontSize: 11,
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  resultadosCard: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 12,
-    elevation: 2,
-  },
-  kpiRow: {
+  kpiGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: theme.spacing.md,
   },
   kpiBox: {
-    flex: 0.48,
-    backgroundColor: '#ebf8ff',
-    padding: 14,
-    borderRadius: 8,
+    flex: 1,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderRadius: theme.radii.md,
+    padding: theme.spacing.md,
     alignItems: 'center',
   },
   kpiLabel: {
-    fontSize: 12,
-    color: '#2b6cb0',
-    fontWeight: '600',
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
   },
   kpiValor: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2c5282',
+    ...theme.typography.metric,
+    color: theme.colors.primary,
     marginVertical: 4,
   },
   kpiSub: {
     fontSize: 11,
-    color: '#4a5568',
+    color: theme.colors.textMuted,
+  },
+  diagnosticoBox: {
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.radii.sm,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
+  },
+  diagnosticoTexto: {
+    ...theme.typography.caption,
+    color: theme.colors.text,
+    lineHeight: 18,
   },
   tablaHeader: {
     flexDirection: 'row',
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#edf2f7',
-    paddingBottom: 6,
-    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
   },
-  tablaHeadCol: {
+  th: {
     flex: 1,
     textAlign: 'center',
-    fontWeight: 'bold',
-    fontSize: 12,
-    color: '#4a5568',
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: theme.colors.textMuted,
   },
   tablaFila: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#f7fafc',
-    paddingVertical: 6,
+    borderBottomColor: theme.colors.surfaceMuted,
+    paddingVertical: theme.spacing.xs,
   },
-  tablaCol: {
+  td: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 12,
-    color: '#4a5568',
+    ...theme.typography.caption,
+    color: theme.colors.text,
   },
 });
