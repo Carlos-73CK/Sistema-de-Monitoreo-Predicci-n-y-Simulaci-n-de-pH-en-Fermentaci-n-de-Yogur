@@ -1,9 +1,9 @@
 -- =============================================================================
 -- PROYECTO: PrediYogur
--- DESCRIPCIÓN: Datos iniciales de prueba (Usuario y ensayos con leche de vaca y chocho).
+-- DESCRIPCIÓN: Datos experimentales reales proporcionados por el Dr. Stalin Santacruz.
 -- =============================================================================
 
--- 1. Insertar usuario inicial de prueba (Docente / Investigador)
+-- 1. Usuario administrador de prueba
 INSERT INTO usuarios (id, nombre, email, password_hash, rol) 
 VALUES (
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
@@ -13,74 +13,90 @@ VALUES (
     'docente'
 );
 
--- 2. Ensayo 1: Leche de vaca (FINALIZADO, cortado en pH 4.5 con viscosidad registrada)
-INSERT INTO ensayos (
-    id, 
-    codigo, 
-    usuario_id, 
-    tipo_sustrato, 
-    masa_inoculo_g, 
-    temperatura_objetivo, 
-    volumen_ml, 
-    estado, 
-    viscosidad_final, 
-    observaciones,
-    finished_at
-) 
-VALUES (
-    'b1fec999-9c0b-4ef8-bb6d-6bb9bd380a22',
-    'LOTE-YOG-001',
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    'vaca',
-    30.00, -- 30g de inóculo de Chivería
-    42.0,  -- Temperatura objetivo baño maría
-    1000.0,
-    'finalizado',
-    1850.50, -- Viscosidad final obligatoria al cortar en pH 4.5
-    'Ensayo completado exitosamente con leche tradicional de vaca.',
-    CURRENT_TIMESTAMP
-);
+-- =============================================================================
+-- 2. INSERCIÓN DE LOS 6 LOTES EXPERIMENTALES REALES
+-- =============================================================================
 
--- Serie temporal de lecturas cinéticas del Ensayo 1 (Vaca)
-INSERT INTO lecturas (ensayo_id, minutos, ph, temperatura) VALUES
-('b1fec999-9c0b-4ef8-bb6d-6bb9bd380a22', 0,   6.70, 41.9),
-('b1fec999-9c0b-4ef8-bb6d-6bb9bd380a22', 30,  6.45, 42.1),
-('b1fec999-9c0b-4ef8-bb6d-6bb9bd380a22', 60,  6.10, 42.0),
-('b1fec999-9c0b-4ef8-bb6d-6bb9bd380a22', 90,  5.65, 41.8),
-('b1fec999-9c0b-4ef8-bb6d-6bb9bd380a22', 120, 5.15, 42.0),
-('b1fec999-9c0b-4ef8-bb6d-6bb9bd380a22', 150, 4.80, 42.2),
-('b1fec999-9c0b-4ef8-bb6d-6bb9bd380a22', 180, 4.50, 42.0); -- pH de corte estricto 4.5
+-- Lote 1
+INSERT INTO ensayos (id, codigo, usuario_id, tipo_sustrato, masa_inoculo_g, temperatura_objetivo, volumen_ml, estado, viscosidad_final, observaciones)
+VALUES ('11111111-1111-1111-1111-111111111101', 'LOTE-CHV-40-2.5', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'vaca', 6.25, 40.0, 250.0, 'completado', 2579.00, 'Lote experimental a 40°C con 2.5% de inóculo');
+
+-- Lote 2
+INSERT INTO ensayos (id, codigo, usuario_id, tipo_sustrato, masa_inoculo_g, temperatura_objetivo, volumen_ml, estado, viscosidad_final, observaciones)
+VALUES ('11111111-1111-1111-1111-111111111102', 'LOTE-CHV-40-7.5', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'vaca', 18.75, 40.0, 250.0, 'completado', 786.60, 'Lote experimental a 40°C con 7.5% de inóculo');
+
+-- Lote 3
+INSERT INTO ensayos (id, codigo, usuario_id, tipo_sustrato, masa_inoculo_g, temperatura_objetivo, volumen_ml, estado, viscosidad_final, observaciones)
+VALUES ('11111111-1111-1111-1111-111111111103', 'LOTE-CHV-42-2.5', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'vaca', 6.25, 42.0, 250.0, 'completado', 1454.00, 'Lote experimental a 42°C con 2.5% de inóculo');
+
+-- Lote 4 (Óptimo)
+INSERT INTO ensayos (id, codigo, usuario_id, tipo_sustrato, masa_inoculo_g, temperatura_objetivo, volumen_ml, estado, viscosidad_final, observaciones)
+VALUES ('11111111-1111-1111-1111-111111111104', 'LOTE-CHV-42-7.5', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'vaca', 18.75, 42.0, 250.0, 'completado', 2639.00, 'Lote óptimo experimental a 42°C con 7.5% de inóculo');
+
+-- Lote 5
+INSERT INTO ensayos (id, codigo, usuario_id, tipo_sustrato, masa_inoculo_g, temperatura_objetivo, volumen_ml, estado, viscosidad_final, observaciones)
+VALUES ('11111111-1111-1111-1111-111111111105', 'LOTE-CHV-44-2.5', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'vaca', 6.25, 44.0, 250.0, 'completado', 1185.00, 'Lote experimental a 44°C con 2.5% de inóculo');
+
+-- Lote 6
+INSERT INTO ensayos (id, codigo, usuario_id, tipo_sustrato, masa_inoculo_g, temperatura_objetivo, volumen_ml, estado, viscosidad_final, observaciones)
+VALUES ('11111111-1111-1111-1111-111111111106', 'LOTE-CHV-44-7.5', 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'vaca', 18.75, 44.0, 250.0, 'completado', 796.50, 'Lote experimental a 44°C con 7.5% de inóculo');
 
 
--- 3. Ensayo 2: Leche vegetal de chocho (EN PROCESO, acidificación progresiva)
-INSERT INTO ensayos (
-    id, 
-    codigo, 
-    usuario_id, 
-    tipo_sustrato, 
-    masa_inoculo_g, 
-    temperatura_objetivo, 
-    volumen_ml, 
-    estado, 
-    viscosidad_final, 
-    observaciones
-) 
-VALUES (
-    'c2fed888-8b0a-3de7-aa5c-5aa8ac270b33',
-    'LOTE-CHOCHO-002',
-    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    'chocho',
-    35.00, -- 35g de inóculo
-    42.0,  
-    1000.0,
-    'en_proceso',
-    NULL, -- Pendiente hasta llegar al corte en pH 4.5
-    'Ensayo experimental con matriz vegetal de chocho en curso.'
-);
+-- =============================================================================
+-- 3. SERIES TEMPORALES DE LECTURAS (DATOS REALES)
+-- =============================================================================
 
--- Serie temporal de lecturas cinéticas del Ensayo 2 (Chocho - En proceso)
-INSERT INTO lecturas (ensayo_id, minutos, ph, temperatura) VALUES
-('c2fed888-8b0a-3de7-aa5c-5aa8ac270b33', 0,   6.80, 42.0),
-('c2fed888-8b0a-3de7-aa5c-5aa8ac270b33', 30,  6.60, 41.9),
-('c2fed888-8b0a-3de7-aa5c-5aa8ac270b33', 60,  6.30, 42.1),
-('c2fed888-8b0a-3de7-aa5c-5aa8ac270b33', 90,  5.95, 42.0); -- Acidificación progresiva hacia 4.5
+-- Serie Lote 1 (40 °C / 2.5%)
+INSERT INTO lecturas (ensayo_id, minutos, ph, temperatura, indice_refraccion) VALUES
+('11111111-1111-1111-1111-111111111101', 0,   6.2, 26.1, 10.2),
+('11111111-1111-1111-1111-111111111101', 30,  6.3, 29.1, 13.1),
+('11111111-1111-1111-1111-111111111101', 90,  5.8, 32.5, 12.2),
+('11111111-1111-1111-1111-111111111101', 150, 5.1, 33.6, 11.8),
+('11111111-1111-1111-1111-111111111101', 210, 4.9, 32.5, 6.4),
+('11111111-1111-1111-1111-111111111101', 330, 4.7, 31.2, 6.5),
+('11111111-1111-1111-1111-111111111101', 350, 4.6, 32.4, 5.9);
+
+-- Serie Lote 2 (40 °C / 7.5%)
+INSERT INTO lecturas (ensayo_id, minutos, ph, temperatura, indice_refraccion) VALUES
+('11111111-1111-1111-1111-111111111102', 0,   6.4, 25.0, 12.0),
+('11111111-1111-1111-1111-111111111102', 30,  6.1, 34.8, 11.5),
+('11111111-1111-1111-1111-111111111102', 90,  5.3, 32.4, 12.0),
+('11111111-1111-1111-1111-111111111102', 150, 4.9, 33.0, 8.5),
+('11111111-1111-1111-1111-111111111102', 210, 4.7, 31.4, 7.6),
+('11111111-1111-1111-1111-111111111102', 330, 4.6, 33.8, 5.5);
+
+-- Serie Lote 3 (42 °C / 2.5%)
+INSERT INTO lecturas (ensayo_id, minutos, ph, temperatura, indice_refraccion) VALUES
+('11111111-1111-1111-1111-111111111103', 0,   6.2, 26.1, 10.2),
+('11111111-1111-1111-1111-111111111103', 60,  6.3, 32.8, 11.2),
+('11111111-1111-1111-1111-111111111103', 135, 6.0, 34.6, 11.8),
+('11111111-1111-1111-1111-111111111103', 195, 5.9, 34.2, 11.8),
+('11111111-1111-1111-1111-111111111103', 255, 5.8, 34.2, 5.7),
+('11111111-1111-1111-1111-111111111103', 405, 4.7, 34.2, 5.1);
+
+-- Serie Lote 4 (42 °C / 7.5% - Óptimo)
+INSERT INTO lecturas (ensayo_id, minutos, ph, temperatura, indice_refraccion) VALUES
+('11111111-1111-1111-1111-111111111104', 0,   6.2, 26.1, 10.2),
+('11111111-1111-1111-1111-111111111104', 60,  6.0, 36.0, 11.8),
+('11111111-1111-1111-1111-111111111104', 135, 5.3, 36.2, 12.6),
+('11111111-1111-1111-1111-111111111104', 195, 4.9, 35.1, 7.5),
+('11111111-1111-1111-1111-111111111104', 255, 4.6, 35.1, 5.7);
+
+-- Serie Lote 5 (44 °C / 2.5%)
+INSERT INTO lecturas (ensayo_id, minutos, ph, temperatura, indice_refraccion) VALUES
+('11111111-1111-1111-1111-111111111105', 0,   6.2, 34.5, 10.2),
+('11111111-1111-1111-1111-111111111105', 60,  6.4, 37.5, 13.3),
+('11111111-1111-1111-1111-111111111105', 120, 6.0, 38.0, 13.1),
+('11111111-1111-1111-1111-111111111105', 180, 5.6, 37.9, 12.9),
+('11111111-1111-1111-1111-111111111105', 240, 5.4, 35.7, 13.9),
+('11111111-1111-1111-1111-111111111105', 330, 4.9, 35.7, 7.9),
+('11111111-1111-1111-1111-111111111105', 390, 4.6, 36.9, 6.1);
+
+-- Serie Lote 6 (44 °C / 7.5%)
+INSERT INTO lecturas (ensayo_id, minutos, ph, temperatura, indice_refraccion) VALUES
+('11111111-1111-1111-1111-111111111106', 60,  6.1, 36.7, 12.8),
+('11111111-1111-1111-1111-111111111106', 120, 5.6, 39.5, 13.1),
+('11111111-1111-1111-1111-111111111106', 180, 5.2, 38.0, 13.0),
+('11111111-1111-1111-1111-111111111106', 240, 5.0, 38.4, 13.6),
+('11111111-1111-1111-1111-111111111106', 330, 4.8, 35.7, 7.9),
+('11111111-1111-1111-1111-111111111106', 390, 4.6, 36.9, 7.4);
