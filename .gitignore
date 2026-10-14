@@ -28,3 +28,11 @@ yarn-error.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# SQLite & local embedded databases
+*.sqlite
+*.sqlite3
+*.db
+backend/data/*.sqlite
+!backend/data/.gitkeep
+

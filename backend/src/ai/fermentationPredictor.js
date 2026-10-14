@@ -12,6 +12,7 @@
  */
 
 const { getFlattenedDataset, EXPERIMENTAL_BATCHES } = require('./dataset');
+const { obtenerMuestrasFeedback, contarFeedback } = require('./sqliteStore');
 
 const PH_CRITICO_CORTE = 4.55;
 
@@ -229,7 +230,11 @@ function generarTrayectoria({
  * Evalúa las métricas de precisión (R², RMSE, MAE) frente al dataset completo
  */
 function evaluarMetricasModelo() {
-  const dataset = getFlattenedDataset();
+  const datasetBase = getFlattenedDataset();
+  const feedbackMuestras = obtenerMuestrasFeedback();
+  const dataset = [...datasetBase, ...feedbackMuestras];
+  const conteo = contarFeedback();
+
   let sumaErroresCuadraticos = 0;
   let sumaErroresAbsolutos = 0;
   let sumaCuadradosTotales = 0;
@@ -276,9 +281,14 @@ function evaluarMetricasModelo() {
   return {
     datasetInfo: {
       totalMuestras: n,
-      totalLotesExperimentales: EXPERIMENTAL_BATCHES.length,
+      muestrasBaseDrSantacruz: datasetBase.length,
+      muestrasNuevasAprendidas: feedbackMuestras.length,
+      totalLotesExperimentales: EXPERIMENTAL_BATCHES.length + conteo.lotesNuevos,
+      lotesBase: EXPERIMENTAL_BATCHES.length,
+      lotesNuevosAprendidos: conteo.lotesNuevos,
       patrocinador: 'Dr. Stalin Gustavo Santacruz Terán (ULEAM)',
-      matriz: 'Leche de vaca con inóculo Chivería',
+      matriz: 'Leche de vaca con inóculo Chivería + lotes dinámicos',
+      modoAprendizaje: feedbackMuestras.length > 0 ? 'APRENDIZAJE CONTINUO ACTIVO (Feedback Loop)' : 'LINEA BASE INICIAL',
     },
     metricasValidacion: {
       rCuadrado: Number(r2.toFixed(4)), // R²
