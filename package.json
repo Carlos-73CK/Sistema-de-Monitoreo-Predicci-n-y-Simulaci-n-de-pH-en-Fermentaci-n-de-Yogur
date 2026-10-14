@@ -1,0 +1,26 @@
+{
+  "name": "prediyogur-workspace",
+  "version": "1.0.0",
+  "description": "Monorepo / Espacio de trabajo del Sistema PrediYogur - Cátedra de Química de Alimentos (ULEAM)",
+  "scripts": {
+    "db:init": "node backend/scripts/initDb.js",
+    "dev:backend": "npm --prefix backend run dev",
+    "start:backend": "npm --prefix backend start",
+    "dev:mobile": "npm --prefix mobile start",
+    "android": "npm --prefix mobile run android",
+    "ios": "npm --prefix mobile run ios",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "keywords": [
+    "prediyogur",
+    "uleam",
+    "fermentacion",
+    "react-native",
+    "nodejs",
+    "postgresql"
+  ],
+  "author": "Carlos Delgado (Director de Proyecto)",
+  "license": "ISC"
+}
