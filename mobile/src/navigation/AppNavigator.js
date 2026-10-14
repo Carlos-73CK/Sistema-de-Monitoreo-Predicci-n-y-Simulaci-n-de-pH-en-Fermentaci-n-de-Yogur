@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { AuthContext } from '../context/AuthContext';
 
 import LoginScreen from '../screens/LoginScreen';
+import RegistroScreen from '../screens/RegistroScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import NuevoEnsayoScreen from '../screens/NuevoEnsayoScreen';
 import MonitoreoScreen from '../screens/MonitoreoScreen';
@@ -26,11 +27,18 @@ export default function AppNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: true }}>
       {userToken === null ? (
         // Flujo de autenticación (Público)
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ title: 'PrediYogur - Iniciar Sesión', headerShown: false }}
-        />
+        <>
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ title: 'PrediYogur - Iniciar Sesión', headerShown: false }}
+          />
+          <Stack.Screen
+            name="Registro"
+            component={RegistroScreen}
+            options={{ title: 'PrediYogur - Crear Cuenta', headerShown: false }}
+          />
+        </>
       ) : (
         // Flujo principal de la aplicación (Privado)
         <>
