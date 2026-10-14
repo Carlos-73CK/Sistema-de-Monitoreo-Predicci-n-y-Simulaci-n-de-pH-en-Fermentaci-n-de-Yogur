@@ -100,6 +100,42 @@
     }
     .sustrato-pill:hover { border-color: var(--primary); color: var(--primary); }
     .sustrato-pill.active { background: #e0f2fe; border-color: var(--primary); color: #0369a1; }
+    .sustrato-pill.disabled { opacity: 0.35; cursor: not-allowed; background: #e2e8f0; pointer-events: none; }
+
+    .alarm-pulse {
+      animation: pulseAlert 1.2s infinite;
+    }
+    @keyframes pulseAlert {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    /* Estilos Pedagógicos ULEAM (Audio 3 Dr. Santacruz) */
+    .bio-step-card {
+      background: white; border-radius: 12px; padding: 18px; border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm); margin-bottom: 14px; position: relative; overflow: hidden;
+    }
+    .bio-step-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--primary);
+    }
+    .bio-step-card.step-1::before { background: #0284c7; }
+    .bio-step-card.step-2::before { background: #10b981; }
+    .bio-step-card.step-3::before { background: #ef4444; }
+
+    .ph-spectrum-bar {
+      height: 38px; border-radius: 10px; margin: 18px 0 14px;
+      background: linear-gradient(90deg, #dc2626 0%, #ea580c 18%, #f59e0b 32%, #10b981 50%, #06b6d4 65%, #3b82f6 80%, #6366f1 92%, #4c1d95 100%);
+      position: relative; box-shadow: inset 0 2px 4px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; color: white; font-weight: 800; font-size: 11px;
+    }
+    .ph-items-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 14px;
+    }
+    .ph-item-card {
+      background: #f8fafc; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px;
+      transition: all 0.2s;
+    }
+    .ph-item-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--primary); }
 
     /* Controles Numéricos con Stepper (+/- 1) */
     .form-group { margin-bottom: 16px; }
@@ -218,6 +254,7 @@
     <!-- Barra de Pestañas -->
     <div class="tabs-wrapper">
       <button class="tab-btn active" onclick="switchTab('simulador')">⚡ Simulador Cinético ("What-If")</button>
+      <button class="tab-btn" onclick="switchTab('bioquimica')">🧬 Bioquímica & Escala pH (ULEAM)</button>
       <button class="tab-btn" onclick="switchTab('feedback')">🧠 Aprendizaje Continuo (Feedback Loop)</button>
       <button class="tab-btn" onclick="switchTab('historial')">💾 Historial SQLite Local</button>
       <button class="tab-btn" onclick="switchTab('metricas')">📊 Métricas Científicas del Modelo</button>
@@ -274,11 +311,28 @@
             <div class="form-group">
               <label>Sustrato / Matriz Láctea:</label>
               <div class="sustrato-pills">
-                <div class="sustrato-pill active" onclick="seleccionarSustrato('vaca', this)">🐄 Vaca (Patrón)</div>
-                <div class="sustrato-pill" onclick="seleccionarSustrato('chocho', this)">🌱 Chocho</div>
-                <div class="sustrato-pill" onclick="seleccionarSustrato('coco', this)">🥥 Coco</div>
+                <div class="sustrato-pill active" id="sustrato-vaca" onclick="seleccionarSustrato('vaca', this)">🐄 Vaca (Patrón)</div>
+                <div class="sustrato-pill" id="sustrato-chocho" onclick="seleccionarSustrato('chocho', this)">🌱 Chocho</div>
+                <div class="sustrato-pill" id="sustrato-coco" onclick="seleccionarSustrato('coco', this)">🥥 Coco</div>
               </div>
               <input type="hidden" id="sim-sustrato" value="vaca">
+            </div>
+
+            <!-- Fuente de Carbohidrato / Azúcar (Audio 2 Dr. Santacruz) -->
+            <div class="form-group">
+              <div class="label-row">
+                <label>Carbohidrato / Azúcar Añadido:</label>
+                <span class="badge-ratio" id="azucar-tag">Lactosa Nativa</span>
+              </div>
+              <div class="sustrato-pills">
+                <div class="sustrato-pill active" id="azucar-lactosa" onclick="seleccionarAzucar('lactosa', this)">🥛 Lactosa</div>
+                <div class="sustrato-pill" id="azucar-sacarosa" onclick="seleccionarAzucar('sacarosa', this)">🍚 Sacarosa (Mesa)</div>
+                <div class="sustrato-pill" id="azucar-glucosa" onclick="seleccionarAzucar('glucosa', this)">⚡ Glucosa</div>
+              </div>
+              <input type="hidden" id="sim-azucar" value="lactosa">
+              <div id="azucar-hint" style="font-size: 11px; color: #0369a1; font-style: italic; display: none; margin-top: -6px; margin-bottom: 8px;">
+                💡 Nota Bioquímica ULEAM: Las matrices vegetales carecen de lactosa natural; se añade sacarosa o glucosa comercial para nutrir al inóculo Chivería.
+              </div>
             </div>
 
             <!-- Controles Numéricos con Stepper (Aumentan de 1 en 1 o entrada manual) -->
@@ -405,6 +459,22 @@
               </div>
             </div>
 
+            <!-- Regla Reológica del Dr. Stalin Santacruz (Audio 1, 05:30) -->
+            <div style="font-size:11.5px; color:#1e293b; background:#f0fdf4; border-left:4px solid #10b981; padding:8px 12px; border-radius:6px; margin-bottom:14px; line-height:1.4;">
+              <strong>📋 Protocolo Estricto de Laboratorio ULEAM:</strong> La viscosidad (mPa·s) se mide <em>únicamente al final del ensayo (pH 4.50)</em> tras refrigeración controlada con viscosímetro rotacional (rotor 4, 60 rpm). No se extraen muestras durante la incubación para no perturbar la anaerobiosis ni la coagulación micelar.
+            </div>
+
+            <!-- Controles de Superposición y Alarma Acústica (Audios 1, 2 y 4) -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; background:#f8fafc; padding:10px 14px; border-radius:10px; border:1px solid var(--border);">
+              <label style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#1e293b; cursor:pointer;">
+                <input type="checkbox" id="chk-superponer" checked onchange="toggleSuperposicionCurva(this.checked)" style="width:16px; height:16px; cursor:pointer;">
+                <span>🎯 Superponer Curva Óptima (42 °C / 7.5% Chivería)</span>
+              </label>
+              <button type="button" id="btn-audio-alarm" onclick="toggleAlarmaAcustica()" style="background:#e0f2fe; border:1.5px solid #bae6fd; color:#0369a1; padding:5px 12px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                <span id="alarm-sound-icon">🔊</span> <span id="alarm-sound-text">Alarma Sonora Activa</span>
+              </button>
+            </div>
+
             <!-- Canvas del Gráfico Dinámico -->
             <div class="chart-box">
               <canvas id="cineticaChart"></canvas>
@@ -431,10 +501,136 @@
           </div>
         </div>
 
+    </div>
+
+    <!-- PESTAÑA 2: BIOQUÍMICA & ESCALA DE PH (AUDIO 3 DR. SANTACRUZ) -->
+    <div id="tab-bioquimica" class="tab-panel">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🧬 Fundamentos Bioquímicos de la Fermentación Láctica (ULEAM)</div>
+            <div class="card-subtitle">Explicación cinética y metabólica explicada por el Dr. Stalin Santacruz Terán en cátedra</div>
+          </div>
+          <span class="badge badge-blue">Cátedra de Química de Alimentos</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px;">
+          <!-- Etapa 1 -->
+          <div class="bio-step-card step-1">
+            <h4 style="font-size:14px; font-weight:800; color:#0284c7; margin-bottom:6px;">1. Hidrólisis de Carbohidratos (Disacáridos)</h4>
+            <p style="font-size:12.5px; color:#475569; line-height:1.5;">
+              Las bacterias lácticas de <strong>Chivería</strong> (<em>Lactobacillus bulgaricus</em> y <em>Streptococcus thermophilus</em>) hidrolizan el azúcar presente:
+            </p>
+            <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px; margin:10px 0; font-family:monospace; font-size:12px; color:#0369a1;">
+              🐄 <strong>Leche de Vaca:</strong> Lactosa &rarr; Glucosa + Galactosa<br>
+              🌱 <strong>Leche Vegetal (Chocho/Coco):</strong> Sin lactosa natural. Se suplementa con <strong>Sacarosa</strong> (&rarr; Glucosa + Fructosa) o <strong>Glucosa directa</strong>.
+            </div>
+            <p style="font-size:12px; color:#64748b;">
+              Si se añade <strong>Glucosa directa</strong>, se omite el paso enzimático de escisión disacárida, acelerando el inicio de la acidificación (~5% menor tiempo de latencia).
+            </p>
+          </div>
+
+          <!-- Etapa 2 -->
+          <div class="bio-step-card step-2">
+            <h4 style="font-size:14px; font-weight:800; color:#059669; margin-bottom:6px;">2. Cascada Glucolítica y Producción de Ácido Láctico</h4>
+            <p style="font-size:12.5px; color:#475569; line-height:1.5;">
+              La glucosa intracelular ingresa a la vía de Embden-Meyerhof-Parnas y es convertida en ácido láctico por la lactato deshidrogenasa (LDH):
+            </p>
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px; margin:10px 0; font-family:monospace; font-size:12px; color:#15803d;">
+              Glucosa &rarr; 2 Piruvato &rarr; 2 Ácido Láctico + 2 H⁺
+            </div>
+            <p style="font-size:12px; color:#64748b;">
+              La liberación progresiva de protones [H⁺] acidifica el medio desde el pH basal (6.25 - 6.60) hasta alcanzar el umbral de corte crítico.
+            </p>
+          </div>
+
+          <!-- Etapa 3 -->
+          <div class="bio-step-card step-3">
+            <h4 style="font-size:14px; font-weight:800; color:#dc2626; margin-bottom:6px;">3. Punto Isoeléctrico y Coagulación de Caseína</h4>
+            <p style="font-size:12.5px; color:#475569; line-height:1.5;">
+              A pH 6.6, las micelas de caseína se repelen por carga negativa en su capa exterior de &kappa;-caseína. Al acidificar:
+            </p>
+            <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px; margin:10px 0; font-family:monospace; font-size:12px; color:#991b1b;">
+              pH 4.60 &rarr; Neutralización de carga (Punto Isoeléctrico pI)<br>
+              pH 4.50 &rarr; 🎯 <strong>CORTE CRÍTICO CONSTANTE</strong>: Reticulación tridimensional y máxima firmeza (2639 mPa·s).
+            </div>
+            <p style="font-size:12px; color:#64748b;">
+              <strong>¡Regla de Oro del Dr. Santacruz:</strong> Si se permite acidificar más allá de 4.50, el gel se sobre-contrae, expulsa el suero (sinéresis) y se arruina la textura.
+            </p>
+          </div>
+        </div>
+
+        <!-- Escala de pH Interactiva del Dr. Santacruz (Audio 3) -->
+        <div style="background:#f8fafc; border:1px solid var(--border); border-radius:12px; padding:20px;">
+          <h4 style="font-size:15px; font-weight:800; color:#1e293b; margin-bottom:4px;">
+            🧪 Escala Universal de pH y Referencias del Dr. Stalin Santacruz
+          </h4>
+          <p style="font-size:12.5px; color:#64748b; margin-bottom:14px;">
+            El Dr. Santacruz enfatiza contextualizar el pH del yogur frente a alimentos y sustancias cotidianas para un entendimiento intuitivo:
+          </p>
+
+          <div class="ph-spectrum-bar">
+            <span>ÁCIDO (0)</span>
+            <span>CORTE YOGUR (4.50)</span>
+            <span>NEUTRO (7.0)</span>
+            <span>ALCALINO (14)</span>
+          </div>
+
+          <div class="ph-items-grid">
+            <div class="ph-item-card" style="border-left:4px solid #dc2626;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="color:#b91c1c; font-size:13px;">🍋 Limón / Maracuyá</strong>
+                <span class="badge" style="background:#fee2e2; color:#b91c1c;">pH ~2.5 - 3.0</span>
+              </div>
+              <p style="font-size:11.5px; color:#64748b; margin-top:6px;">Ácidos orgánicos puros (cítrico / málico). Fuertemente ácido.</p>
+            </div>
+
+            <div class="ph-item-card" style="border-left:4px solid #ea580c; background:#fff7ed; box-shadow:0 0 0 2px #fdba74;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="color:#c2410c; font-size:13px;">🎯 Yogur (Corte Crítico)</strong>
+                <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800;">pH 4.50</span>
+              </div>
+              <p style="font-size:11.5px; color:#9a3412; margin-top:6px;"><strong>Detener incubación aquí.</strong> Coágulo óptimo de caseína.</p>
+            </div>
+
+            <div class="ph-item-card" style="border-left:4px solid #0284c7;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="color:#0369a1; font-size:13px;">🥛 Leche Fresca de Vaca</strong>
+                <span class="badge" style="background:#e0f2fe; color:#0369a1;">pH ~6.5 - 6.6</span>
+              </div>
+              <p style="font-size:11.5px; color:#64748b; margin-top:6px;">Punto de partida del ensayo previo a la inoculación.</p>
+            </div>
+
+            <div class="ph-item-card" style="border-left:4px solid #10b981;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="color:#047857; font-size:13px;">💧 Agua Destilada</strong>
+                <span class="badge" style="background:#d1fae5; color:#047857;">pH 7.00</span>
+              </div>
+              <p style="font-size:11.5px; color:#64748b; margin-top:6px;">Equilibrio neutro estándar de laboratorio químico.</p>
+            </div>
+
+            <div class="ph-item-card" style="border-left:4px solid #6366f1;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="color:#4338ca; font-size:13px;">🥚 Clara de Huevo</strong>
+                <span class="badge" style="background:#e0e7ff; color:#4338ca;">pH ~8.0</span>
+              </div>
+              <p style="font-size:11.5px; color:#64748b; margin-top:6px;">Ligeramente básica por presencia de albúmina y CO₂ disuelto.</p>
+            </div>
+
+            <div class="ph-item-card" style="border-left:4px solid #8b5cf6;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="color:#6d28d9; font-size:13px;">🧱 Cal Apagada (Ca(OH)₂)</strong>
+                <span class="badge" style="background:#ede9fe; color:#6d28d9;">pH ~12.0</span>
+              </div>
+              <p style="font-size:11.5px; color:#64748b; margin-top:6px;">Base inorgánica fuerte mencionada en la cátedra de alimentos.</p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
-    <!-- PESTAÑA 2: FEEDBACK LOOP (APRENDIZAJE CONTINUO) -->
+    <!-- PESTAÑA 3: FEEDBACK LOOP (APRENDIZAJE CONTINUO) -->
     <div id="tab-feedback" class="tab-panel">
       <div class="card">
         <div class="card-header">
@@ -442,9 +638,34 @@
             <div class="card-title">🧠 Feedback Loop: Aprendizaje Continuo para el Modelo de IA</div>
             <div class="card-subtitle">Incorpora los datos de nuevos lotes terminados para que la IA refine sus predicciones</div>
           </div>
-          <button onclick="cargarLoteEjemplo()" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px;">
-            🧪 Cargar Lote de Prueba Rápida
-          </button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button onclick="toggleModalPegado()" style="background:#f0fdf4; color:#059669; border:1px solid #bbf7d0; padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px;">
+              📋 Pegar / Cargar Tabla CSV
+            </button>
+            <button onclick="cargarLoteEjemplo()" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px;">
+              🧪 Cargar Lote de Prueba Rápida
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel Desplegable de Pegado Rápido CSV / Tablas -->
+        <div id="panel-pegado" style="display:none; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; padding:16px; margin-bottom:18px;">
+          <div style="font-weight:700; font-size:13px; color:#1e293b; margin-bottom:4px;">
+            📥 Pegar Lecturas de Laboratorio (Valores separados por coma o tabulación de Excel):
+          </div>
+          <div style="font-size:11.5px; color:#64748b; margin-bottom:8px;">
+            Columnas esperadas: <code>minutos, pH, temperatura, °Brix (opcional)</code>. Ejemplo:<br>
+            <code>0, 6.25, 42.0, 10.5</code><br>
+            <code>60, 6.00, 42.0, 8.5</code><br>
+            <code>180, 4.85, 42.0, 6.5</code><br>
+            <code>255, 4.50, 42.0, 5.7</code>
+          </div>
+          <textarea id="txt-csv-input" rows="4" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:8px; font-family:monospace; font-size:12px;" placeholder="0, 6.25, 42.0, 10.5&#10;60, 6.00, 42.0, 8.5&#10;180, 4.85, 42.0, 6.5&#10;255, 4.50, 42.0, 5.7"></textarea>
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+            <button onclick="procesarTextoPegado()" style="background:#10b981; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer;">
+              ✅ Rellenar Tabla Automáticamente
+            </button>
+          </div>
         </div>
 
         <div id="fb-alert" class="alert-banner" style="display:none;"></div>
@@ -645,7 +866,7 @@
               yAxisID: 'y1',
             },
             {
-              label: 'Límite Crítico pH 4.5 (Corte)',
+              label: 'Límite Crítico pH 4.50 (Corte)',
               data: [],
               borderColor: '#ef4444',
               borderWidth: 2,
@@ -653,6 +874,19 @@
               pointRadius: 0,
               fill: false,
               yAxisID: 'y',
+            },
+            {
+              label: '🎯 Ref. Óptima (42 °C / 7.5% Chivería)',
+              data: [],
+              borderColor: '#10b981',
+              backgroundColor: 'transparent',
+              borderWidth: 2.5,
+              borderDash: [6, 4],
+              tension: 0.35,
+              pointRadius: 0,
+              pointHoverRadius: 5,
+              yAxisID: 'y',
+              hidden: false,
             }
           ]
         },
@@ -804,17 +1038,118 @@
       ejecutarSimulacion();
     }
 
+    let alarmaAcusticaHabilitada = true;
+    let audioCtx = null;
+
+    // Conmutar Alarma Sonora
+    function toggleAlarmaAcustica() {
+      alarmaAcusticaHabilitada = !alarmaAcusticaHabilitada;
+      const btn = document.getElementById('btn-audio-alarm');
+      const icon = document.getElementById('alarm-sound-icon');
+      const text = document.getElementById('alarm-sound-text');
+      if (alarmaAcusticaHabilitada) {
+        btn.style.background = '#e0f2fe';
+        btn.style.color = '#0369a1';
+        btn.style.borderColor = '#bae6fd';
+        icon.innerText = '🔊';
+        text.innerText = 'Alarma Sonora Activa';
+      } else {
+        btn.style.background = '#f1f5f9';
+        btn.style.color = '#64748b';
+        btn.style.borderColor = '#cbd5e1';
+        icon.innerText = '🔇';
+        text.innerText = 'Alarma Sonora Silenciada';
+      }
+    }
+
+    // Beep sintetizado mediante Web Audio API (Audios 1 y 2: "que me pite o me haga un llamado")
+    function reproducirBeepAlarma() {
+      if (!alarmaAcusticaHabilitada) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const now = audioCtx.currentTime;
+        // Tono de alerta doble de laboratorio (880 Hz -> 1174 Hz)
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(880, now);
+        gain1.gain.setValueAtTime(0.12, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.14);
+
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1174.66, now + 0.18);
+        gain2.gain.setValueAtTime(0.12, now + 0.18);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(now + 0.18);
+        osc2.stop(now + 0.35);
+      } catch (err) {
+        console.warn('AudioContext no inicializado:', err);
+      }
+    }
+
+    // Alternar visibilidad de la curva óptima en el gráfico
+    function toggleSuperposicionCurva(checked) {
+      if (chartInstance && chartInstance.data.datasets[3]) {
+        chartInstance.data.datasets[3].hidden = !checked;
+        chartInstance.update();
+      }
+    }
+
+    // Selección de Carbohidrato / Azúcar (Audio 2 Dr. Santacruz)
+    function seleccionarAzucar(tipo, el) {
+      document.querySelectorAll('#azucar-lactosa, #azucar-sacarosa, #azucar-glucosa').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('sim-azucar').value = tipo;
+      
+      const tag = document.getElementById('azucar-tag');
+      if (tipo === 'glucosa') tag.innerText = 'Glucosa (Rápida)';
+      else if (tipo === 'sacarosa') tag.innerText = 'Sacarosa Añadida';
+      else tag.innerText = 'Lactosa Nativa';
+
+      ejecutarSimulacion();
+    }
+
     // Selección de Sustrato
     function seleccionarSustrato(tipo, el) {
-      document.querySelectorAll('.sustrato-pill').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('#sustrato-vaca, #sustrato-chocho, #sustrato-coco').forEach(p => p.classList.remove('active'));
       el.classList.add('active');
       document.getElementById('sim-sustrato').value = tipo;
-      ejecutarSimulacion();
+
+      const lactosaPill = document.getElementById('azucar-lactosa');
+      const sacarosaPill = document.getElementById('azucar-sacarosa');
+      const hint = document.getElementById('azucar-hint');
+
+      if (tipo === 'chocho' || tipo === 'coco') {
+        // En matrices vegetales NO hay lactosa
+        lactosaPill.classList.add('disabled');
+        hint.style.display = 'block';
+        if (document.getElementById('sim-azucar').value === 'lactosa') {
+          seleccionarAzucar('sacarosa', sacarosaPill);
+        } else {
+          ejecutarSimulacion();
+        }
+      } else {
+        // Leche de vaca
+        lactosaPill.classList.remove('disabled');
+        hint.style.display = 'none';
+        seleccionarAzucar('lactosa', lactosaPill);
+      }
     }
 
     // Ejecutar Simulación vía REST API
     async function ejecutarSimulacion() {
       const sustrato = document.getElementById('sim-sustrato').value;
+      const azucar = document.getElementById('sim-azucar').value;
       const temperatura = parseFloat(document.getElementById('sim-temp').value);
       const masaInoculo = parseFloat(document.getElementById('sim-inoculo').value);
       const volumen = parseFloat(document.getElementById('sim-volumen').value);
@@ -825,6 +1160,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tipo_sustrato: sustrato,
+            tipo_azucar: azucar,
             temperatura_c: temperatura,
             masa_inoculo_g: masaInoculo,
             volumen_ml: volumen,
@@ -853,36 +1189,41 @@
         const pctPin = Math.max(5, Math.min(95, (visc / 3200) * 100));
         document.getElementById('visco-pin').style.left = pctPin + '%';
 
-        // Actualizar Banner de Alerta Térmica
+        // Actualizar Banner de Alerta Térmica y Alarma Sonora
         const banner = document.getElementById('alerta-termica-box');
         const bannerText = document.getElementById('alerta-termica-text');
         const bannerIcon = document.getElementById('alerta-termica-icon');
         const estadoBadge = document.getElementById('kpi-estado-badge');
 
         if (sim.prediccionCorte.fueraDeRangoOptimo) {
-          banner.className = 'alert-banner warning';
+          banner.className = 'alert-banner warning alarm-pulse';
           bannerIcon.innerText = '⚠️';
           bannerText.innerText = sim.prediccionCorte.alertaTermica;
           estadoBadge.className = 'badge badge-white';
           estadoBadge.innerText = 'Desviación Térmica';
+          reproducirBeepAlarma();
         } else {
           banner.className = 'alert-banner optimal';
+          banner.classList.remove('alarm-pulse');
           bannerIcon.innerText = '✅';
           bannerText.innerText = 'Temperatura dentro de la ventana óptima de incubación (41.0 °C – 43.0 °C). Máxima actividad acidificante.';
           estadoBadge.className = 'badge badge-green';
           estadoBadge.innerText = 'Condición Óptima';
         }
 
-        // Actualizar Gráfica
+        // Actualizar Gráfica con Superposición de Curva Óptima (Audio 4 Dr. Santacruz)
         const labels = sim.curva.map(p => p.minutos + 'm');
         const phData = sim.curva.map(p => p.phPredicho);
         const brixData = sim.curva.map(p => p.indiceRefraccionPredicho);
-        const corteLine = sim.curva.map(() => 4.5);
+        const corteLine = sim.curva.map(() => 4.50);
+        const refOptimaData = (sim.curvaReferenciaOptima || []).map(p => p.phPredicho);
 
         chartInstance.data.labels = labels;
         chartInstance.data.datasets[0].data = phData;
         chartInstance.data.datasets[1].data = brixData;
         chartInstance.data.datasets[2].data = corteLine;
+        chartInstance.data.datasets[3].data = refOptimaData;
+        chartInstance.data.datasets[3].hidden = !document.getElementById('chk-superponer').checked;
         chartInstance.update();
 
         // Actualizar Hitos de la Tabla
@@ -891,6 +1232,62 @@
       } catch (err) {
         console.error('Error al simular:', err);
       }
+    }
+
+    // Alternar panel de carga masiva CSV
+    function toggleModalPegado() {
+      const panel = document.getElementById('panel-pegado');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Procesar texto pegado de lecturas de laboratorio
+    function procesarTextoPegado() {
+      const raw = document.getElementById('txt-csv-input').value.trim();
+      if (!raw) {
+        alert('Por favor ingrese o pegue las lecturas de laboratorio.');
+        return;
+      }
+
+      const lineas = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      const nuevasLecturas = [];
+
+      for (let i = 0; i < lineas.length; i++) {
+        const linea = lineas[i];
+        if (linea.toLowerCase().includes('minuto') || linea.toLowerCase().includes('ph')) continue;
+        const partes = linea.split(/[,;\t]+/).map(p => p.trim());
+        if (partes.length >= 2) {
+          const min = parseFloat(partes[0]);
+          const ph = parseFloat(partes[1]);
+          const temp = partes.length >= 3 ? parseFloat(partes[2]) : 42.0;
+          const brix = partes.length >= 4 ? parseFloat(partes[3]) : null;
+
+          if (!isNaN(min) && !isNaN(ph)) {
+            nuevasLecturas.push({ min, ph, temp, brix });
+          }
+        }
+      }
+
+      if (nuevasLecturas.length < 2) {
+        alert('Se requieren al menos 2 lecturas numéricas válidas para llenar la tabla.');
+        return;
+      }
+
+      const tbody = document.querySelector('#tabla-fb tbody');
+      tbody.innerHTML = '';
+      nuevasLecturas.forEach(l => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input type="number" class="f-min" value="${l.min}" step="1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+          <td><input type="number" class="f-ph" value="${l.ph.toFixed(2)}" step="0.01" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+          <td><input type="number" class="f-temp" value="${isNaN(l.temp) ? 42.0 : l.temp.toFixed(1)}" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+          <td><input type="number" class="f-brix" value="${l.brix !== null && !isNaN(l.brix) ? l.brix.toFixed(1) : ''}" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+          <td><button onclick="eliminarFila(this)" style="background:#fee2e2; border:none; color:#b91c1c; padding:6px 10px; border-radius:6px; cursor:pointer;">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('panel-pegado').style.display = 'none';
+      alert(`✅ Se cargaron exitosamente ${nuevasLecturas.length} lecturas experimentales a la tabla de aprendizaje continuo.`);
     }
 
     // Actualiza la tabla de hitos

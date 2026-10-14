@@ -14,7 +14,7 @@
 const { getFlattenedDataset, EXPERIMENTAL_BATCHES } = require('./dataset');
 const { obtenerMuestrasFeedback, contarFeedback } = require('./sqliteStore');
 
-const PH_CRITICO_CORTE = 4.55;
+const PH_CRITICO_CORTE = 4.50;
 
 /**
  * Tabla de parámetros cinéticos óptimos calibrados por lote experimental:
@@ -87,13 +87,13 @@ function interpolarParametrosCineticos(temperaturaC, porcentajeInoculo) {
 function getParametrosMatriz(tipoSustrato = 'vaca') {
   const norm = String(tipoSustrato).toLowerCase();
   if (norm.includes('chocho')) {
-    return { phInicial: 6.45, phFinal: 4.52, brixInicial: 9.2, brixFinal: 5.8 };
+    return { phInicial: 6.45, phFinal: 4.50, brixInicial: 9.2, brixFinal: 5.8 };
   }
   if (norm.includes('coco')) {
     return { phInicial: 6.35, phFinal: 4.50, brixInicial: 8.8, brixFinal: 5.5 };
   }
-  // Vaca (calibración oficial de laboratorio)
-  return { phInicial: 6.25, phFinal: 4.52, brixInicial: 10.5, brixFinal: 5.6 };
+  // Vaca (calibración oficial de laboratorio ULEAM)
+  return { phInicial: 6.25, phFinal: 4.50, brixInicial: 10.5, brixFinal: 5.6 };
 }
 
 /**
@@ -105,22 +105,35 @@ function predecirPunto({
   volumenMl = 250,
   minutos = 0,
   tipoSustrato = 'vaca',
+  tipoAzucar = 'lactosa',
 }) {
   const tMin = Math.max(0, Number(minutos) || 0);
   const inocPct = calcularPorcentajeInoculo(masaInoculoG, volumenMl);
-  const { t50, gamma, tiempoCorteHoras } = interpolarParametrosCineticos(temperaturaC, inocPct);
+  const { t50: t50Base, gamma, tiempoCorteHoras } = interpolarParametrosCineticos(temperaturaC, inocPct);
   const { phInicial, phFinal, brixInicial, brixFinal } = getParametrosMatriz(tipoSustrato);
+
+  // Modulador cinético según fuente de carbohidratos (explicación bioquímica del Dr. Santacruz):
+  // La glucosa (monosacárido) no requiere hidrólisis disacárida enzimática previa, reduciendo el lag en un ~5%.
+  // La sacarosa requiere invertasa previa.
+  let modT50 = 1.0;
+  const azucarNorm = String(tipoAzucar).toLowerCase();
+  if (azucarNorm === 'glucosa') {
+    modT50 = 0.95;
+  } else if (azucarNorm === 'sacarosa') {
+    modT50 = 1.02;
+  }
+  const t50Ajustado = t50Base * modT50;
 
   // Ecuación de decaimiento sigmoidal de Hill:
   // pH(t) = phFinal + (phInicial - phFinal) / (1 + (t / t50)^gamma)
-  const denominador = 1 + Math.pow(tMin / Math.max(t50, 1), gamma);
+  const denominador = 1 + Math.pow(tMin / Math.max(t50Ajustado, 1), gamma);
   const phPredicho = phFinal + (phInicial - phFinal) / denominador;
 
   // Consumo cinético de azúcares solubles (°Brix)
-  const brixDenominador = 1 + Math.pow(tMin / Math.max(t50 * 1.1, 1), gamma * 0.85);
+  const brixDenominador = 1 + Math.pow(tMin / Math.max(t50Ajustado * 1.1, 1), gamma * 0.85);
   const brixPredicho = brixFinal + (brixInicial - brixFinal) / brixDenominador;
 
-  const tCorteMinutos = Math.round(tiempoCorteHoras * 60);
+  const tCorteMinutos = Math.round(tiempoCorteHoras * modT50 * 60);
 
   return {
     minutos: tMin,
@@ -133,22 +146,35 @@ function predecirPunto({
 }
 
 /**
- * Predice el tiempo de corte estimado a pH 4.5
+ * Predice el tiempo de corte estimado a pH 4.50
  */
-function predecirTiempoCorte({ temperaturaC = 42, masaInoculoG = 18.75, volumenMl = 250 }) {
+function predecirTiempoCorte({
+  temperaturaC = 42,
+  masaInoculoG = 18.75,
+  volumenMl = 250,
+  tipoAzucar = 'lactosa',
+}) {
   const temp = Number(temperaturaC) || 42;
   const inocPct = calcularPorcentajeInoculo(masaInoculoG, volumenMl);
   const { tiempoCorteHoras } = interpolarParametrosCineticos(temp, inocPct);
-  const tiempoMinutos = Math.round(tiempoCorteHoras * 60);
+
+  let mod = 1.0;
+  const azucarNorm = String(tipoAzucar).toLowerCase();
+  if (azucarNorm === 'glucosa') mod = 0.95;
+  else if (azucarNorm === 'sacarosa') mod = 1.02;
+
+  const tiempoCorteAjustado = Number((tiempoCorteHoras * mod).toFixed(2));
+  const tiempoMinutos = Math.round(tiempoCorteAjustado * 60);
+  const fueraDeRangoOptimo = temp < 41.0 || temp > 43.0;
 
   return {
-    tiempoCorteHoras,
+    tiempoCorteHoras: tiempoCorteAjustado,
     tiempoCorteMinutos: tiempoMinutos,
     temperaturaC: temp,
     porcentajeInoculo: inocPct,
-    fueraDeRangoOptimo: temp < 41.0 || temp > 43.0,
-    alertaTermica: (temp < 41.0 || temp > 43.0)
-      ? `Temperatura (${temp} °C) fuera del rango óptimo (41.0 °C – 43.0 °C). Modifica la velocidad cinética.`
+    fueraDeRangoOptimo,
+    alertaTermica: fueraDeRangoOptimo
+      ? `⚠️ ALERTA ACÚSTICA/VISUAL: Temperatura (${temp} °C) fuera de la ventana óptima de incubación (41.0 °C – 43.0 °C). Modifica drásticamente la tasa de acidificación bacteriana.`
       : null,
   };
 }
@@ -184,23 +210,27 @@ function predecirViscosidad({ temperaturaC = 42, masaInoculoG = 18.75, volumenMl
     condicionesMedicion: 'rotor 4, 60 rpm',
     calidadGel,
     diagnostico,
+    reglaMedicion: 'La viscosidad se mide estrictamente al final del ensayo (al alcanzar pH 4.50) para no desestabilizar el medio cerrado de anaerobiosis.',
   };
 }
 
 /**
  * Genera la simulación completa de la curva temporal
+ * Incluye la curva óptima de referencia del Dr. Santacruz para superposición directa en gráfica
  */
 function generarTrayectoria({
   temperaturaC = 42,
   masaInoculoG = 18.75,
   volumenMl = 250,
   tipoSustrato = 'vaca',
+  tipoAzucar = 'lactosa',
   intervaloMinutos = 15,
 }) {
-  const corte = predecirTiempoCorte({ temperaturaC, masaInoculoG, volumenMl });
+  const corte = predecirTiempoCorte({ temperaturaC, masaInoculoG, volumenMl, tipoAzucar });
   const viscosidad = predecirViscosidad({ temperaturaC, masaInoculoG, volumenMl });
-  const tMaxMin = Math.min(corte.tiempoCorteMinutos + 30, 480);
+  const tMaxMin = Math.max(corte.tiempoCorteMinutos + 30, 480);
 
+  // 1. Curva simulada según parámetros del usuario
   const curva = [];
   for (let m = 0; m <= tMaxMin; m += intervaloMinutos) {
     curva.push(predecirPunto({
@@ -209,6 +239,21 @@ function generarTrayectoria({
       volumenMl,
       minutos: m,
       tipoSustrato,
+      tipoAzucar,
+    }));
+  }
+
+  // 2. Curva Óptima de Referencia (42 °C / 7.5% Chivería / 250 mL / Vaca / Lactosa)
+  // Permite al estudiante superponer y comparar en la misma figura como solicitó el Dr. Santacruz
+  const curvaReferenciaOptima = [];
+  for (let m = 0; m <= tMaxMin; m += intervaloMinutos) {
+    curvaReferenciaOptima.push(predecirPunto({
+      temperaturaC: 42.0,
+      masaInoculoG: 18.75,
+      volumenMl: 250,
+      minutos: m,
+      tipoSustrato: 'vaca',
+      tipoAzucar: 'lactosa',
     }));
   }
 
@@ -219,10 +264,12 @@ function generarTrayectoria({
       volumenMl,
       porcentajeInoculo: corte.porcentajeInoculo,
       tipoSustrato,
+      tipoAzucar,
     },
     prediccionCorte: corte,
     prediccionViscosidad: viscosidad,
     curva,
+    curvaReferenciaOptima,
   };
 }
 

@@ -33,6 +33,7 @@ export const simulationService = {
    */
   simularAcidificacion: ({
     tipoSustrato = 'vaca',
+    tipoAzucar = 'lactosa',
     masaInoculoG = 18.75,
     temperaturaC = 42,
     volumenMl = 250,
@@ -46,7 +47,7 @@ export const simulationService = {
 
     // 1. Parámetros basales calibrados
     let phInicial = 6.25;
-    const PH_CORTE = 4.55;
+    const PH_CORTE = 4.50; // Constante inviolable indicada por el Dr. Stalin Santacruz
     let brixInicial = 10.5;
 
     if (tipoSustrato === 'chocho') {
@@ -58,30 +59,31 @@ export const simulationService = {
     }
 
     // 2. Modelo cinético de tiempo de corte (horas) interpolado de los datos de laboratorio
-    // En el óptimo experimental (42 °C):
-    // 7.5% -> 4.25 h (255 min)
-    // 2.5% -> 6.75 h (405 min)
     let tiempoBaseHoras = 4.25;
     if (porcentajeInoculo <= 3.0) {
       tiempoBaseHoras = 6.75;
     } else if (porcentajeInoculo < 7.0) {
-      // Interpolación lineal entre 2.5% y 7.5%
       const alpha = (porcentajeInoculo - 2.5) / (7.5 - 2.5);
       tiempoBaseHoras = 6.75 - alpha * (6.75 - 4.25);
     } else {
       tiempoBaseHoras = 4.25;
     }
 
+    // Modulador cinético por carbohidrato (Audio 2 Dr. Santacruz)
+    let modAzucar = 1.0;
+    if (tipoAzucar === 'glucosa') modAzucar = 0.95;
+    else if (tipoAzucar === 'sacarosa') modAzucar = 1.02;
+
+    tiempoBaseHoras *= modAzucar;
+
     // 3. Penalización térmica experimental (Arrhenius empírico del Dr. Santacruz):
     let factorTermico = 1.0;
     if (temp >= 41.5 && temp <= 42.5) {
       factorTermico = 1.0; // Máxima eficiencia a 42 °C
     } else if (temp < 41.5) {
-      // A 40 °C con 7.5% demoró 5.5 h (retraso del ~30%)
       const deltaT = 42.0 - temp;
       factorTermico = 1.0 + deltaT * 0.14;
     } else {
-      // A 44 °C con 7.5% demoró 6.5 h (retraso del ~52% por estrés térmico)
       const deltaT = temp - 42.0;
       factorTermico = 1.0 + deltaT * 0.25;
     }
@@ -119,12 +121,10 @@ export const simulationService = {
       const min = i * deltaMin;
       const fraccion = Math.min(min / tiempoCorteMinutos, 1.0);
       
-      // Decaimiento sigmoidal de pH desde inicial hasta PH_CORTE
       const phCurva = Number(
         (phInicial - (phInicial - PH_CORTE) * Math.pow(fraccion, 1.8)).toFixed(2)
       );
 
-      // Consumo de azúcares solubles (°Brix) de ~10.5 hacia ~5.5
       const brixCurva = Number(
         (brixInicial - (brixInicial - 5.5) * Math.pow(fraccion, 2.0)).toFixed(1)
       );
@@ -145,6 +145,7 @@ export const simulationService = {
 
     return {
       tipoSustrato,
+      tipoAzucar,
       masaInoculoG: masa,
       porcentajeInoculo: Number(porcentajeInoculo.toFixed(1)),
       temperaturaC: temp,
@@ -155,11 +156,12 @@ export const simulationService = {
       tiempoEstimadoCorteMinutos: tiempoCorteMinutos,
       viscosidadEstimadaMpaS: viscosidadEstimada,
       diagnosticoReologico,
+      reglaMedicionViscosidad: 'La viscosidad se mide al final (pH 4.50) con rotor 4 a 60 rpm.',
       brixInicial,
       brixFinalEsperado: 5.7,
       fueraDeRangoTermico,
       alertaTermica: fueraDeRangoTermico
-        ? `¡Atención! La temperatura (${temp} °C) está fuera del rango óptimo de incubación (41.0 °C – 43.0 °C).`
+        ? `⚠️ Alerta: Temperatura (${temp} °C) fuera del rango óptimo (41.0 °C – 43.0 °C). Modifica la acidificación.`
         : null,
       puntos,
     };

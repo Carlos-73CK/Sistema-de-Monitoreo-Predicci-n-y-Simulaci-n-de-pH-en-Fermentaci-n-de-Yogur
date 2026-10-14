@@ -12,6 +12,7 @@ import theme from '../styles/theme';
 
 export default function SimulacionScreen() {
   const [sustrato, setSustrato] = useState('vaca');
+  const [tipoAzucar, setTipoAzucar] = useState('lactosa');
   const [masaInoculo, setMasaInoculo] = useState('18.75');
   const [temperatura, setTemperatura] = useState('42');
   const [errorValidacion, setErrorValidacion] = useState(null);
@@ -19,13 +20,14 @@ export default function SimulacionScreen() {
   const [resultado, setResultado] = useState(() =>
     simulationService.simularAcidificacion({
       tipoSustrato: 'vaca',
+      tipoAzucar: 'lactosa',
       masaInoculoG: 18.75,
       temperaturaC: 42,
       volumenMl: 250,
     })
   );
 
-  const handleSimular = (nuevaMasa = masaInoculo, nuevaTemp = temperatura) => {
+  const handleSimular = (nuevaMasa = masaInoculo, nuevaTemp = temperatura, nuevoSustrato = sustrato, nuevoAzucar = tipoAzucar) => {
     const masa = parseFloat(nuevaMasa);
     const temp = parseFloat(nuevaTemp);
 
@@ -40,7 +42,8 @@ export default function SimulacionScreen() {
 
     setErrorValidacion(null);
     const res = simulationService.simularAcidificacion({
-      tipoSustrato: sustrato,
+      tipoSustrato: nuevoSustrato,
+      tipoAzucar: nuevoAzucar,
       masaInoculoG: masa,
       temperaturaC: temp,
       volumenMl: 250,
@@ -48,25 +51,37 @@ export default function SimulacionScreen() {
     setResultado(res);
   };
 
+  const cambiarSustrato = (tipo) => {
+    setSustrato(tipo);
+    const azucarSugerido = tipo === 'vaca' ? 'lactosa' : 'sacarosa';
+    setTipoAzucar(azucarSugerido);
+    handleSimular(masaInoculo, temperatura, tipo, azucarSugerido);
+  };
+
+  const cambiarAzucar = (azucar) => {
+    setTipoAzucar(azucar);
+    handleSimular(masaInoculo, temperatura, sustrato, azucar);
+  };
+
   const aplicarPresets = (masaPreset, tempPreset) => {
     setErrorValidacion(null);
     setMasaInoculo(String(masaPreset));
     setTemperatura(String(tempPreset));
-    handleSimular(masaPreset, tempPreset);
+    handleSimular(masaPreset, tempPreset, sustrato, tipoAzucar);
   };
 
   const ajustarMasa = (delta) => {
     const actual = parseFloat(masaInoculo) || 18.75;
     const nuevo = Math.max(0.5, Math.min(37.5, Math.round((actual + delta) * 100) / 100));
     setMasaInoculo(String(nuevo));
-    handleSimular(nuevo, temperatura);
+    handleSimular(nuevo, temperatura, sustrato, tipoAzucar);
   };
 
   const ajustarTemp = (delta) => {
     const actual = parseFloat(temperatura) || 42;
     const nuevo = Math.max(20, Math.min(52, Math.round((actual + delta) * 10) / 10));
     setTemperatura(String(nuevo));
-    handleSimular(masaInoculo, nuevo);
+    handleSimular(masaInoculo, nuevo, sustrato, tipoAzucar);
   };
 
   return (
@@ -75,7 +90,7 @@ export default function SimulacionScreen() {
         <Text style={styles.eyebrow}>Laboratorio de Alimentos - ULEAM</Text>
         <Text style={styles.title}>Simulador Cinético ("What-If")</Text>
         <Text style={styles.subtitle}>
-          Calibrado con datos experimentales reales del Dr. Stalin Santacruz (250 g de leche de vaca con inóculo Chivería).
+          Calibrado con datos experimentales reales del Dr. Stalin Santacruz (250 g de leche con inóculo Chivería).
         </Text>
       </View>
 
@@ -90,7 +105,7 @@ export default function SimulacionScreen() {
                 styles.btnPill,
                 sustrato === tipo && styles.btnPillActive,
               ]}
-              onPress={() => setSustrato(tipo)}
+              onPress={() => cambiarSustrato(tipo)}
             >
               <Text
                 style={[
@@ -103,6 +118,42 @@ export default function SimulacionScreen() {
             </Pressable>
           ))}
         </View>
+
+        {/* 1.1 Fuente de Azúcar (Audio 2 Dr. Santacruz) */}
+        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.md }]}>
+          Carbohidrato / Azúcar Añadido
+        </Text>
+        <View style={styles.sustratoRow}>
+          {['lactosa', 'sacarosa', 'glucosa'].map((azucar) => {
+            const deshabilitado = sustrato !== 'vaca' && azucar === 'lactosa';
+            return (
+              <Pressable
+                key={azucar}
+                disabled={deshabilitado}
+                style={[
+                  styles.btnPill,
+                  tipoAzucar === azucar && styles.btnPillActive,
+                  deshabilitado && { opacity: 0.35, backgroundColor: '#E2E8F0' },
+                ]}
+                onPress={() => cambiarAzucar(azucar)}
+              >
+                <Text
+                  style={[
+                    styles.btnPillText,
+                    tipoAzucar === azucar && styles.btnPillTextActive,
+                  ]}
+                >
+                  {azucar.toUpperCase()}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {sustrato !== 'vaca' && (
+          <Text style={{ fontSize: 11, color: '#0369A1', marginTop: 4, fontStyle: 'italic' }}>
+            💡 Leche vegetal sin lactosa: se adiciona sacarosa o glucosa (Audio Dr. Santacruz).
+          </Text>
+        )}
 
         {/* Atajos de Ensayos Experimentales Reales */}
         <Text style={[styles.sectionTitle, { marginTop: theme.spacing.md }]}>

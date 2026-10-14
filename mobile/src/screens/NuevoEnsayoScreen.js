@@ -120,7 +120,12 @@ export default function NuevoEnsayoScreen({ navigation }) {
             <Pressable
               key={tipo}
               style={[styles.pill, sustrato === tipo && styles.pillActive]}
-              onPress={() => setSustrato(tipo)}
+              onPress={() => {
+                setSustrato(tipo);
+                if (tipo !== 'vaca' && tipoAzucar === 'lactosa') {
+                  setTipoAzucar('sacarosa');
+                }
+              }}
             >
               <Text style={[styles.pillText, sustrato === tipo && styles.pillTextActive]}>
                 {tipo.toUpperCase()}
@@ -223,12 +228,31 @@ export default function NuevoEnsayoScreen({ navigation }) {
 
           <View style={styles.col}>
             <Text style={styles.label}>Tipo de Azúcar</Text>
-            <TextInput
-              style={[styles.input, { height: 42, marginTop: 4 }]}
-              value={tipoAzucar}
-              onChangeText={setTipoAzucar}
-              placeholder="lactosa"
-            />
+            <View style={{ flexDirection: 'row', gap: 4, marginTop: 4 }}>
+              {['lactosa', 'sacarosa', 'glucosa'].map((az) => {
+                const deshabilitado = sustrato !== 'vaca' && az === 'lactosa';
+                return (
+                  <Pressable
+                    key={az}
+                    disabled={deshabilitado}
+                    style={[
+                      styles.pill,
+                      { paddingVertical: 8, paddingHorizontal: 6, flex: 1, alignItems: 'center' },
+                      tipoAzucar === az && styles.pillActive,
+                      deshabilitado && { opacity: 0.35, backgroundColor: '#E2E8F0' },
+                    ]}
+                    onPress={() => setTipoAzucar(az)}
+                  >
+                    <Text style={[styles.pillText, { fontSize: 10 }, tipoAzucar === az && styles.pillTextActive]}>
+                      {az.substring(0, 4).toUpperCase()}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Text style={styles.hint}>
+              {sustrato === 'vaca' ? 'Lactosa nativa' : 'Sacarosa o glucosa'}
+            </Text>
           </View>
         </View>
 

@@ -10,7 +10,7 @@
 
 // Límites fisicoquímicos calibrados con datos de laboratorio ULEAM
 const LIMITES = {
-  PH: { MIN: 3.8, MAX: 7.2, DEFAULT_CORTE: 4.55 },
+  PH: { MIN: 3.8, MAX: 7.2, DEFAULT_CORTE: 4.50 },
   TEMPERATURA_C: { MIN: 20.0, MAX: 52.0, OPTIMA_MIN: 41.0, OPTIMA_MAX: 43.0 },
   INOCULO_PCT: { MIN: 0.5, MAX: 15.0, REFERENCIA_BAJA: 2.5, REFERENCIA_ALTA: 7.5 },
   VOLUMEN_ML: { MIN: 50.0, MAX: 5000.0, ESTANDAR: 250.0 },
@@ -96,6 +96,7 @@ function validarParametrosSimulacion(params = {}) {
   const masaRaw = params.masa_inoculo_g !== undefined ? params.masa_inoculo_g : params.masa_inoculo;
   const volRaw = params.volumen_ml !== undefined ? params.volumen_ml : params.masa_leche;
   const sustratoRaw = params.tipo_sustrato || params.tipo_leche || 'vaca';
+  const azucarRaw = params.tipo_azucar || params.tipoAzucar;
 
   const temp = Number(tempRaw !== undefined ? tempRaw : 42);
   const masa = Number(masaRaw !== undefined ? masaRaw : LIMITES.MASA_INOCULO_G.ESTANDAR);
@@ -133,6 +134,30 @@ function validarParametrosSimulacion(params = {}) {
     ? (sustrato.includes('chocho') ? 'chocho' : sustrato.includes('coco') ? 'coco' : 'vaca')
     : 'vaca';
 
+  // 5. Tipo de azúcar (Química de carbohidratos - Audio 2 Dr. Santacruz)
+  let tipoAzucarFinal = 'lactosa';
+  const azucarNormalizado = azucarRaw ? String(azucarRaw).trim().toLowerCase() : null;
+
+  if (sustratoFinal === 'chocho' || sustratoFinal === 'coco') {
+    if (azucarNormalizado === 'lactosa') {
+      advertencias.push(`Nota Bioquímica (Dr. Santacruz): La leche de ${sustratoFinal} no contiene lactosa naturalmente. Se ajusta la fuente de carbohidratos a sacarosa.`);
+      tipoAzucarFinal = 'sacarosa';
+    } else if (azucarNormalizado === 'glucosa') {
+      tipoAzucarFinal = 'glucosa';
+    } else {
+      tipoAzucarFinal = 'sacarosa'; // Sacarosa por defecto para leches vegetales
+    }
+  } else {
+    // Leche de vaca
+    if (azucarNormalizado === 'glucosa') {
+      tipoAzucarFinal = 'glucosa';
+    } else if (azucarNormalizado === 'sacarosa') {
+      tipoAzucarFinal = 'sacarosa';
+    } else {
+      tipoAzucarFinal = 'lactosa'; // Lactosa nativa por defecto en vaca
+    }
+  }
+
   return {
     esValido: errores.length === 0,
     errores,
@@ -143,6 +168,7 @@ function validarParametrosSimulacion(params = {}) {
       volumenMl: Number(vol.toFixed(1)),
       porcentajeInoculo,
       tipoSustrato: sustratoFinal,
+      tipoAzucar: tipoAzucarFinal,
     } : null,
   };
 }

@@ -94,12 +94,14 @@ const predictPoint = (req, res) => {
       volumenMl: params.volumenMl,
       minutos: minutosNum,
       tipoSustrato: params.tipoSustrato,
+      tipoAzucar: params.tipoAzucar,
     });
 
     const corte = predecirTiempoCorte({
       temperaturaC: params.temperaturaC,
       masaInoculoG: params.masaInoculoG,
       volumenMl: params.volumenMl,
+      tipoAzucar: params.tipoAzucar,
     });
 
     const viscosidad = predecirViscosidad({
@@ -155,6 +157,7 @@ const simulateTrajectory = (req, res) => {
       masaInoculoG: params.masaInoculoG,
       volumenMl: params.volumenMl,
       tipoSustrato: params.tipoSustrato,
+      tipoAzucar: params.tipoAzucar,
       intervaloMinutos: intervaloMin,
     });
 
