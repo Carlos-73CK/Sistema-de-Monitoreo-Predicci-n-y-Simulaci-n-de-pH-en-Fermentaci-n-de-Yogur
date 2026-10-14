@@ -5,6 +5,8 @@ export const colors = {
   secondary: '#0F766E',
   secondarySoft: '#CCFBF1',
   info: '#2563EB',
+  viscosity: '#2563EB',
+  refraction: '#7C3AED',
   background: '#F8FAFC',
   surface: '#FFFFFF',
   surfaceMuted: '#F1F5F9',

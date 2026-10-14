@@ -9,6 +9,8 @@ export default function CustomInput({
   placeholder,
   unit,
 }) {
+  const resolvedUnit = unit || (metricType === 'refraction' ? '°Brix' : undefined);
+
   return (
     <ValidatedInput
       etiqueta={label}
@@ -16,7 +18,7 @@ export default function CustomInput({
       onChangeText={onChangeText}
       tipo={metricType}
       placeholder={placeholder}
-      unidad={unit}
+      unidad={resolvedUnit}
     />
   );
 }

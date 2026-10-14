@@ -23,9 +23,17 @@ export default function MetricCard({
   const resolvedSubtitle = subtitulo || helperText;
   const resolvedAccent =
     accentColor || getMetricAccent(tipo, estado || status, resolvedValue);
+  const isWarning = (estado || status) === 'warning';
 
   return (
-    <View style={[styles.card, { borderLeftColor: resolvedAccent }, style]}>
+    <View
+      style={[
+        styles.card,
+        { borderLeftColor: resolvedAccent },
+        isWarning && styles.warningCard,
+        style,
+      ]}
+    >
       {resolvedTitle ? <Text style={styles.title}>{resolvedTitle}</Text> : null}
       <View style={styles.valueRow}>
         <Text style={[styles.value, { color: resolvedAccent }]}>
@@ -49,6 +57,14 @@ function getMetricAccent(tipo, estado, rawValue) {
 
   if (tipo === 'temperatura' || tipo === 'temperature') {
     return getTemperatureColor(numericValue);
+  }
+
+  if (tipo === 'viscosity' || tipo === 'viscosidad') {
+    return theme.colors.viscosity;
+  }
+
+  if (tipo === 'refraction' || tipo === 'refraccion') {
+    return theme.colors.refraction;
   }
 
   const statusColors = {
@@ -76,6 +92,9 @@ const styles = StyleSheet.create({
     borderWidth: theme.borders.thin,
     padding: theme.spacing.lg,
     ...theme.shadows.card,
+  },
+  warningCard: {
+    backgroundColor: theme.colors.warningSoft,
   },
   title: {
     ...theme.typography.caption,
