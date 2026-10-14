@@ -11,121 +11,190 @@
       --primary: #0284c7;
       --primary-dark: #0369a1;
       --primary-light: #e0f2fe;
+      --primary-glow: rgba(2, 132, 199, 0.15);
       --success: #10b981;
+      --success-dark: #059669;
       --success-light: #d1fae5;
       --warning: #f59e0b;
       --warning-light: #fef3c7;
       --danger: #ef4444;
       --danger-light: #fee2e2;
-      --bg: #f8fafc;
+      --bg: #f1f5f9;
       --card-bg: #ffffff;
       --text: #0f172a;
       --text-muted: #64748b;
       --border: #e2e8f0;
-      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-      --radius: 12px;
+      --border-focus: #38bdf8;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+      --radius: 14px;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); padding-bottom: 40px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 50px; min-height: 100vh; }
 
-    /* Header Superior */
+    /* Header Superior Científico */
     header {
-      background: linear-gradient(135deg, #0369a1 0%, #0284c7 50%, #0ea5e9 100%);
+      background: linear-gradient(135deg, #0f172a 0%, #0369a1 60%, #0284c7 100%);
       color: white;
-      padding: 24px 32px;
-      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+      padding: 20px 32px;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.15);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
-    .header-content { max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
-    .header-title h1 { font-size: 26px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
-    .header-title p { font-size: 14px; opacity: 0.9; margin-top: 4px; }
-    .header-badges { display: flex; gap: 10px; flex-wrap: wrap; }
-    .badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
-    .badge-white { background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(4px); color: white; border: 1px solid rgba(255, 255, 255, 0.3); }
-    .badge-green { background: #10b981; color: white; }
+    .header-content { max-width: 1320px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+    .header-title h1 { font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 10px; letter-spacing: -0.5px; }
+    .header-title p { font-size: 13px; color: #bae6fd; margin-top: 3px; font-weight: 500; }
+    .header-badges { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .badge { padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+    .badge-white { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); color: white; border: 1px solid rgba(255, 255, 255, 0.25); }
+    .badge-green { background: #10b981; color: white; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3); }
+    .badge-blue { background: #0284c7; color: white; }
 
     /* Contenedor Principal */
-    .container { max-width: 1280px; margin: 24px auto; padding: 0 24px; }
+    .container { max-width: 1320px; margin: 20px auto; padding: 0 20px; }
 
-    /* Barra de Pestañas (Tabs) */
-    .tabs { display: flex; gap: 8px; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+    /* Barra de Pestañas */
+    .tabs-wrapper { background: white; border-radius: 12px; padding: 6px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); margin-bottom: 20px; display: flex; gap: 6px; overflow-x: auto; }
     .tab-btn {
-      background: none; border: none; padding: 12px 20px; font-size: 15px; font-weight: 600;
-      color: var(--text-muted); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s;
+      flex: 1; min-width: 180px; background: none; border: none; padding: 10px 16px; font-size: 14px; font-weight: 700;
+      color: var(--text-muted); cursor: pointer; border-radius: 8px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
     }
-    .tab-btn:hover { color: var(--primary); }
-    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-btn:hover { color: var(--primary); background: #f8fafc; }
+    .tab-btn.active { color: white; background: var(--primary); box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3); }
 
     .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    .tab-panel.active { display: block; animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Grid Layout */
-    .grid-2 { display: grid; grid-template-columns: 1fr 1.3fr; gap: 24px; }
-    @media (max-width: 960px) { .grid-2 { grid-template-columns: 1fr; } }
+    /* Grid Layout Equilibrado */
+    .grid-main { display: grid; grid-template-columns: 460px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 1100px) { .grid-main { grid-template-columns: 1fr; } }
 
-    /* Tarjetas (Cards) */
+    /* Tarjetas */
     .card {
-      background: var(--card-bg); border-radius: var(--radius); padding: 24px;
-      box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 24px;
+      background: var(--card-bg); border-radius: var(--radius); padding: 22px;
+      box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 20px;
     }
-    .card-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
+    .card-title { font-size: 16px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+    .card-subtitle { font-size: 12px; color: var(--text-muted); font-weight: normal; margin-top: 2px; }
 
-    /* Presets */
-    .presets-label { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .presets-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    /* Presets Compactos */
+    .presets-label { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .presets-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
     .btn-preset {
-      background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 12px;
-      text-align: left; cursor: pointer; transition: all 0.2s;
+      background: #f8fafc; border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px;
+      text-align: left; cursor: pointer; transition: all 0.2s; position: relative;
     }
-    .btn-preset:hover { border-color: var(--primary); background: var(--primary-light); }
-    .btn-preset.active { border-color: var(--primary); background: var(--primary-light); }
-    .btn-preset-title { font-size: 13px; font-weight: 700; color: var(--text); }
-    .btn-preset-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .btn-preset:hover { border-color: var(--primary); background: var(--primary-light); transform: translateY(-1px); }
+    .btn-preset.active { border-color: var(--primary); background: var(--primary-light); box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2); }
+    .btn-preset-title { font-size: 12.5px; font-weight: 800; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
+    .btn-preset-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 500; }
 
-    /* Formularios */
+    /* Selector de Sustrato tipo Pills */
+    .sustrato-pills { display: flex; gap: 8px; margin-bottom: 16px; }
+    .sustrato-pill {
+      flex: 1; text-align: center; padding: 9px 8px; border-radius: 8px; font-size: 12.5px; font-weight: 700;
+      border: 1.5px solid var(--border); background: #f8fafc; color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+    }
+    .sustrato-pill:hover { border-color: var(--primary); color: var(--primary); }
+    .sustrato-pill.active { background: #e0f2fe; border-color: var(--primary); color: #0369a1; }
+
+    /* Controles Numéricos con Stepper (+/- 1) */
     .form-group { margin-bottom: 16px; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
-    input, select {
-      width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px;
-      font-size: 14px; background: white; transition: border-color 0.2s;
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    label { font-size: 12.5px; font-weight: 700; color: #334155; }
+    .badge-ratio { font-size: 11px; font-weight: 700; color: #0369a1; background: #e0f2fe; padding: 2px 8px; border-radius: 6px; }
+    
+    .stepper-input {
+      display: flex; align-items: stretch; border: 1.5px solid var(--border); border-radius: 10px;
+      overflow: hidden; background: white; transition: border-color 0.2s;
     }
-    input:focus, select:focus { outline: none; border-color: var(--primary); }
-    .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .stepper-input:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15); }
+    .stepper-input.error { border-color: var(--danger); box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
 
-    /* Botón Primario */
-    .btn-primary {
-      width: 100%; background: var(--primary); color: white; border: none; padding: 12px 20px;
-      border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.2s;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
+    .btn-step {
+      background: #f8fafc; border: none; width: 38px; color: #475569; font-size: 16px; font-weight: 800;
+      cursor: pointer; transition: background 0.15s; display: flex; align-items: center; justify-content: center;
+      user-select: none;
     }
-    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-step:hover { background: #e2e8f0; color: var(--primary-dark); }
+    .btn-step:active { background: #cbd5e1; }
 
-    /* Alertas */
-    .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; font-weight: 500; }
-    .alert-warning { background: var(--warning-light); color: #92400e; border: 1px solid #fde68a; }
-    .alert-danger { background: var(--danger-light); color: #991b1b; border: 1px solid #fecaca; }
-    .alert-success { background: var(--success-light); color: #065f46; border: 1px solid #a7f3d0; }
+    .stepper-input input {
+      flex: 1; border: none; text-align: center; font-size: 15px; font-weight: 700; color: #0f172a;
+      padding: 9px 8px; width: 100%; outline: none; -moz-appearance: textfield;
+    }
+    .stepper-input input::-webkit-outer-spin-button,
+    .stepper-input input::-webkit-inner-spin-button {
+      /* Permitir flechas nativas que ahora suben de 1 en 1 */
+      opacity: 1; height: 24px;
+    }
+
+    .input-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; }
+    .input-error-msg { font-size: 11px; color: var(--danger); font-weight: 600; margin-top: 4px; display: none; }
+
+    /* Botón Primario de Simulación */
+    .btn-simulate {
+      width: 100%; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: white; border: none;
+      padding: 13px 20px; border-radius: 10px; font-size: 15px; font-weight: 800; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3); transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn-simulate:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4); }
+    .btn-simulate:disabled { background: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* Banner de Alerta Térmica */
+    .alert-banner {
+      padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 10px; line-height: 1.4;
+    }
+    .alert-banner.warning { background: #fffbeb; border: 1px solid #fde68a; color: #b45309; }
+    .alert-banner.optimal { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+    .alert-banner.danger { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
 
     /* KPIs Grid */
-    .kpis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
-    .kpi-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
-    .kpi-val { font-size: 24px; font-weight: 800; color: var(--primary); margin: 6px 0; }
-    .kpi-lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
-    .kpi-sub { font-size: 11px; color: var(--text-muted); }
+    .kpis-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 18px; }
+    @media (max-width: 700px) { .kpis-row { grid-template-columns: 1fr 1fr; } }
+    .kpi-tile {
+      background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .kpi-header { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-number { font-size: 22px; font-weight: 800; color: #0f172a; margin: 4px 0; }
+    .kpi-footer { font-size: 11px; font-weight: 600; }
 
-    /* Diagnóstico Box */
-    .diagnostico-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
-    .diagnostico-title { font-size: 13px; font-weight: 700; color: #166534; margin-bottom: 4px; }
-    .diagnostico-desc { font-size: 13px; color: #15803d; line-height: 1.4; }
+    /* Medidor de Viscosidad Visual */
+    .visco-meter { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+    .visco-meter-header { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+    .meter-track { height: 10px; border-radius: 5px; background: linear-gradient(90deg, #ef4444 0%, #f59e0b 25%, #0284c7 60%, #10b981 100%); position: relative; }
+    .meter-pin {
+      position: absolute; top: -5px; width: 20px; height: 20px; background: white; border: 3px solid #0f172a;
+      border-radius: 50%; transform: translateX(-50%); box-shadow: 0 2px 4px rgba(0,0,0,0.25); transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .meter-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); font-weight: 700; margin-top: 6px; }
 
-    /* Tablas */
-    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-    th { background: #f1f5f9; padding: 10px 12px; font-weight: 700; color: var(--text); border-bottom: 2px solid var(--border); }
-    td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: #334155; }
-    tr:hover td { background: #f8fafc; }
+    /* Contenedor del Gráfico */
+    .chart-box { position: relative; height: 320px; width: 100%; }
 
-    .chart-container { position: relative; height: 340px; width: 100%; margin-top: 10px; }
+    /* Tabla de Hitos Cinéticos */
+    .milestones-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 16px; border-radius: 8px; overflow: hidden; }
+    .milestones-table th { background: #f1f5f9; padding: 8px 12px; font-weight: 700; text-align: left; color: #475569; }
+    .milestones-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+    .milestones-table tr.highlight td { background: #f0fdf4; font-weight: 700; color: #166534; }
+
+    /* Tablas Generales */
+    table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    table.data-table th { background: #f8fafc; padding: 12px 14px; font-weight: 700; color: #334155; border-bottom: 2px solid var(--border); }
+    table.data-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: #1e293b; }
+    table.data-table tr:hover td { background: #f8fafc; }
+
+    /* Utilidades */
+    .badge-status { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+    .badge-optimal { background: #dcfce7; color: #15803d; }
+    .badge-suboptimal { background: #fef3c7; color: #b45309; }
+    .badge-poor { background: #fee2e2; color: #b91c1c; }
   </style>
 </head>
 <body>
@@ -134,241 +203,344 @@
   <header>
     <div class="header-content">
       <div class="header-title">
-        <h1>🥛 PrediYogur <span style="font-size: 14px; font-weight: 400; opacity: 0.85;">| Biotecnología ULEAM</span></h1>
-        <p>Sistema de Monitoreo, Predicción y Simulación Cinética de pH en Fermentación de Leche con Inóculo Chivería</p>
+        <h1>🥛 PrediYogur <span style="font-size: 13px; font-weight: 500; opacity: 0.85; padding-left: 6px;">| Plataforma Científica ULEAM</span></h1>
+        <p>Modelado Biofísico No Lineal (Hill) y Monitoreo de Fermentación Láctea con Inóculo Chivería</p>
       </div>
       <div class="header-badges">
         <span class="badge badge-white">👨‍🔬 Dr. Stalin Gustavo Santacruz Terán</span>
-        <span class="badge badge-green">⭐ R² = 0.9774 (97.7% Precisión)</span>
-        <span class="badge badge-white" id="status-storage">💾 SQLite Local Autónomo</span>
+        <span class="badge badge-green">⭐ R² = 0.9774 (97.74% Precisión)</span>
+        <span class="badge badge-blue" id="storage-pill">💾 SQLite Local Autónomo</span>
       </div>
     </div>
   </header>
 
   <div class="container">
-    <!-- Pestañas -->
-    <div class="tabs">
+    <!-- Barra de Pestañas -->
+    <div class="tabs-wrapper">
       <button class="tab-btn active" onclick="switchTab('simulador')">⚡ Simulador Cinético ("What-If")</button>
       <button class="tab-btn" onclick="switchTab('feedback')">🧠 Aprendizaje Continuo (Feedback Loop)</button>
-      <button class="tab-btn" onclick="switchTab('historial')">💾 Historial de Predicciones</button>
+      <button class="tab-btn" onclick="switchTab('historial')">💾 Historial SQLite Local</button>
       <button class="tab-btn" onclick="switchTab('metricas')">📊 Métricas Científicas del Modelo</button>
     </div>
 
     <!-- PESTAÑA 1: SIMULADOR CINÉTICO -->
     <div id="tab-simulador" class="tab-panel active">
-      <div class="grid-2">
-        <!-- Columna Izquierda: Parámetros -->
+      <div class="grid-main">
+        
+        <!-- Columna Izquierda: Controles y Parámetros -->
         <div>
           <div class="card">
-            <div class="card-title">
-              <span>1. Configurar Escenario de Fermentación</span>
+            <div class="card-header">
+              <div>
+                <div class="card-title">🔬 Configuración del Bioproceso</div>
+                <div class="card-subtitle">Ajuste fino de variables o seleccione un escenario calibrado</div>
+              </div>
             </div>
 
-            <!-- Presets del Cliente -->
-            <div class="presets-label">Escenarios Calibrados del Dr. Santacruz</div>
+            <!-- Escenarios Calibrados del Dr. Santacruz -->
+            <div class="presets-label">Escenarios Calibrados del Cliente:</div>
             <div class="presets-grid">
-              <div class="btn-preset active" onclick="cargarPreset(18.75, 42)">
-                <div class="btn-preset-title">⭐ 42 °C / 7.5% Inóculo</div>
-                <div class="btn-preset-sub">Óptimo (2639 mPa·s, 4.25 h)</div>
+              <div class="btn-preset active" id="preset-optimo" onclick="aplicarPreset(18.75, 42, 250, 'preset-optimo')">
+                <div class="btn-preset-title">
+                  <span>⭐ 42 °C / 7.5% Inóculo</span>
+                  <span style="color:#059669; font-size:11px;">ÓPTIMO</span>
+                </div>
+                <div class="btn-preset-sub">Máxima firmeza: 2639 mPa·s (4.25 h)</div>
               </div>
-              <div class="btn-preset" onclick="cargarPreset(6.25, 42)">
-                <div class="btn-preset-title">🧪 42 °C / 2.5% Inóculo</div>
-                <div class="btn-preset-sub">Cinética lenta (1454 mPa·s, 6.75 h)</div>
+
+              <div class="btn-preset" id="preset-lento" onclick="aplicarPreset(6.25, 42, 250, 'preset-lento')">
+                <div class="btn-preset-title">
+                  <span>🧪 42 °C / 2.5% Inóculo</span>
+                </div>
+                <div class="btn-preset-sub">Cinética lenta: 1454 mPa·s (6.75 h)</div>
               </div>
-              <div class="btn-preset" onclick="cargarPreset(18.75, 40)">
-                <div class="btn-preset-title">⚠️ 40 °C / 7.5% Inóculo</div>
-                <div class="btn-preset-sub">Baja viscosidad (786 mPa·s)</div>
+
+              <div class="btn-preset" id="preset-frio" onclick="aplicarPreset(18.75, 40, 250, 'preset-frio')">
+                <div class="btn-preset-title">
+                  <span>⚠️ 40 °C / 7.5% Inóculo</span>
+                </div>
+                <div class="btn-preset-sub">Viscosidad baja: 786 mPa·s (sinéresis)</div>
               </div>
-              <div class="btn-preset" onclick="cargarPreset(18.75, 44)">
-                <div class="btn-preset-title">🔥 44 °C / 7.5% Inóculo</div>
-                <div class="btn-preset-sub">Estrés térmico (796 mPa·s)</div>
+
+              <div class="btn-preset" id="preset-calor" onclick="aplicarPreset(18.75, 44, 250, 'preset-calor')">
+                <div class="btn-preset-title">
+                  <span>🔥 44 °C / 7.5% Inóculo</span>
+                </div>
+                <div class="btn-preset-sub">Estrés térmico: 796 mPa·s</div>
               </div>
             </div>
 
-            <div id="sim-validation-alert" style="display:none;" class="alert alert-danger"></div>
-
+            <!-- Selección de Sustrato / Matriz -->
             <div class="form-group">
-              <label>Matriz / Tipo de Sustrato</label>
-              <select id="sim-sustrato">
-                <option value="vaca" selected>Leche entera de vaca (Patrón ULEAM)</option>
-                <option value="chocho">Bebida vegetal de chocho</option>
-                <option value="coco">Bebida vegetal de coco</option>
-              </select>
+              <label>Sustrato / Matriz Láctea:</label>
+              <div class="sustrato-pills">
+                <div class="sustrato-pill active" onclick="seleccionarSustrato('vaca', this)">🐄 Vaca (Patrón)</div>
+                <div class="sustrato-pill" onclick="seleccionarSustrato('chocho', this)">🌱 Chocho</div>
+                <div class="sustrato-pill" onclick="seleccionarSustrato('coco', this)">🥥 Coco</div>
+              </div>
+              <input type="hidden" id="sim-sustrato" value="vaca">
             </div>
 
+            <!-- Controles Numéricos con Stepper (Aumentan de 1 en 1 o entrada manual) -->
             <div class="form-row">
+              <!-- Temperatura -->
               <div class="form-group">
-                <label>Temperatura Incubación (°C)</label>
-                <input type="number" id="sim-temp" value="42" step="0.5" min="20" max="52">
-                <div class="hint">Ventana óptima: 41.0 °C – 43.0 °C</div>
+                <div class="label-row">
+                  <label for="sim-temp">Temperatura (°C):</label>
+                  <span class="badge-ratio" id="temp-tag">Óptima</span>
+                </div>
+                <div class="stepper-input" id="temp-stepper">
+                  <button type="button" class="btn-step" onclick="ajustarValor('sim-temp', -1)">−</button>
+                  <input type="number" id="sim-temp" value="42" step="1" min="20" max="52" oninput="validarYActualizar()">
+                  <button type="button" class="btn-step" onclick="ajustarValor('sim-temp', 1)">+</button>
+                </div>
+                <div class="input-hint">
+                  <span>Rango: 20 °C – 52 °C</span>
+                  <span style="font-weight:700; color:#0369a1;">Ventana: 41 - 43 °C</span>
+                </div>
+                <div class="input-error-msg" id="temp-error">⚠️ Fuera de rango biológico (20 - 52 °C)</div>
               </div>
+
+              <!-- Masa de Inóculo -->
               <div class="form-group">
-                <label>Masa de Inóculo (g)</label>
-                <input type="number" id="sim-inoculo" value="18.75" step="0.25" min="0.5" max="50">
-                <div class="hint">7.5% = 18.75g | 2.5% = 6.25g (para 250mL)</div>
+                <div class="label-row">
+                  <label for="sim-inoculo">Inóculo Chivería (g):</label>
+                  <span class="badge-ratio" id="inoculo-pct-badge">7.50%</span>
+                </div>
+                <div class="stepper-input" id="inoculo-stepper">
+                  <button type="button" class="btn-step" onclick="ajustarValor('sim-inoculo', -1)">−</button>
+                  <input type="number" id="sim-inoculo" value="18.75" step="1" min="0.5" max="37.5" oninput="validarYActualizar()">
+                  <button type="button" class="btn-step" onclick="ajustarValor('sim-inoculo', 1)">+</button>
+                </div>
+                <div class="input-hint">
+                  <span>Límites: 0.5 g – 37.5 g</span>
+                  <span>(0.2% – 15%)</span>
+                </div>
+                <div class="input-error-msg" id="inoculo-error">⚠️ Inóculo no realista (> 37.5 g o < 0.5 g)</div>
               </div>
             </div>
 
+            <!-- Volumen de Muestra -->
             <div class="form-group">
-              <label>Volumen de Leche (mL)</label>
-              <input type="number" id="sim-volumen" value="250" step="10" min="50" max="1000">
+              <div class="label-row">
+                <label for="sim-volumen">Volumen de Muestra (mL / g):</label>
+                <span style="font-size:11px; color:#64748b; font-weight:600;">Estándar: 250 mL</span>
+              </div>
+              <div class="stepper-input" id="volumen-stepper">
+                <button type="button" class="btn-step" onclick="ajustarValor('sim-volumen', -10)">−</button>
+                <input type="number" id="sim-volumen" value="250" step="1" min="50" max="1000" oninput="validarYActualizar()">
+                <button type="button" class="btn-step" onclick="ajustarValor('sim-volumen', 10)">+</button>
+              </div>
+              <div class="input-hint">
+                <span>Rango medible: 50 mL – 1000 mL (sube/baja con botones o escribe directo)</span>
+              </div>
+              <div class="input-error-msg" id="volumen-error">⚠️ Volumen fuera de escala (50 - 1000 mL)</div>
             </div>
 
-            <button class="btn-primary" onclick="ejecutarSimulacion()">
+            <button class="btn-simulate" id="btn-ejecutar" onclick="ejecutarSimulacion()">
               ⚡ Ejecutar Simulación Cinética
             </button>
           </div>
         </div>
 
-        <!-- Columna Derecha: Resultados y Gráfica -->
+        <!-- Columna Derecha: Gráfica, KPIs y Medidor Reológico -->
         <div>
           <div class="card">
-            <div class="card-title">
-              <span>2. Predicciones Fisicoquímicas y Reológicas</span>
+            <div class="card-header">
+              <div>
+                <div class="card-title">📊 Diagnóstico Reológico y Curva Temporal</div>
+                <div class="card-subtitle">Decaimiento sigmoidal de Hill calibrado con los datos de laboratorio</div>
+              </div>
+              <span class="badge badge-green" id="kpi-estado-badge">Condición Óptima</span>
             </div>
 
-            <div id="alerta-termica-box" style="display:none;" class="alert alert-warning">
-              ⚠️ <strong>Alerta Térmica:</strong> <span id="alerta-termica-text"></span>
+            <!-- Alerta Térmica Informativa -->
+            <div id="alerta-termica-box" class="alert-banner optimal">
+              <span id="alerta-termica-icon">✅</span>
+              <span id="alerta-termica-text">Temperatura dentro de la ventana óptima de incubación (41.0 °C – 43.0 °C). Máxima actividad acidificante.</span>
             </div>
 
-            <!-- KPIs -->
-            <div class="kpis-grid">
-              <div class="kpi-card">
-                <div class="kpi-lbl">Tiempo a pH 4.5</div>
-                <div class="kpi-val" id="kpi-tiempo">4.25 h</div>
-                <div class="kpi-sub" id="kpi-minutos">~255 minutos</div>
+            <!-- KPIs Principales -->
+            <div class="kpis-row">
+              <div class="kpi-tile">
+                <span class="kpi-header">Tiempo a pH 4.5</span>
+                <span class="kpi-number" id="kpi-tiempo" style="color:#0284c7;">4.25 h</span>
+                <span class="kpi-footer" id="kpi-minutos" style="color:#64748b;">~255 minutos</span>
               </div>
-              <div class="kpi-card">
-                <div class="kpi-lbl">Viscosidad Final</div>
-                <div class="kpi-val" id="kpi-viscosidad">2639</div>
-                <div class="kpi-sub">mPa·s (rotor 4, 60 rpm)</div>
+
+              <div class="kpi-tile">
+                <span class="kpi-header">Viscosidad Final</span>
+                <span class="kpi-number" id="kpi-viscosidad" style="color:#10b981;">2639</span>
+                <span class="kpi-footer" style="color:#059669;">mPa·s (rotor 4, 60 rpm)</span>
               </div>
-              <div class="kpi-card">
-                <div class="kpi-lbl">Calidad del Gel</div>
-                <div class="kpi-val" id="kpi-calidad" style="font-size: 16px; color: #166534; margin: 10px 0;">FIRME / ÓPTIMO</div>
-                <div class="kpi-sub">Red coloidal de caseína</div>
+
+              <div class="kpi-tile">
+                <span class="kpi-header">Calidad de Coágulo</span>
+                <span class="kpi-number" id="kpi-calidad" style="font-size:15px; color:#15803d; margin: 8px 0;">FIRME / ESTABLE</span>
+                <span class="kpi-footer" style="color:#64748b;">Red de caseína</span>
+              </div>
+
+              <div class="kpi-tile">
+                <span class="kpi-header">Consumo Azúcares</span>
+                <span class="kpi-number" id="kpi-brix" style="color:#f59e0b;">5.7 °Bx</span>
+                <span class="kpi-footer" style="color:#64748b;">De 10.5 a 5.7 °Brix</span>
               </div>
             </div>
 
-            <!-- Diagnóstico Reológico -->
-            <div class="diagnostico-box">
-              <div class="diagnostico-title">Diagnóstico Científico:</div>
-              <div class="diagnostico-desc" id="diagnostico-text">
-                Condición Óptima del Dr. Stalin Santacruz: Máxima viscosidad registrada en laboratorio (2639 mPa·s). Coágulo firme y estable.
+            <!-- Medidor Reológico Visual -->
+            <div class="visco-meter">
+              <div class="visco-meter-header">
+                <span>Escala Reológica Estimada (Firmeza del Gel)</span>
+                <span id="meter-val-text" style="color:#0284c7;">2639 mPa·s</span>
+              </div>
+              <div class="meter-track">
+                <div class="meter-pin" id="visco-pin" style="left: 80%;"></div>
+              </div>
+              <div class="meter-labels">
+                <span>0 (Líquido)</span>
+                <span>800 (Sinéresis)</span>
+                <span>1500 (Estándar)</span>
+                <span>2639 (Óptimo ULEAM)</span>
+                <span>3500+</span>
               </div>
             </div>
 
-            <!-- Gráfica de Curvas Cinéticas -->
-            <div class="chart-container">
+            <!-- Canvas del Gráfico Dinámico -->
+            <div class="chart-box">
               <canvas id="cineticaChart"></canvas>
             </div>
+
+            <!-- Tabla Resumen de Hitos de Fermentación -->
+            <table class="milestones-table">
+              <thead>
+                <tr>
+                  <th>Hito Experimental</th>
+                  <th>Tiempo</th>
+                  <th>pH</th>
+                  <th>°Brix</th>
+                  <th>Estado Fisiológico</th>
+                </tr>
+              </thead>
+              <tbody id="milestones-body">
+                <tr><td>Inicio (T0)</td><td>0 min (0.0 h)</td><td>6.25</td><td>10.5 °Bx</td><td>Latencia e hidratación inicial</td></tr>
+                <tr><td>Fase Exponencial</td><td>60 min (1.0 h)</td><td>6.00</td><td>8.5 °Bx</td><td>Producción activa de ácido láctico</td></tr>
+                <tr><td>Punto Isoeléctrico</td><td>180 min (3.0 h)</td><td>4.85</td><td>6.5 °Bx</td><td>Desestabilización micelar de caseína</td></tr>
+                <tr class="highlight"><td>🎯 Corte Crítico</td><td>255 min (4.25 h)</td><td>4.50</td><td>5.7 °Bx</td><td>Coagulación óptima. ¡Detener incubación!</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
+
       </div>
     </div>
 
     <!-- PESTAÑA 2: FEEDBACK LOOP (APRENDIZAJE CONTINUO) -->
     <div id="tab-feedback" class="tab-panel">
       <div class="card">
-        <div class="card-title">
-          <span>🧠 Enriquecimiento Dinámico del Dataset de IA (Aprendizaje Continuo)</span>
-          <span class="badge badge-green" id="badge-modo-aprendizaje">Línea Base Activa</span>
-        </div>
-        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">
-          Cada vez que finalizas un lote real en el laboratorio, ingresa sus lecturas aquí. El sistema guarda las muestras en SQLite local y recalibra el modelo de IA en caliente, incrementando su capacidad de generalización.
-        </p>
-
-        <div id="feedback-alert" style="display:none;" class="alert"></div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Identificador del Lote Experimental</label>
-            <input type="text" id="fb-lote" value="LOTE-LAB-ULEAM-002">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🧠 Feedback Loop: Aprendizaje Continuo para el Modelo de IA</div>
+            <div class="card-subtitle">Incorpora los datos de nuevos lotes terminados para que la IA refine sus predicciones</div>
           </div>
-          <div class="form-group">
-            <label>Viscosidad Final Real Medida (mPa·s)</label>
-            <input type="number" id="fb-visc" value="2610" min="150" max="5500">
-            <div class="hint">Regla obligatoria del cliente para finalizar el ensayo</div>
-          </div>
+          <button onclick="cargarLoteEjemplo()" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px;">
+            🧪 Cargar Lote de Prueba Rápida
+          </button>
         </div>
 
-        <div class="form-row">
+        <div id="fb-alert" class="alert-banner" style="display:none;"></div>
+
+        <div class="form-row" style="margin-bottom:16px;">
           <div class="form-group">
-            <label>Temperatura Incubación (°C)</label>
-            <input type="number" id="fb-temp" value="42" min="20" max="52">
+            <label>Código o Identificador del Lote:</label>
+            <input type="text" id="fb-lote" value="LOTE-EXP-2026-001" style="width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; font-weight:600;">
           </div>
           <div class="form-group">
-            <label>Masa Inóculo (g) para 250mL</label>
-            <input type="number" id="fb-inoculo" value="18.75" min="0.5" max="50">
+            <label>Viscosidad Final Medida (mPa·s) — <span style="color:#0284c7;">Regla Obligatoria</span>:</label>
+            <input type="number" id="fb-visc" value="2615" min="150" max="5500" step="1" style="width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; font-weight:600;">
           </div>
         </div>
 
-        <h4 style="font-size: 14px; margin: 16px 0 8px; font-weight: 700;">Lecturas Cronológicas del Ensayo:</h4>
-        <table id="tabla-lecturas" style="margin-bottom: 16px;">
+        <div class="form-row" style="margin-bottom:16px;">
+          <div class="form-group">
+            <label>Temperatura Real (°C):</label>
+            <input type="number" id="fb-temp" value="42.0" step="0.5" min="20" max="52" style="width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; font-weight:600;">
+          </div>
+          <div class="form-group">
+            <label>Masa Inóculo (g) para 250 mL:</label>
+            <input type="number" id="fb-inoculo" value="18.75" step="0.5" min="0.5" max="37.5" style="width:100%; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; font-weight:600;">
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin: 18px 0 8px;">
+          <label style="font-size:13px; font-weight:700;">Lecturas Cronológicas del Ensayo:</label>
+          <button onclick="agregarFilaFeedback()" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
+            + Agregar Lectura
+          </button>
+        </div>
+
+        <table class="data-table" id="tabla-fb" style="margin-bottom:20px;">
           <thead>
             <tr>
               <th>Minuto</th>
-              <th>pH Medido</th>
+              <th>pH Medido (3.8 - 7.2)</th>
               <th>Temperatura (°C)</th>
               <th>°Brix (Opcional)</th>
-              <th>Acción</th>
+              <th style="width:60px;">Acción</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><input type="number" class="t-min" value="0" style="padding:6px;"></td>
-              <td><input type="number" class="t-ph" value="6.25" step="0.01" style="padding:6px;"></td>
-              <td><input type="number" class="t-temp" value="42.0" step="0.1" style="padding:6px;"></td>
-              <td><input type="number" class="t-brix" value="10.5" step="0.1" style="padding:6px;"></td>
+              <td><input type="number" class="f-min" value="0" step="1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-ph" value="6.25" step="0.01" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-temp" value="42.0" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-brix" value="10.5" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
               <td><button onclick="eliminarFila(this)" style="background:#fee2e2; border:none; color:#b91c1c; padding:6px 10px; border-radius:6px; cursor:pointer;">✕</button></td>
             </tr>
             <tr>
-              <td><input type="number" class="t-min" value="60" style="padding:6px;"></td>
-              <td><input type="number" class="t-ph" value="6.00" step="0.01" style="padding:6px;"></td>
-              <td><input type="number" class="t-temp" value="42.1" step="0.1" style="padding:6px;"></td>
-              <td><input type="number" class="t-brix" value="8.4" step="0.1" style="padding:6px;"></td>
+              <td><input type="number" class="f-min" value="60" step="1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-ph" value="6.02" step="0.01" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-temp" value="42.1" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-brix" value="8.6" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
               <td><button onclick="eliminarFila(this)" style="background:#fee2e2; border:none; color:#b91c1c; padding:6px 10px; border-radius:6px; cursor:pointer;">✕</button></td>
             </tr>
             <tr>
-              <td><input type="number" class="t-min" value="180" style="padding:6px;"></td>
-              <td><input type="number" class="t-ph" value="4.80" step="0.01" style="padding:6px;"></td>
-              <td><input type="number" class="t-temp" value="42.0" step="0.1" style="padding:6px;"></td>
-              <td><input type="number" class="t-brix" value="6.5" step="0.1" style="padding:6px;"></td>
+              <td><input type="number" class="f-min" value="180" step="1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-ph" value="4.82" step="0.01" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-temp" value="42.0" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-brix" value="6.6" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
               <td><button onclick="eliminarFila(this)" style="background:#fee2e2; border:none; color:#b91c1c; padding:6px 10px; border-radius:6px; cursor:pointer;">✕</button></td>
             </tr>
             <tr>
-              <td><input type="number" class="t-min" value="255" style="padding:6px;"></td>
-              <td><input type="number" class="t-ph" value="4.50" step="0.01" style="padding:6px;"></td>
-              <td><input type="number" class="t-temp" value="42.0" step="0.1" style="padding:6px;"></td>
-              <td><input type="number" class="t-brix" value="5.7" step="0.1" style="padding:6px;"></td>
+              <td><input type="number" class="f-min" value="255" step="1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-ph" value="4.50" step="0.01" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-temp" value="42.0" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+              <td><input type="number" class="f-brix" value="5.7" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
               <td><button onclick="eliminarFila(this)" style="background:#fee2e2; border:none; color:#b91c1c; padding:6px 10px; border-radius:6px; cursor:pointer;">✕</button></td>
             </tr>
           </tbody>
         </table>
 
-        <div style="display:flex; gap:12px;">
-          <button onclick="agregarFila()" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:8px 16px; border-radius:6px; font-weight:600; cursor:pointer;">
-            + Agregar Fila de Lectura
-          </button>
-          <button onclick="enviarFeedbackLote()" class="btn-primary" style="flex:1;">
-            🚀 Enviar Lote y Recalibrar Modelo de IA
-          </button>
-        </div>
+        <button class="btn-simulate" onclick="enviarLoteFeedback()">
+          🚀 Enviar Lote y Recalibrar Modelo de IA
+        </button>
       </div>
     </div>
 
-    <!-- PESTAÑA 3: HISTORIAL DE SIMULACIONES EN SQLITE -->
+    <!-- PESTAÑA 3: HISTORIAL EN SQLITE -->
     <div id="tab-historial" class="tab-panel">
       <div class="card">
-        <div class="card-title">
-          <span>💾 Historial de Predicciones Almacenadas en SQLite Local</span>
-          <button onclick="cargarHistorial()" style="background:none; border:1px solid var(--border); padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px;">🔄 Actualizar</button>
+        <div class="card-header">
+          <div>
+            <div class="card-title">💾 Historial de Predicciones y Simulaciones (SQLite Local)</div>
+            <div class="card-subtitle">Registros guardados en <code>backend/data/prediyogur_local.sqlite</code></div>
+          </div>
+          <button onclick="cargarHistorial()" style="background:#f1f5f9; border:1px solid var(--border); padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px;">
+            🔄 Refrescar Tabla
+          </button>
         </div>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-          Todas las simulaciones generadas se guardan de forma persistente y autónoma en <code>backend/data/prediyogur_local.sqlite</code>.
-        </p>
-        <div style="overflow-x: auto;">
-          <table>
+
+        <div style="overflow-x:auto;">
+          <table class="data-table">
             <thead>
               <tr>
                 <th>ID</th>
@@ -377,12 +549,13 @@
                 <th>Inóculo</th>
                 <th>Tiempo Corte</th>
                 <th>Viscosidad Predicha</th>
+                <th>Calidad Gel</th>
                 <th>Diagnóstico</th>
                 <th>Fecha/Hora</th>
               </tr>
             </thead>
             <tbody id="historial-tbody">
-              <tr><td colspan="8" style="text-align:center; color:#94a3b8;">Cargando historial de SQLite...</td></tr>
+              <tr><td colspan="9" style="text-align:center; color:#94a3b8; padding:30px;">Cargando registros desde SQLite...</td></tr>
             </tbody>
           </table>
         </div>
@@ -392,38 +565,43 @@
     <!-- PESTAÑA 4: MÉTRICAS CIENTÍFICAS -->
     <div id="tab-metricas" class="tab-panel">
       <div class="card">
-        <div class="card-title">
-          <span>📊 Validación Estadística del Modelo de Cinética de Hill</span>
+        <div class="card-header">
+          <div>
+            <div class="card-title">📊 Validación Bioestadística y Desempeño del Modelo</div>
+            <div class="card-subtitle">Cátedra de Química de Alimentos y Maestría — ULEAM</div>
+          </div>
+          <span class="badge badge-green">R² = 0.9774 (97.74%)</span>
         </div>
-        <div class="kpis-grid" style="margin-bottom:24px;">
-          <div class="kpi-card">
-            <div class="kpi-lbl">Coeficiente R²</div>
-            <div class="kpi-val" id="met-r2">0.9774</div>
-            <div class="kpi-sub" id="met-r2-pct">97.74% de ajuste</div>
+
+        <div class="kpis-row" style="margin-bottom:24px;">
+          <div class="kpi-tile">
+            <span class="kpi-header">Bondad de Ajuste R²</span>
+            <span class="kpi-number" id="met-r2" style="color:#0284c7;">0.9774</span>
+            <span class="kpi-footer" style="color:#0369a1;">97.74% de exactitud</span>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-lbl">Error RMSE</div>
-            <div class="kpi-val" id="met-rmse">0.0961</div>
-            <div class="kpi-sub">Unidades de pH</div>
+          <div class="kpi-tile">
+            <span class="kpi-header">Error Cuadrático (RMSE)</span>
+            <span class="kpi-number" id="met-rmse" style="color:#10b981;">0.0961</span>
+            <span class="kpi-footer" style="color:#059669;">Unidades de pH</span>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-lbl">Total Muestras</div>
-            <div class="kpi-val" id="met-muestras">37</div>
-            <div class="kpi-sub" id="met-lotes">6 Lotes de laboratorio</div>
+          <div class="kpi-tile">
+            <span class="kpi-header">Error Medio (MAE)</span>
+            <span class="kpi-number" id="met-mae" style="color:#6366f1;">0.0773</span>
+            <span class="kpi-footer" style="color:#4f46e5;">Unidades de pH</span>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-lbl">Ajuste Promedio</div>
-            <div class="kpi-val" id="met-prec">98.5%</div>
-            <div class="kpi-sub">Precisión experimental</div>
+          <div class="kpi-tile">
+            <span class="kpi-header">Muestras Aprendidas</span>
+            <span class="kpi-number" id="met-muestras" style="color:#0f172a;">37</span>
+            <span class="kpi-footer" id="met-lotes-text" style="color:#64748b;">6 lotes del Dr. Santacruz</span>
           </div>
         </div>
 
-        <h4 style="font-size:14px; margin-bottom:10px; font-weight:700;">Respaldo Científico de la Cátedra:</h4>
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px; font-size:13px; line-height:1.6;">
-          <p><strong>Patrocinador:</strong> Dr. Stalin Gustavo Santacruz Terán — Cátedra de Química de Alimentos y Maestría (ULEAM).</p>
-          <p><strong>Matriz Biológica:</strong> Leche entera de vaca (250 g) con inóculo comercial Chivería (2.5% y 7.5%).</p>
-          <p><strong>Punto Crítico de Corte:</strong> pH 4.50 – 4.55 (tiempo donde la caseína desestabiliza su micela y forma el coágulo firme sin sinéresis).</p>
-          <p><strong>Condición Reológica Óptima:</strong> 42.0 °C con 7.5% de inóculo bacteriano genera la máxima firmeza (2639 mPa·s medidos con rotor 4 a 60 rpm).</p>
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:18px; font-size:13.5px; line-height:1.7;">
+          <h4 style="font-size:14px; color:#0f172a; margin-bottom:8px; font-weight:800;">🔬 Ficha Técnica de la Calibración Científica:</h4>
+          <p>• <strong>Investigador Patrocinador:</strong> Dr. Stalin Gustavo Santacruz Terán (Facultad de Ciencias de la Vida y Tecnologías - ULEAM).</p>
+          <p>• <strong>Ecuación Cinética:</strong> Decaimiento Sigmoidal de Hill / Gompertz con interpolación ponderada por distancia inversa (IDW) normalizada en el espacio bidimensional de Temperatura e Inóculo.</p>
+          <p>• <strong>Punto de Corte Reológico:</strong> pH 4.55. Al alcanzar este valor, la desestabilización de las micelas de caseína consolida la red tridimensional del gel.</p>
+          <p>• <strong>Superficie de Respuesta Reológica:</strong> Máxima firmeza obtenida experimentalmente a <strong>42 °C con 7.5% de inóculo Chivería</strong> (2639 mPa·s medidos con rotor 4 a 60 rpm).</p>
         </div>
       </div>
     </div>
@@ -433,7 +611,7 @@
   <script>
     let chartInstance = null;
 
-    // Inicializar gráfica de Chart.js
+    // Inicializar gráfica dinámica de Chart.js
     function initChart() {
       const ctx = document.getElementById('cineticaChart').getContext('2d');
       chartInstance = new Chart(ctx, {
@@ -442,32 +620,38 @@
           labels: [],
           datasets: [
             {
-              label: 'pH Predicho',
+              label: 'Curva Cinética de pH',
               data: [],
               borderColor: '#0284c7',
-              backgroundColor: 'rgba(2, 132, 199, 0.1)',
+              backgroundColor: 'rgba(2, 132, 199, 0.08)',
               borderWidth: 3,
               fill: true,
-              tension: 0.3,
+              tension: 0.35,
+              pointRadius: 3,
+              pointBackgroundColor: '#0284c7',
+              pointHoverRadius: 6,
               yAxisID: 'y',
             },
             {
-              label: '°Brix (Azúcares)',
+              label: 'Consumo de Azúcares (°Brix)',
               data: [],
               borderColor: '#f59e0b',
               backgroundColor: 'transparent',
               borderWidth: 2,
-              borderDash: [5, 5],
-              tension: 0.3,
+              borderDash: [5, 4],
+              tension: 0.35,
+              pointRadius: 2,
+              pointHoverRadius: 5,
               yAxisID: 'y1',
             },
             {
-              label: 'Corte pH 4.5',
+              label: 'Límite Crítico pH 4.5 (Corte)',
               data: [],
               borderColor: '#ef4444',
               borderWidth: 2,
               borderDash: [4, 4],
               pointRadius: 0,
+              fill: false,
               yAxisID: 'y',
             }
           ]
@@ -476,42 +660,155 @@
           responsive: true,
           maintainAspectRatio: false,
           interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { font: { weight: 'bold', size: 12 }, padding: 14 }
+            },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              titleFont: { weight: 'bold', size: 13 },
+              bodyFont: { size: 12 },
+              padding: 10,
+              cornerRadius: 8
+            }
+          },
           scales: {
-            x: { title: { display: true, text: 'Tiempo de Fermentación (minutos)' } },
+            x: {
+              title: { display: true, text: 'Tiempo Transcurrido (minutos)', font: { weight: 'bold', size: 12 } },
+              grid: { color: '#f1f5f9' }
+            },
             y: {
-              title: { display: true, text: 'pH' },
+              title: { display: true, text: 'Nivel de pH', font: { weight: 'bold', size: 12 } },
               min: 4.0,
               max: 7.0,
               position: 'left',
+              grid: { color: '#e2e8f0' }
             },
             y1: {
-              title: { display: true, text: 'Índice de Refracción (°Brix)' },
-              min: 4.0,
+              title: { display: true, text: 'Índice de Refracción (°Brix)', font: { weight: 'bold', size: 12 } },
+              min: 3.0,
               max: 12.0,
               position: 'right',
-              grid: { drawOnChartArea: false },
+              grid: { drawOnChartArea: false }
             }
           }
         }
       });
     }
 
-    // Cambiar pestañas
+    // Navegación de pestañas
     function switchTab(tabId) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      event.target.classList.add('active');
+      event.currentTarget.classList.add('active');
       document.getElementById('tab-' + tabId).classList.add('active');
+
       if (tabId === 'historial') cargarHistorial();
       if (tabId === 'metricas') cargarMetricas();
     }
 
-    // Cargar Presets de botones
-    function cargarPreset(inoculo, temp) {
+    // Ajuste de valores con botones (+/- 1)
+    function ajustarValor(inputId, delta) {
+      const input = document.getElementById(inputId);
+      let val = parseFloat(input.value) || 0;
+      val = Math.round((val + delta) * 100) / 100;
+
+      const min = parseFloat(input.min);
+      const max = parseFloat(input.max);
+
+      if (!isNaN(min) && val < min) val = min;
+      if (!isNaN(max) && val > max) val = max;
+
+      input.value = val;
+      validarYActualizar();
+    }
+
+    // Validación interactiva y actualización de porcentaje de inóculo
+    function validarYActualizar() {
+      const tempInput = document.getElementById('sim-temp');
+      const inoculoInput = document.getElementById('sim-inoculo');
+      const volInput = document.getElementById('sim-volumen');
+
+      const temp = parseFloat(tempInput.value);
+      const inoc = parseFloat(inoculoInput.value);
+      const vol = parseFloat(volInput.value);
+
+      let esValido = true;
+
+      // Validar Temperatura [20, 52]
+      if (isNaN(temp) || temp < 20 || temp > 52) {
+        document.getElementById('temp-stepper').classList.add('error');
+        document.getElementById('temp-error').style.display = 'block';
+        esValido = false;
+      } else {
+        document.getElementById('temp-stepper').classList.remove('error');
+        document.getElementById('temp-error').style.display = 'none';
+        // Tag de temperatura
+        const tag = document.getElementById('temp-tag');
+        if (temp >= 41 && temp <= 43) {
+          tag.innerText = 'Óptima';
+          tag.style.background = '#dcfce7';
+          tag.style.color = '#15803d';
+        } else if (temp < 41) {
+          tag.innerText = 'Lenta';
+          tag.style.background = '#fef3c7';
+          tag.style.color = '#b45309';
+        } else {
+          tag.innerText = 'Estrés';
+          tag.style.background = '#fee2e2';
+          tag.style.color = '#b91c1c';
+        }
+      }
+
+      // Validar Inóculo [0.5, 37.5]
+      if (isNaN(inoc) || inoc < 0.5 || inoc > 37.5) {
+        document.getElementById('inoculo-stepper').classList.add('error');
+        document.getElementById('inoculo-error').style.display = 'block';
+        esValido = false;
+      } else {
+        document.getElementById('inoculo-stepper').classList.remove('error');
+        document.getElementById('inoculo-error').style.display = 'none';
+      }
+
+      // Validar Volumen [50, 1000]
+      if (isNaN(vol) || vol < 50 || vol > 1000) {
+        document.getElementById('volumen-stepper').classList.add('error');
+        document.getElementById('volumen-error').style.display = 'block';
+        esValido = false;
+      } else {
+        document.getElementById('volumen-stepper').classList.remove('error');
+        document.getElementById('volumen-error').style.display = 'none';
+      }
+
+      // Calcular Porcentaje de inóculo dinámico
+      if (!isNaN(inoc) && !isNaN(vol) && vol > 0) {
+        const pct = ((inoc / vol) * 100).toFixed(2);
+        document.getElementById('inoculo-pct-badge').innerText = pct + '%';
+      }
+
+      document.getElementById('btn-ejecutar').disabled = !esValido;
+    }
+
+    // Aplicar Presets
+    function aplicarPreset(inoculo, temp, vol, elementId) {
       document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
-      if (event && event.currentTarget) event.currentTarget.classList.add('active');
+      const el = document.getElementById(elementId);
+      if (el) el.classList.add('active');
+
       document.getElementById('sim-inoculo').value = inoculo;
       document.getElementById('sim-temp').value = temp;
+      document.getElementById('sim-volumen').value = vol;
+
+      validarYActualizar();
+      ejecutarSimulacion();
+    }
+
+    // Selección de Sustrato
+    function seleccionarSustrato(tipo, el) {
+      document.querySelectorAll('.sustrato-pill').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('sim-sustrato').value = tipo;
       ejecutarSimulacion();
     }
 
@@ -521,9 +818,6 @@
       const temperatura = parseFloat(document.getElementById('sim-temp').value);
       const masaInoculo = parseFloat(document.getElementById('sim-inoculo').value);
       const volumen = parseFloat(document.getElementById('sim-volumen').value);
-
-      const alertBox = document.getElementById('sim-validation-alert');
-      alertBox.style.display = 'none';
 
       try {
         const res = await fetch('/api/ai/simulate', {
@@ -541,8 +835,7 @@
 
         const data = await res.json();
         if (!data.success) {
-          alertBox.innerHTML = '⚠️ ' + (data.errores ? data.errores.join('<br>') : data.message);
-          alertBox.style.display = 'block';
+          alert('⚠️ ' + (data.errores ? data.errores.join('\n') : data.message));
           return;
         }
 
@@ -553,18 +846,34 @@
         document.getElementById('kpi-minutos').innerText = '~' + sim.prediccionCorte.tiempoCorteMinutos + ' minutos';
         document.getElementById('kpi-viscosidad').innerText = sim.prediccionViscosidad.viscosidadPredichaMpaS;
         document.getElementById('kpi-calidad').innerText = sim.prediccionViscosidad.calidadGel;
-        document.getElementById('diagnostico-text').innerText = sim.prediccionViscosidad.diagnostico;
+        document.getElementById('meter-val-text').innerText = sim.prediccionViscosidad.viscosidadPredichaMpaS + ' mPa·s';
 
-        // Alerta térmica
-        const alertaTermicaBox = document.getElementById('alerta-termica-box');
+        // Actualizar Pin del Medidor de Viscosidad
+        const visc = sim.prediccionViscosidad.viscosidadPredichaMpaS;
+        const pctPin = Math.max(5, Math.min(95, (visc / 3200) * 100));
+        document.getElementById('visco-pin').style.left = pctPin + '%';
+
+        // Actualizar Banner de Alerta Térmica
+        const banner = document.getElementById('alerta-termica-box');
+        const bannerText = document.getElementById('alerta-termica-text');
+        const bannerIcon = document.getElementById('alerta-termica-icon');
+        const estadoBadge = document.getElementById('kpi-estado-badge');
+
         if (sim.prediccionCorte.fueraDeRangoOptimo) {
-          document.getElementById('alerta-termica-text').innerText = sim.prediccionCorte.alertaTermica;
-          alertaTermicaBox.style.display = 'block';
+          banner.className = 'alert-banner warning';
+          bannerIcon.innerText = '⚠️';
+          bannerText.innerText = sim.prediccionCorte.alertaTermica;
+          estadoBadge.className = 'badge badge-white';
+          estadoBadge.innerText = 'Desviación Térmica';
         } else {
-          alertaTermicaBox.style.display = 'none';
+          banner.className = 'alert-banner optimal';
+          bannerIcon.innerText = '✅';
+          bannerText.innerText = 'Temperatura dentro de la ventana óptima de incubación (41.0 °C – 43.0 °C). Máxima actividad acidificante.';
+          estadoBadge.className = 'badge badge-green';
+          estadoBadge.innerText = 'Condición Óptima';
         }
 
-        // Actualizar gráfica
+        // Actualizar Gráfica
         const labels = sim.curva.map(p => p.minutos + 'm');
         const phData = sim.curva.map(p => p.phPredicho);
         const brixData = sim.curva.map(p => p.indiceRefraccionPredicho);
@@ -576,41 +885,64 @@
         chartInstance.data.datasets[2].data = corteLine;
         chartInstance.update();
 
+        // Actualizar Hitos de la Tabla
+        actualizarHitosTabla(sim);
+
       } catch (err) {
-        alertBox.innerHTML = '❌ Error de conexión al servidor: ' + err.message;
-        alertBox.style.display = 'block';
+        console.error('Error al simular:', err);
       }
+    }
+
+    // Actualiza la tabla de hitos
+    function actualizarHitosTabla(sim) {
+      const curva = sim.curva;
+      const t0 = curva[0] || { minutos: 0, phPredicho: 6.25, indiceRefraccionPredicho: 10.5 };
+      const t60 = curva.find(p => p.minutos === 60) || curva[Math.min(4, curva.length - 1)];
+      const t180 = curva.find(p => p.minutos === 180) || curva[Math.min(12, curva.length - 1)];
+      const tCorte = curva[curva.length - 1];
+
+      document.getElementById('milestones-body').innerHTML = `
+        <tr><td>Inicio (T0)</td><td>${t0.minutos} min (${(t0.minutos/60).toFixed(1)} h)</td><td>${t0.phPredicho}</td><td>${t0.indiceRefraccionPredicho} °Bx</td><td>Latencia e hidratación inicial</td></tr>
+        <tr><td>Fase Exponencial</td><td>${t60.minutos} min (${(t60.minutos/60).toFixed(1)} h)</td><td>${t60.phPredicho}</td><td>${t60.indiceRefraccionPredicho} °Bx</td><td>Producción activa de ácido láctico</td></tr>
+        <tr><td>Punto Isoeléctrico</td><td>${t180.minutos} min (${(t180.minutos/60).toFixed(1)} h)</td><td>${t180.phPredicho}</td><td>${t180.indiceRefraccionPredicho} °Bx</td><td>Desestabilización micelar de caseína</td></tr>
+        <tr class="highlight"><td>🎯 Corte Crítico (pH 4.5)</td><td>${tCorte.minutos} min (${(tCorte.minutos/60).toFixed(2)} h)</td><td>${tCorte.phPredicho}</td><td>${tCorte.indiceRefraccionPredicho} °Bx</td><td>Coagulación óptima. ¡Detener incubación!</td></tr>
+      `;
     }
 
     // Cargar Historial desde SQLite
     async function cargarHistorial() {
       const tbody = document.getElementById('historial-tbody');
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Consultando base de datos SQLite local...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px;">Cargando registros desde SQLite...</td></tr>';
       try {
-        const res = await fetch('/api/ai/simulations?limite=20');
+        const res = await fetch('/api/ai/simulations?limite=25');
         const data = await res.json();
         if (data.success && data.data.simulaciones.length > 0) {
-          tbody.innerHTML = data.data.simulaciones.map(s => `
-            <tr>
-              <td><strong>#${s.id}</strong></td>
-              <td>${s.tipo_sustrato.toUpperCase()}</td>
-              <td>${s.temperatura_c} °C</td>
-              <td>${s.porcentaje_inoculo}% (${s.masa_inoculo_g}g)</td>
-              <td><strong>${s.tiempo_corte_horas} h</strong> (${s.tiempo_corte_minutos} min)</td>
-              <td><span style="font-weight:700; color:#0284c7;">${s.viscosidad_predicha_mpas} mPa·s</span></td>
-              <td><small>${s.diagnostico ? s.diagnostico.substring(0, 45) + '...' : '--'}</small></td>
-              <td><small>${new Date(s.creado_en).toLocaleTimeString()}</small></td>
-            </tr>
-          `).join('');
+          tbody.innerHTML = data.data.simulaciones.map(s => {
+            const fecha = new Date(s.creado_en);
+            const horaStr = fecha.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            return `
+              <tr>
+                <td><strong>#${s.id}</strong></td>
+                <td><span class="badge-status badge-optimal">${s.tipo_sustrato.toUpperCase()}</span></td>
+                <td>${s.temperatura_c} °C</td>
+                <td>${s.porcentaje_inoculo}% (${s.masa_inoculo_g}g)</td>
+                <td><strong>${s.tiempo_corte_horas} h</strong> (${s.tiempo_corte_minutos} min)</td>
+                <td><span style="font-weight:800; color:#0284c7;">${s.viscosidad_predicha_mpas} mPa·s</span></td>
+                <td><small style="font-weight:700;">${s.calidad_gel || 'ESTANDAR'}</small></td>
+                <td><small>${s.diagnostico ? s.diagnostico.substring(0, 45) + '...' : '--'}</small></td>
+                <td><small style="color:#64748b;">${horaStr}</small></td>
+              </tr>
+            `;
+          }).join('');
         } else {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">No hay simulaciones en SQLite aún. Ejecuta una en la primera pestaña.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#94a3b8; padding:30px;">No hay simulaciones registradas en SQLite aún.</td></tr>';
         }
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#b91c1c;">Error: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#b91c1c;">Error: ${err.message}</td></tr>`;
       }
     }
 
-    // Cargar Métricas Científicas
+    // Cargar Métricas del Modelo
     async function cargarMetricas() {
       try {
         const res = await fetch('/api/ai/metrics');
@@ -618,70 +950,79 @@
         if (data.success) {
           const m = data.data;
           document.getElementById('met-r2').innerText = m.metricasValidacion.rCuadrado;
-          document.getElementById('met-r2-pct').innerText = m.metricasValidacion.coeficienteDeterminacionPct + ' de ajuste';
           document.getElementById('met-rmse').innerText = m.metricasValidacion.rmse;
+          document.getElementById('met-mae').innerText = m.metricasValidacion.mae;
           document.getElementById('met-muestras').innerText = m.datasetInfo.totalMuestras;
-          document.getElementById('met-lotes').innerText = m.datasetInfo.totalLotesExperimentales + ' Lotes (' + m.datasetInfo.lotesNuevosAprendidos + ' aprendidos)';
-          document.getElementById('met-prec').innerText = m.metricasValidacion.precisionAjuste + '%';
+          document.getElementById('met-lotes-text').innerText = `${m.datasetInfo.lotesBase} lotes base (+${m.datasetInfo.lotesNuevosAprendidos} aprendidos)`;
         }
-      } catch (e) {}
+      } catch (err) {
+        console.error(err);
+      }
     }
 
-    // Tablas de Feedback
-    function agregarFila() {
-      const tbody = document.querySelector('#tabla-lecturas tbody');
+    // Cargar lote de ejemplo para probar feedback en 1 clic
+    function cargarLoteEjemplo() {
+      document.getElementById('fb-lote').value = 'LOTE-TEST-EXP-' + Math.floor(100 + Math.random() * 900);
+      document.getElementById('fb-visc').value = '2625';
+      document.getElementById('fb-temp').value = '42.0';
+      document.getElementById('fb-inoculo').value = '18.75';
+      alert('🧪 Datos de lote de laboratorio cargados en el formulario. Pulsa "Enviar Lote y Recalibrar Modelo de IA" para probar.');
+    }
+
+    function agregarFilaFeedback() {
+      const tbody = document.querySelector('#tabla-fb tbody');
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="number" class="t-min" value="0" style="padding:6px;"></td>
-        <td><input type="number" class="t-ph" value="4.50" step="0.01" style="padding:6px;"></td>
-        <td><input type="number" class="t-temp" value="42.0" step="0.1" style="padding:6px;"></td>
-        <td><input type="number" class="t-brix" value="5.5" step="0.1" style="padding:6px;"></td>
+        <td><input type="number" class="f-min" value="300" step="1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+        <td><input type="number" class="f-ph" value="4.45" step="0.01" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+        <td><input type="number" class="f-temp" value="42.0" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
+        <td><input type="number" class="f-brix" value="5.5" step="0.1" style="width:100%; padding:6px; border:1px solid #cbd5e1; border-radius:6px; font-weight:600;"></td>
         <td><button onclick="eliminarFila(this)" style="background:#fee2e2; border:none; color:#b91c1c; padding:6px 10px; border-radius:6px; cursor:pointer;">✕</button></td>
       `;
       tbody.appendChild(tr);
     }
+
     function eliminarFila(btn) {
       const tr = btn.closest('tr');
-      if (document.querySelectorAll('#tabla-lecturas tbody tr').length > 2) {
+      if (document.querySelectorAll('#tabla-fb tbody tr').length > 2) {
         tr.remove();
       } else {
-        alert('Debe conservar al menos 2 lecturas cronológicas para alimentar la IA.');
+        alert('Debe conservar al menos 2 lecturas cronológicas para que la IA aprenda.');
       }
     }
 
-    // Enviar lote de aprendizaje continuo
-    async function enviarFeedbackLote() {
+    // Enviar Lote Feedback
+    async function enviarLoteFeedback() {
       const loteId = document.getElementById('fb-lote').value;
-      const temp = parseFloat(document.getElementById('fb-temp').value);
-      const masa = parseFloat(document.getElementById('fb-inoculo').value);
       const visc = parseFloat(document.getElementById('fb-visc').value);
+      const temp = parseFloat(document.getElementById('fb-temp').value);
+      const inoc = parseFloat(document.getElementById('fb-inoculo').value);
 
-      const alertBox = document.getElementById('feedback-alert');
+      const alertBox = document.getElementById('fb-alert');
       alertBox.style.display = 'none';
 
-      const filas = document.querySelectorAll('#tabla-lecturas tbody tr');
+      const filas = document.querySelectorAll('#tabla-fb tbody tr');
       const lecturas = [];
       filas.forEach(f => {
         lecturas.push({
-          tiempo_minutos: parseFloat(f.querySelector('.t-min').value),
-          ph: parseFloat(f.querySelector('.t-ph').value),
-          temperatura: parseFloat(f.querySelector('.t-temp').value),
-          indice_refraccion: parseFloat(f.querySelector('.t-brix').value) || null
+          tiempo_minutos: parseFloat(f.querySelector('.f-min').value),
+          ph: parseFloat(f.querySelector('.f-ph').value),
+          temperatura: parseFloat(f.querySelector('.f-temp').value),
+          indice_refraccion: parseFloat(f.querySelector('.f-brix').value) || null
         });
       });
 
-      // Crear token dev de autorización para el feedback protegido
       try {
         const res = await fetch('/api/ai/feedback', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + 'dev_token_uleam_2026' // Fallback o token real
+            'Authorization': 'Bearer dev_token_uleam_2026'
           },
           body: JSON.stringify({
             lote_id: loteId,
             temperatura_c: temp,
-            masa_inoculo_g: masa,
+            masa_inoculo_g: inoc,
             volumen_ml: 250,
             viscosidad_final: visc,
             lecturas: lecturas
@@ -690,26 +1031,26 @@
 
         const data = await res.json();
         if (!data.success) {
-          alertBox.className = 'alert alert-danger';
+          alertBox.className = 'alert-banner danger';
           alertBox.innerHTML = '❌ ' + (data.errores ? data.errores.join('<br>') : data.message);
           alertBox.style.display = 'block';
         } else {
-          alertBox.className = 'alert alert-success';
-          alertBox.innerHTML = `✅ <strong>${data.message}</strong><br>Dataset ampliado a <strong>${data.data.dataset_actualizado.totalMuestras} muestras</strong>. R² recalculado: <strong>${data.data.metricas_recalibradas.rCuadrado}</strong>.`;
+          alertBox.className = 'alert-banner optimal';
+          alertBox.innerHTML = `✅ <strong>${data.message}</strong><br>Dataset actualizado: <strong>${data.data.dataset_actualizado.totalMuestras} muestras</strong>. R² recalculado: <strong>${data.data.metricas_recalibradas.rCuadrado}</strong>.`;
           alertBox.style.display = 'block';
-          document.getElementById('badge-modo-aprendizaje').innerText = '🔥 Aprendizaje Continuo Activo (' + data.data.dataset_actualizado.muestrasNuevasAprendidas + ' muestras)';
           cargarMetricas();
         }
       } catch (err) {
-        alertBox.className = 'alert alert-danger';
-        alertBox.innerHTML = '❌ Error al comunicar con el backend: ' + err.message;
+        alertBox.className = 'alert-banner danger';
+        alertBox.innerHTML = '❌ Error de comunicación: ' + err.message;
         alertBox.style.display = 'block';
       }
     }
 
-    // Inicializar al cargar
+    // Inicio
     window.addEventListener('DOMContentLoaded', () => {
       initChart();
+      validarYActualizar();
       ejecutarSimulacion();
       cargarMetricas();
     });

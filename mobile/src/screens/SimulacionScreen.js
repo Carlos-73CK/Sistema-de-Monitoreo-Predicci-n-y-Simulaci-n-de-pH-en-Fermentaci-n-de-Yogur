@@ -55,6 +55,20 @@ export default function SimulacionScreen() {
     handleSimular(masaPreset, tempPreset);
   };
 
+  const ajustarMasa = (delta) => {
+    const actual = parseFloat(masaInoculo) || 18.75;
+    const nuevo = Math.max(0.5, Math.min(37.5, Math.round((actual + delta) * 100) / 100));
+    setMasaInoculo(String(nuevo));
+    handleSimular(nuevo, temperatura);
+  };
+
+  const ajustarTemp = (delta) => {
+    const actual = parseFloat(temperatura) || 42;
+    const nuevo = Math.max(20, Math.min(52, Math.round((actual + delta) * 10) / 10));
+    setTemperatura(String(nuevo));
+    handleSimular(masaInoculo, nuevo);
+  };
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
@@ -128,30 +142,62 @@ export default function SimulacionScreen() {
           </Pressable>
         </View>
 
-        {/* Inputs numéricos manuales */}
+        {/* Inputs numéricos manuales con Stepper (+/- 1) */}
         <View style={styles.inputsRow}>
           <View style={styles.inputCol}>
-            <Text style={styles.inputLabel}>Inóculo Chivería (g)</Text>
-            <TextInput
-              style={styles.input}
-              value={masaInoculo}
-              onChangeText={setMasaInoculo}
-              keyboardType="numeric"
-              placeholder="18.75"
-            />
-            <Text style={styles.inputHint}>250g leche: 7.5%=18.75g, 2.5%=6.25g</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.inputLabel}>Inóculo (g)</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.primary }}>
+                {((parseFloat(masaInoculo) || 0) / 250 * 100).toFixed(1)}%
+              </Text>
+            </View>
+            <View style={styles.stepperBox}>
+              <Pressable style={styles.stepperBtn} onPress={() => ajustarMasa(-1)}>
+                <Text style={styles.stepperBtnText}>−</Text>
+              </Pressable>
+              <TextInput
+                style={styles.stepperInput}
+                value={masaInoculo}
+                onChangeText={(text) => {
+                  setMasaInoculo(text);
+                  handleSimular(text, temperatura);
+                }}
+                keyboardType="numeric"
+                placeholder="18.75"
+              />
+              <Pressable style={styles.stepperBtn} onPress={() => ajustarMasa(1)}>
+                <Text style={styles.stepperBtnText}>+</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.inputHint}>Rango: 0.5g – 37.5g (±1g)</Text>
           </View>
 
           <View style={styles.inputCol}>
-            <Text style={styles.inputLabel}>Temperatura (°C)</Text>
-            <TextInput
-              style={styles.input}
-              value={temperatura}
-              onChangeText={setTemperatura}
-              keyboardType="numeric"
-              placeholder="42"
-            />
-            <Text style={styles.inputHint}>Ventana óptima: 41 - 43 °C</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.inputLabel}>Temperatura (°C)</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>
+                41-43°C óptimo
+              </Text>
+            </View>
+            <View style={styles.stepperBox}>
+              <Pressable style={styles.stepperBtn} onPress={() => ajustarTemp(-1)}>
+                <Text style={styles.stepperBtnText}>−</Text>
+              </Pressable>
+              <TextInput
+                style={styles.stepperInput}
+                value={temperatura}
+                onChangeText={(text) => {
+                  setTemperatura(text);
+                  handleSimular(masaInoculo, text);
+                }}
+                keyboardType="numeric"
+                placeholder="42"
+              />
+              <Pressable style={styles.stepperBtn} onPress={() => ajustarTemp(1)}>
+                <Text style={styles.stepperBtnText}>+</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.inputHint}>Rango: 20°C – 52°C (±1°C)</Text>
           </View>
         </View>
         {errorValidacion && (
@@ -350,6 +396,38 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     ...theme.typography.body,
     color: theme.colors.text,
+  },
+  stepperBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.md,
+    overflow: 'hidden',
+    marginTop: 4,
+    minHeight: 44,
+  },
+  stepperBtn: {
+    width: 40,
+    height: 44,
+    backgroundColor: theme.colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.text,
+  },
+  stepperInput: {
+    flex: 1,
+    height: 44,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.text,
+    paddingHorizontal: 4,
   },
   inputHint: {
     fontSize: 10,

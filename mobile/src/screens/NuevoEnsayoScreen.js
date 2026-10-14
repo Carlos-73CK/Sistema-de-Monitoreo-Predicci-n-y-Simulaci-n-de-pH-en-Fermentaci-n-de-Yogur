@@ -25,6 +25,24 @@ export default function NuevoEnsayoScreen({ navigation }) {
     setErrorValidacion(null);
   };
 
+  const ajustarMasa = (delta) => {
+    const actual = parseFloat(masaInoculo) || 18.75;
+    const nuevo = Math.max(0.5, Math.min(37.5, Math.round((actual + delta) * 100) / 100));
+    setMasaInoculo(String(nuevo));
+  };
+
+  const ajustarTemp = (delta) => {
+    const actual = parseFloat(temperaturaObjetivo) || 42.0;
+    const nuevo = Math.max(20, Math.min(52, Math.round((actual + delta) * 10) / 10));
+    setTemperaturaObjetivo(String(nuevo));
+  };
+
+  const ajustarVol = (delta) => {
+    const actual = parseFloat(volumenLeche) || 250;
+    const nuevo = Math.max(50, Math.min(1000, actual + delta));
+    setVolumenLeche(String(nuevo));
+  };
+
   const handleCrearEnsayo = () => {
     const masaNum = parseFloat(masaInoculo);
     const tempNum = parseFloat(temperaturaObjetivo);
@@ -132,46 +150,81 @@ export default function NuevoEnsayoScreen({ navigation }) {
         <Text style={[styles.sectionTitle, { marginTop: 16 }]}>4. Parámetros Fisicoquímicos</Text>
         <View style={styles.row}>
           <View style={styles.col}>
-            <Text style={styles.label}>Inóculo Chivería (g)</Text>
-            <TextInput
-              style={styles.input}
-              value={masaInoculo}
-              onChangeText={setMasaInoculo}
-              keyboardType="numeric"
-              placeholder="18.75"
-            />
-            <Text style={styles.hint}>Para 250mL (7.5%=18.75g)</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.label}>Inóculo (g)</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#0284c7' }}>
+                {((parseFloat(masaInoculo) || 0) / (parseFloat(volumenLeche) || 250) * 100).toFixed(1)}%
+              </Text>
+            </View>
+            <View style={styles.stepperBox}>
+              <Pressable style={styles.stepperBtn} onPress={() => ajustarMasa(-1)}>
+                <Text style={styles.stepperBtnText}>−</Text>
+              </Pressable>
+              <TextInput
+                style={styles.stepperInput}
+                value={masaInoculo}
+                onChangeText={setMasaInoculo}
+                keyboardType="numeric"
+                placeholder="18.75"
+              />
+              <Pressable style={styles.stepperBtn} onPress={() => ajustarMasa(1)}>
+                <Text style={styles.stepperBtnText}>+</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.hint}>Rango: 0.5g – 37.5g (±1g)</Text>
           </View>
 
           <View style={styles.col}>
-            <Text style={styles.label}>Temperatura (°C)</Text>
-            <TextInput
-              style={styles.input}
-              value={temperaturaObjetivo}
-              onChangeText={setTemperaturaObjetivo}
-              keyboardType="numeric"
-              placeholder="42.0"
-            />
-            <Text style={styles.hint}>Óptimo: 41 - 43 °C</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.label}>Temperatura (°C)</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>
+                41-43°C
+              </Text>
+            </View>
+            <View style={styles.stepperBox}>
+              <Pressable style={styles.stepperBtn} onPress={() => ajustarTemp(-1)}>
+                <Text style={styles.stepperBtnText}>−</Text>
+              </Pressable>
+              <TextInput
+                style={styles.stepperInput}
+                value={temperaturaObjetivo}
+                onChangeText={setTemperaturaObjetivo}
+                keyboardType="numeric"
+                placeholder="42.0"
+              />
+              <Pressable style={styles.stepperBtn} onPress={() => ajustarTemp(1)}>
+                <Text style={styles.stepperBtnText}>+</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.hint}>Rango: 20°C – 52°C (±1°C)</Text>
           </View>
         </View>
 
         <View style={[styles.row, { marginTop: 12 }]}>
           <View style={styles.col}>
             <Text style={styles.label}>Volumen Muestra (mL)</Text>
-            <TextInput
-              style={styles.input}
-              value={volumenLeche}
-              onChangeText={setVolumenLeche}
-              keyboardType="numeric"
-              placeholder="250"
-            />
+            <View style={styles.stepperBox}>
+              <Pressable style={styles.stepperBtn} onPress={() => ajustarVol(-10)}>
+                <Text style={styles.stepperBtnText}>−</Text>
+              </Pressable>
+              <TextInput
+                style={styles.stepperInput}
+                value={volumenLeche}
+                onChangeText={setVolumenLeche}
+                keyboardType="numeric"
+                placeholder="250"
+              />
+              <Pressable style={styles.stepperBtn} onPress={() => ajustarVol(10)}>
+                <Text style={styles.stepperBtnText}>+</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.hint}>Estándar: 250 mL (±10mL)</Text>
           </View>
 
           <View style={styles.col}>
             <Text style={styles.label}>Tipo de Azúcar</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { height: 42, marginTop: 4 }]}
               value={tipoAzucar}
               onChangeText={setTipoAzucar}
               placeholder="lactosa"
@@ -222,4 +275,36 @@ const styles = StyleSheet.create({
   errorText: { color: '#991b1b', fontSize: 12, fontWeight: '600' },
   btnCrear: { backgroundColor: '#0284c7', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
   btnCrearText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
+  stepperBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginTop: 4,
+    height: 42,
+  },
+  stepperBtn: {
+    width: 38,
+    height: 42,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  stepperInput: {
+    flex: 1,
+    height: 42,
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a',
+    paddingHorizontal: 4,
+  },
 });
