@@ -1,4 +1,5 @@
 const express = require('express');
+const { authenticateToken } = require('../middlewares/auth.middleware');
 const {
   createLecturaManual,
   importarLecturas,
@@ -6,7 +7,8 @@ const {
 
 const router = express.Router();
 
-router.post('/:id/lecturas', createLecturaManual);
-router.post('/:id/importar', importarLecturas);
+// Rutas de lecturas protegidas con autenticación JWT
+router.post('/:id/lecturas', authenticateToken, createLecturaManual);
+router.post('/:id/importar', authenticateToken, importarLecturas);
 
 module.exports = router;
