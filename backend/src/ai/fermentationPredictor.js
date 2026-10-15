@@ -507,6 +507,7 @@ function recalibrarTrayectoriaDinamica({
         minutos: m,
         horas: Number((m / 60).toFixed(2)),
         phPredicho: Number(phActual.toFixed(2)),
+        indiceRefraccionPredicho: Number(Math.max(5.5, 10.5 - (10.5 - 5.7) * (m / Math.max(tCorteRecalibradoMin, 1))).toFixed(1)),
         esPuntoReal: true,
         proyectado: false,
       });
@@ -520,8 +521,47 @@ function recalibrarTrayectoriaDinamica({
         minutos: m,
         horas: Number((m / 60).toFixed(2)),
         phPredicho: Number(phProy.toFixed(2)),
+        indiceRefraccionPredicho: Number(Math.max(5.5, 10.5 - (10.5 - 5.7) * (m / Math.max(tCorteRecalibradoMin, 1))).toFixed(1)),
         esPuntoReal: false,
         proyectado: true,
+      });
+    }
+  }
+
+  // Curva unificada continua desde t = 0 hasta tMaxFuturo
+  const curvaCompleta = [];
+  for (let m = 0; m <= tMaxFuturo; m += intervaloMinutos) {
+    if (m <= tActual) {
+      const exacto = lecturasOrdenadas.find((l) => l.minutos === m);
+      let phVal = phActual;
+      if (exacto) {
+        phVal = exacto.ph;
+      } else {
+        const antes = [...lecturasOrdenadas].reverse().find((l) => l.minutos <= m) || lecturasOrdenadas[0];
+        const despues = lecturasOrdenadas.find((l) => l.minutos >= m) || ultimaLectura;
+        if (despues.minutos === antes.minutos) {
+          phVal = antes.ph;
+        } else {
+          const ratio = (m - antes.minutos) / (despues.minutos - antes.minutos);
+          phVal = antes.ph + ratio * (despues.ph - antes.ph);
+        }
+      }
+      curvaCompleta.push({
+        minutos: m,
+        horas: Number((m / 60).toFixed(2)),
+        phPredicho: Number(phVal.toFixed(2)),
+        indiceRefraccionPredicho: Number(Math.max(5.5, 10.5 - (10.5 - 5.7) * (m / Math.max(tCorteRecalibradoMin, 1))).toFixed(1)),
+        esPuntoReal: true,
+      });
+    } else {
+      const proy = curvaProyeccion.find((p) => p.minutos === m);
+      const phVal = proy ? proy.phPredicho : PH_CRITICO_CORTE;
+      curvaCompleta.push({
+        minutos: m,
+        horas: Number((m / 60).toFixed(2)),
+        phPredicho: Number(phVal.toFixed(2)),
+        indiceRefraccionPredicho: Number(Math.max(5.5, 10.5 - (10.5 - 5.7) * (m / Math.max(tCorteRecalibradoMin, 1))).toFixed(1)),
+        esPuntoReal: false,
       });
     }
   }
@@ -554,6 +594,7 @@ function recalibrarTrayectoriaDinamica({
     corteAlcanzado: false,
     curvaReal: lecturasOrdenadas,
     curvaProyeccion,
+    curvaCompleta,
     curvaTeoricaOriginal: trayectoriaTeorica.curva,
     prediccionViscosidad: trayectoriaTeorica.prediccionViscosidad,
     diagnostico: mensaje,
