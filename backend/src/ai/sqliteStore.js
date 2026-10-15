@@ -54,15 +54,89 @@ db.exec(`
     viscosidad_final_real REAL,
     creado_en TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS ensayos_laboratorio (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lote_id TEXT UNIQUE NOT NULL,
+    investigador TEXT NOT NULL,
+    tipo_sustrato TEXT NOT NULL DEFAULT 'vaca',
+    tipo_azucar TEXT NOT NULL DEFAULT 'sacarosa',
+    temperatura_c REAL NOT NULL,
+    masa_inoculo_g REAL NOT NULL,
+    volumen_ml REAL NOT NULL,
+    porcentaje_inoculo REAL NOT NULL,
+    tiempo_corte_inicial_horas REAL NOT NULL,
+    tiempo_corte_inicial_minutos INTEGER NOT NULL,
+    tiempo_corte_estimado_horas REAL NOT NULL,
+    tiempo_corte_estimado_minutos INTEGER NOT NULL,
+    diferencia_minutos INTEGER DEFAULT 0,
+    estado TEXT DEFAULT 'EN_CURSO',
+    lecturas_json TEXT NOT NULL DEFAULT '[]',
+    diagnostico TEXT,
+    creado_en TEXT NOT NULL,
+    actualizado_en TEXT NOT NULL
+  );
 `);
 
-// Migración defensiva si la tabla ya existía sin las columnas
+// Migración defensiva si la tabla predicciones_historial ya existía sin las columnas
 try {
   db.exec(`ALTER TABLE predicciones_historial ADD COLUMN lote_id TEXT DEFAULT 'LOTE-DEFAULT'`);
 } catch (e) {}
 try {
   db.exec(`ALTER TABLE predicciones_historial ADD COLUMN investigador TEXT DEFAULT 'Lab. ULEAM'`);
 } catch (e) {}
+
+// Migración de predicciones existentes hacia ensayos_laboratorio para no perder historial
+try {
+  const existentes = db.prepare(`SELECT * FROM predicciones_historial ORDER BY id ASC`).all();
+  const checkStmt = db.prepare(`SELECT id FROM ensayos_laboratorio WHERE lote_id = ?`);
+  const insertEnsayo = db.prepare(`
+    INSERT INTO ensayos_laboratorio (
+      lote_id, investigador, tipo_sustrato, tipo_azucar, temperatura_c, masa_inoculo_g, volumen_ml,
+      porcentaje_inoculo, tiempo_corte_inicial_horas, tiempo_corte_inicial_minutos,
+      tiempo_corte_estimado_horas, tiempo_corte_estimado_minutos, diferencia_minutos,
+      estado, lecturas_json, diagnostico, creado_en, actualizado_en
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const row of existentes) {
+    if (!row.lote_id || row.lote_id === 'LOTE-DEFAULT') continue;
+    const exists = checkStmt.get(row.lote_id);
+    if (!exists) {
+      const lecturasIniciales = [
+        {
+          tiempo_minutos: 0,
+          ph: 6.50,
+          temperatura: row.temperatura_c || 42.0,
+          indice_refraccion: null,
+          registrado_en: row.creado_en
+        }
+      ];
+      insertEnsayo.run(
+        row.lote_id,
+        row.investigador || 'Lab. Química de Alimentos — ULEAM',
+        row.tipo_sustrato || 'vaca',
+        'sacarosa',
+        row.temperatura_c || 42.0,
+        row.masa_inoculo_g || 18.75,
+        row.volumen_ml || 250,
+        row.porcentaje_inoculo || 7.5,
+        row.tiempo_corte_horas || 4.25,
+        row.tiempo_corte_minutos || 255,
+        row.tiempo_corte_horas || 4.25,
+        row.tiempo_corte_minutos || 255,
+        0,
+        'EN_CURSO',
+        JSON.stringify(lecturasIniciales),
+        row.diagnostico || 'Ensayo preservado desde historial',
+        row.creado_en,
+        row.creado_en
+      );
+    }
+  }
+} catch (e) {
+  // Ignorar si ya fueron migradas
+}
 
 /**
  * Guarda una simulación o predicción realizada en el historial
@@ -223,6 +297,262 @@ function contarFeedback() {
   };
 }
 
+/**
+ * Guarda o actualiza un ensayo experimental de laboratorio en SQLite
+ */
+function guardarEnsayoLaboratorio(e) {
+  const loteId = String(e.lote_id || e.loteId || 'LOTE-EXP-' + Date.now()).trim();
+  const investigador = String(e.investigador || 'Lab. Química de Alimentos — ULEAM').trim();
+  const tipoSustrato = e.tipoSustrato || e.tipo_sustrato || 'vaca';
+  const tipoAzucar = e.tipoAzucar || e.tipo_azucar || 'sacarosa';
+  const tempC = Number(e.temperaturaC || e.temperatura_c || 42.0);
+  const masaG = Number(e.masaInoculoG || e.masa_inoculo_g || 18.75);
+  const volMl = Number(e.volumenMl || e.volumen_ml || 250);
+  const pctInoc = Number(e.porcentajeInoculo || e.porcentaje_inoculo || ((masaG / volMl) * 100).toFixed(2));
+  const tCorteIniH = Number(e.tiempoCorteInicialHoras || e.tiempo_corte_inicial_horas || e.tiempoCorteHoras || 4.25);
+  const tCorteIniM = Number(e.tiempoCorteInicialMinutos || e.tiempo_corte_inicial_minutos || e.tiempoCorteMinutos || 255);
+  const tCorteEstH = Number(e.tiempoCorteEstimadoHoras || e.tiempo_corte_estimado_horas || tCorteIniH);
+  const tCorteEstM = Number(e.tiempoCorteEstimadoMinutos || e.tiempo_corte_estimado_minutos || tCorteIniM);
+  const diffM = Number(e.diferenciaMinutos || e.diferencia_minutos || 0);
+  const estado = e.estado || 'EN_CURSO';
+
+  let lecturas = [
+    { tiempo_minutos: 0, ph: 6.50, temperatura: tempC, indice_refraccion: null, registrado_en: new Date().toISOString() }
+  ];
+  if (Array.isArray(e.lecturas) && e.lecturas.length > 0) {
+    lecturas = e.lecturas;
+  } else if (e.lecturas_json) {
+    try {
+      lecturas = JSON.parse(e.lecturas_json);
+    } catch (_) {}
+  }
+
+  const diagnostico = e.diagnostico || '';
+  const now = new Date().toISOString();
+
+  const existente = db.prepare(`SELECT * FROM ensayos_laboratorio WHERE lote_id = ?`).get(loteId);
+
+  if (existente) {
+    db.prepare(`
+      UPDATE ensayos_laboratorio SET
+        investigador = ?,
+        tipo_sustrato = ?,
+        tipo_azucar = ?,
+        temperatura_c = ?,
+        masa_inoculo_g = ?,
+        volumen_ml = ?,
+        porcentaje_inoculo = ?,
+        tiempo_corte_estimado_horas = ?,
+        tiempo_corte_estimado_minutos = ?,
+        diferencia_minutos = ?,
+        estado = ?,
+        lecturas_json = ?,
+        diagnostico = ?,
+        actualizado_en = ?
+      WHERE lote_id = ?
+    `).run(
+      investigador,
+      tipoSustrato,
+      tipoAzucar,
+      tempC,
+      masaG,
+      volMl,
+      pctInoc,
+      tCorteEstH,
+      tCorteEstM,
+      diffM,
+      estado,
+      JSON.stringify(lecturas),
+      diagnostico,
+      now,
+      loteId
+    );
+  } else {
+    db.prepare(`
+      INSERT INTO ensayos_laboratorio (
+        lote_id, investigador, tipo_sustrato, tipo_azucar, temperatura_c, masa_inoculo_g, volumen_ml,
+        porcentaje_inoculo, tiempo_corte_inicial_horas, tiempo_corte_inicial_minutos,
+        tiempo_corte_estimado_horas, tiempo_corte_estimado_minutos, diferencia_minutos,
+        estado, lecturas_json, diagnostico, creado_en, actualizado_en
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      loteId,
+      investigador,
+      tipoSustrato,
+      tipoAzucar,
+      tempC,
+      masaG,
+      volMl,
+      pctInoc,
+      tCorteIniH,
+      tCorteIniM,
+      tCorteEstH,
+      tCorteEstM,
+      diffM,
+      estado,
+      JSON.stringify(lecturas),
+      diagnostico,
+      now,
+      now
+    );
+  }
+
+  return obtenerEnsayoLaboratorio(loteId);
+}
+
+/**
+ * Retorna todos los ensayos ordenados cronológicamente (más recientes primero)
+ */
+function listarEnsayosLaboratorio(limite = 100) {
+  const rows = db.prepare(`SELECT * FROM ensayos_laboratorio ORDER BY actualizado_en DESC, id DESC LIMIT ?`).all(limite);
+  return rows.map((r) => {
+    let lecturas = [];
+    try {
+      lecturas = JSON.parse(r.lecturas_json || '[]');
+    } catch (_) {
+      lecturas = [];
+    }
+    return {
+      id: r.id,
+      lote_id: r.lote_id,
+      investigador: r.investigador,
+      tipo_sustrato: r.tipo_sustrato,
+      tipo_azucar: r.tipo_azucar,
+      temperatura_c: r.temperatura_c,
+      masa_inoculo_g: r.masa_inoculo_g,
+      volumen_ml: r.volumen_ml,
+      porcentaje_inoculo: r.porcentaje_inoculo,
+      tiempo_corte_inicial_horas: r.tiempo_corte_inicial_horas,
+      tiempo_corte_inicial_minutos: r.tiempo_corte_inicial_minutos,
+      tiempo_corte_estimado_horas: r.tiempo_corte_estimado_horas,
+      tiempo_corte_estimado_minutos: r.tiempo_corte_estimado_minutos,
+      diferencia_minutos: r.diferencia_minutos,
+      estado: r.estado,
+      lecturas,
+      total_lecturas: lecturas.length,
+      diagnostico: r.diagnostico,
+      creado_en: r.creado_en,
+      actualizado_en: r.actualizado_en,
+    };
+  });
+}
+
+/**
+ * Obtiene un ensayo específico con sus lecturas completas
+ */
+function obtenerEnsayoLaboratorio(loteId) {
+  const r = db.prepare(`SELECT * FROM ensayos_laboratorio WHERE lote_id = ?`).get(String(loteId).trim());
+  if (!r) return null;
+  let lecturas = [];
+  try {
+    lecturas = JSON.parse(r.lecturas_json || '[]');
+  } catch (_) {
+    lecturas = [];
+  }
+  return {
+    id: r.id,
+    lote_id: r.lote_id,
+    investigador: r.investigador,
+    tipo_sustrato: r.tipo_sustrato,
+    tipo_azucar: r.tipo_azucar,
+    temperatura_c: r.temperatura_c,
+    masa_inoculo_g: r.masa_inoculo_g,
+    volumen_ml: r.volumen_ml,
+    porcentaje_inoculo: r.porcentaje_inoculo,
+    tiempo_corte_inicial_horas: r.tiempo_corte_inicial_horas,
+    tiempo_corte_inicial_minutos: r.tiempo_corte_inicial_minutos,
+    tiempo_corte_estimado_horas: r.tiempo_corte_estimado_horas,
+    tiempo_corte_estimado_minutos: r.tiempo_corte_estimado_minutos,
+    diferencia_minutos: r.diferencia_minutos,
+    estado: r.estado,
+    lecturas,
+    total_lecturas: lecturas.length,
+    diagnostico: r.diagnostico,
+    creado_en: r.creado_en,
+    actualizado_en: r.actualizado_en,
+  };
+}
+
+/**
+ * Agrega o actualiza una lectura periódica en un ensayo existente y recalibra
+ */
+function registrarLecturaEnEnsayo(loteId, nuevaLectura, recalibracion = {}) {
+  const ensayo = obtenerEnsayoLaboratorio(loteId);
+  if (!ensayo) throw new Error(`El ensayo con lote '${loteId}' no existe en SQLite.`);
+
+  const lecturas = [...ensayo.lecturas];
+  const tMin = Number(nuevaLectura.tiempo_minutos !== undefined ? nuevaLectura.tiempo_minutos : nuevaLectura.minutos);
+  const ph = Number(nuevaLectura.ph);
+  const temp = Number(nuevaLectura.temperatura !== undefined ? nuevaLectura.temperatura : (nuevaLectura.temperatura_c || ensayo.temperatura_c));
+  const brix = nuevaLectura.indice_refraccion !== undefined && nuevaLectura.indice_refraccion !== null
+    ? Number(nuevaLectura.indice_refraccion)
+    : (nuevaLectura.brix !== undefined && nuevaLectura.brix !== null ? Number(nuevaLectura.brix) : null);
+
+  const idx = lecturas.findIndex((l) => Number(l.tiempo_minutos !== undefined ? l.tiempo_minutos : l.minutos) === tMin);
+  const entry = {
+    tiempo_minutos: tMin,
+    ph,
+    temperatura: temp,
+    indice_refraccion: brix,
+    registrado_en: new Date().toISOString(),
+  };
+
+  if (idx >= 0) {
+    lecturas[idx] = entry;
+  } else {
+    lecturas.push(entry);
+  }
+
+  lecturas.sort((a, b) => Number(a.tiempo_minutos) - Number(b.tiempo_minutos));
+
+  const tCorteEstH = recalibracion.tiempoCorteRecalibradoHoras !== undefined ? recalibracion.tiempoCorteRecalibradoHoras : ensayo.tiempo_corte_estimado_horas;
+  const tCorteEstM = recalibracion.tiempoCorteRecalibradoMinutos !== undefined ? recalibracion.tiempoCorteRecalibradoMinutos : ensayo.tiempo_corte_estimado_minutos;
+  const diffM = recalibracion.deltaMinutos !== undefined ? recalibracion.deltaMinutos : ensayo.diferencia_minutos;
+  const diag = recalibracion.diagnostico || ensayo.diagnostico;
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    UPDATE ensayos_laboratorio SET
+      lecturas_json = ?,
+      tiempo_corte_estimado_horas = ?,
+      tiempo_corte_estimado_minutos = ?,
+      diferencia_minutos = ?,
+      diagnostico = ?,
+      actualizado_en = ?
+    WHERE lote_id = ?
+  `).run(
+    JSON.stringify(lecturas),
+    tCorteEstH,
+    tCorteEstM,
+    diffM,
+    diag,
+    now,
+    loteId
+  );
+
+  return obtenerEnsayoLaboratorio(loteId);
+}
+
+/**
+ * Elimina un ensayo y sus lecturas
+ */
+function eliminarEnsayoLaboratorio(loteId) {
+  const info = db.prepare(`DELETE FROM ensayos_laboratorio WHERE lote_id = ?`).run(String(loteId).trim());
+  return info.changes > 0;
+}
+
+/**
+ * Elimina una lectura periódica específica de un ensayo
+ */
+function eliminarLecturaDeEnsayo(loteId, min) {
+  const ensayo = obtenerEnsayoLaboratorio(loteId);
+  if (!ensayo) return null;
+  const lecturas = ensayo.lecturas.filter((l) => Number(l.tiempo_minutos) !== Number(min));
+  db.prepare(`UPDATE ensayos_laboratorio SET lecturas_json = ?, actualizado_en = ? WHERE lote_id = ?`)
+    .run(JSON.stringify(lecturas), new Date().toISOString(), loteId);
+  return obtenerEnsayoLaboratorio(loteId);
+}
+
 module.exports = {
   db,
   sqliteFilePath,
@@ -231,4 +561,10 @@ module.exports = {
   insertarMuestrasFeedback,
   obtenerMuestrasFeedback,
   contarFeedback,
+  guardarEnsayoLaboratorio,
+  listarEnsayosLaboratorio,
+  obtenerEnsayoLaboratorio,
+  registrarLecturaEnEnsayo,
+  eliminarEnsayoLaboratorio,
+  eliminarLecturaDeEnsayo,
 };

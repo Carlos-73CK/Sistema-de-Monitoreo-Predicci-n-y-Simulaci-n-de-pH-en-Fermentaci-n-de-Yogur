@@ -253,12 +253,12 @@
   <div class="container">
     <!-- Barra de Pestañas -->
     <div class="tabs-wrapper">
-      <button class="tab-btn active" onclick="switchTab('simulador')">⚡ Simulador Cinético ("What-If")</button>
-      <button class="tab-btn" onclick="switchTab('monitoreo-vivo')">⏱️ Ensayo en Vivo & Recalibración IA</button>
-      <button class="tab-btn" onclick="switchTab('bioquimica')">🧬 Bioquímica & Escala pH (ULEAM)</button>
-      <button class="tab-btn" onclick="switchTab('feedback')">🧠 Aprendizaje Continuo (Feedback Loop)</button>
-      <button class="tab-btn" onclick="switchTab('historial')">💾 Historial SQLite Local</button>
-      <button class="tab-btn" onclick="switchTab('metricas')">📊 Métricas Científicas del Modelo</button>
+      <button class="tab-btn active" id="tab-btn-simulador" onclick="switchTab('simulador')">⚡ Nuevo Ensayo / Simulador</button>
+      <button class="tab-btn" id="tab-btn-ensayos" onclick="switchTab('ensayos')">📁 Ensayos & Lotes Archivados <span id="badge-total-ensayos" style="background:#0284c7; color:white; border-radius:10px; padding:2px 7px; font-size:10px; margin-left:4px;">0</span></button>
+      <button class="tab-btn" id="tab-btn-monitoreo-vivo" onclick="switchTab('monitoreo-vivo')">⏱️ Demostrador en Vivo (Dr. Santacruz)</button>
+      <button class="tab-btn" id="tab-btn-bioquimica" onclick="switchTab('bioquimica')">🧬 Bioquímica & Escala pH (ULEAM)</button>
+      <button class="tab-btn" id="tab-btn-feedback" onclick="switchTab('feedback')">🧠 Aprendizaje Continuo (Feedback Loop)</button>
+      <button class="tab-btn" id="tab-btn-metricas" onclick="switchTab('metricas')">📊 Métricas Científicas del Modelo</button>
     </div>
 
     <!-- PESTAÑA 1: SIMULADOR CINÉTICO -->
@@ -417,6 +417,30 @@
         <div>
           <!-- Panel de Espera Inicial (Se muestra mientras no se ha creado el ensayo) -->
           <div id="panel-espera" class="card" style="text-align:center; padding:38px 24px;">
+
+            <!-- Banner de Reanudación de Ensayo Activo en SQLite si existe -->
+            <div id="panel-espera-banner-activo" style="display:none; background:#eff6ff; border:1.5px solid #93c5fd; border-radius:10px; padding:14px 18px; margin:0 auto 22px; max-width:620px; text-align:left; box-shadow:0 2px 8px rgba(2, 132, 199, 0.08);">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:10px; font-weight:800;">ENSAYO ACTIVO REGISTRADO</span>
+                    <strong id="banner-activo-lote" style="font-size:16px; color:#0f172a;">prueba1</strong>
+                  </div>
+                  <p id="banner-activo-detalles" style="font-size:12px; color:#475569; margin:4px 0 0 0;">
+                    Lecturas guardadas en SQLite • Corte proyectado a pH 4.50: 4.33 h
+                  </p>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button type="button" onclick="reanudarUltimoEnsayoActivo()" style="background:#0284c7; color:white; border:none; padding:8px 16px; border-radius:6px; font-weight:700; font-size:12.5px; cursor:pointer;">
+                    ▶️ Abrir Monitoreo
+                  </button>
+                  <button type="button" onclick="switchTab('ensayos')" style="background:white; color:#334155; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; font-weight:600; font-size:12px; cursor:pointer;">
+                    📁 Ver Todos
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div style="width:70px; height:70px; margin:0 auto 16px; background:#e0f2fe; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:32px; box-shadow:0 4px 12px rgba(2, 132, 199, 0.15);">
               🧪
             </div>
@@ -636,7 +660,224 @@
       </div>
     </div>
 
-    <!-- PESTAÑA 2: MONITOREO EN VIVO & RECALIBRACIÓN DINÁMICA (IDEA CIENTÍFICA DEL PROYECTO) -->
+    <!-- PESTAÑA 2: ARCHIVO Y GESTOR DE ENSAYOS EXPERIMENTALES (SQLITE LOCAL) -->
+    <div id="tab-ensayos" class="tab-panel">
+      
+      <!-- VISTA 1: LISTA DE ENSAYOS ARCHIVADOS (Stacked one above another by creation date) -->
+      <div id="ensayos-lista-container">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">📁 Ensayos y Lotes Archivados (Base de Datos SQLite)</div>
+              <div class="card-subtitle">Registros experimentales ordenados cronológicamente (más recientes arriba). Selecciona cualquiera para ver su curva cinética o continuar el monitoreo con nuevas lecturas.</div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button type="button" onclick="switchTab('simulador')" class="btn-simulate" style="width:auto; padding:8px 16px; font-size:12.5px;">
+                ➕ Configurar Nuevo Ensayo
+              </button>
+              <button type="button" onclick="cargarListaEnsayos()" style="background:#f1f5f9; border:1px solid var(--border); padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px; color:#334155;">
+                🔄 Refrescar Lotes
+              </button>
+            </div>
+          </div>
+
+          <!-- Feed de tarjetas de ensayos apiladas una encima de otra -->
+          <div id="ensayos-cards-list" style="display:flex; flex-direction:column; gap:14px; margin-top:8px;">
+            <div style="text-align:center; padding:30px; color:#64748b;">
+              <div style="font-size:28px; margin-bottom:8px;">⏳</div>
+              Cargando ensayos archivados desde SQLite local...
+            </div>
+          </div>
+
+          <!-- Auditoría cruda de predicciones SQLite (colapsable) -->
+          <div style="margin-top:28px; border-top:1.5px solid var(--border); padding-top:16px;">
+            <details>
+              <summary style="font-weight:700; font-size:13px; color:#475569; cursor:pointer; margin-bottom:12px;">
+                📜 Ver Registro Crudo de Auditoría en SQLite (predicciones_historial)
+              </summary>
+              <div style="overflow-x:auto;">
+                <table class="data-table" id="tabla-cruda-historial">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Lote / Código</th>
+                      <th>Investigador</th>
+                      <th>Sustrato</th>
+                      <th>Temp (°C)</th>
+                      <th>Inóculo</th>
+                      <th>Tiempo Corte</th>
+                      <th>Viscosidad</th>
+                      <th>Fecha/Hora</th>
+                    </tr>
+                  </thead>
+                  <tbody id="historial-tbody">
+                    <tr><td colspan="9" style="text-align:center; color:#94a3b8; padding:20px;">Cargando registros...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <!-- VISTA 2: DETALLE, CURVA Y MONITOREO DEL ENSAYO SELECCIONADO -->
+      <div id="ensayos-detalle-container" style="display:none;">
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:16px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <button type="button" onclick="cerrarDetalleEnsayo()" style="background:#f1f5f9; border:1.5px solid var(--border); border-radius:8px; padding:7px 14px; font-weight:700; font-size:13px; color:#334155; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                ⬅️ Volver a Lista de Ensayos
+              </button>
+              <div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <h3 id="det-lote-id" style="font-size:18px; font-weight:800; color:#0f172a; margin:0;">prueba1</h3>
+                  <span id="det-estado-badge" class="badge" style="background:#dcfce7; color:#15803d; font-weight:800;">🟢 En Monitoreo Activo</span>
+                </div>
+                <div style="font-size:12px; color:#64748b; margin-top:3px;">
+                  <span id="det-investigador">👤 carlos</span> • <span id="det-fecha-creacion">📅 14/10/2026</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="button" onclick="finalizarEnsayoActivo()" style="background:#f8fafc; border:1.5px solid #cbd5e1; color:#0f172a; border-radius:8px; padding:7px 14px; font-weight:700; font-size:12.5px; cursor:pointer;">
+                🏁 Marcar como Finalizado
+              </button>
+              <button type="button" onclick="eliminarEnsayoActual()" style="background:#fef2f2; border:1.5px solid #fecaca; color:#b91c1c; border-radius:8px; padding:7px 12px; font-weight:700; font-size:12.5px; cursor:pointer;">
+                🗑️ Eliminar Lote
+              </button>
+            </div>
+          </div>
+
+          <!-- KPIs Dinámicos del Ensayo Seleccionado -->
+          <div class="kpis-row">
+            <div class="kpi-tile">
+              <span class="kpi-header">Tiempo Corte a pH 4.50</span>
+              <span class="kpi-number" id="det-kpi-tiempo" style="color:#0284c7;">4.33 h</span>
+              <span class="kpi-footer" id="det-kpi-minutos" style="color:#0369a1;">~260 min</span>
+            </div>
+            <div class="kpi-tile">
+              <span class="kpi-header">Ritmo Cinético</span>
+              <span class="kpi-number" id="det-kpi-velocidad" style="color:#10b981;">1.00x</span>
+              <span class="kpi-footer" id="det-kpi-ritmo" style="color:#059669;">⭐ Ritmo nominal</span>
+            </div>
+            <div class="kpi-tile">
+              <span class="kpi-header">Temperatura Incubación</span>
+              <span class="kpi-number" id="det-kpi-temp">42.0 °C</span>
+              <span class="kpi-footer" style="color:#15803d;">Baño María Controlado</span>
+            </div>
+            <div class="kpi-tile">
+              <span class="kpi-header">Inóculo Chivería</span>
+              <span class="kpi-number" id="det-kpi-inoculo">7.50%</span>
+              <span class="kpi-footer" id="det-kpi-masa" style="color:#64748b;">18.75 g / 250 mL</span>
+            </div>
+          </div>
+
+          <!-- Banner Diagnóstico Dinámico -->
+          <div id="det-diagnostico-banner" style="background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:10px; padding:12px 16px; margin-bottom:18px;">
+            <div id="det-diagnostico-texto" style="font-size:13px; color:#1e293b; font-weight:600; line-height:1.5;"></div>
+          </div>
+
+          <!-- Gráfico Interactivo de la Curva Cinética -->
+          <div style="margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <span style="font-weight:700; font-size:13.5px; color:#1e293b;">📈 Curva Cinética Recalibrada (Mediciones Reales en SQLite + Proyección Hill):</span>
+              <span style="font-size:11.5px; color:#64748b;">Punto Crítico de Corte: <strong style="color:#ef4444;">pH 4.50</strong></span>
+            </div>
+            <div class="chart-box" style="height:320px;">
+              <canvas id="chart-ensayo-detalle"></canvas>
+            </div>
+          </div>
+
+          <!-- Grid: Panel de Ingreso de Nuevas Lecturas y Tabla Histórica de Mediciones -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px; border-top:1.5px solid var(--border); padding-top:18px;">
+            <!-- Izquierda: Formulario para Agregar Lectura Periódica -->
+            <div style="background:#f8fafc; border:1.5px solid var(--border); border-radius:10px; padding:16px;">
+              <h4 style="font-size:14px; font-weight:800; color:#0f172a; margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+                <span>⏱️ Ingresar Nueva Lectura Periódica:</span>
+              </h4>
+              <p style="font-size:12px; color:#64748b; margin-bottom:14px; line-height:1.4;">
+                Cada lectura tomada en el laboratorio actualiza la trayectoria cinética de inmediato y se guarda permanentemente en la base de datos SQLite.
+              </p>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="det-in-min">Tiempo Transcurrido:</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('det-in-min', -15)">−</button>
+                    <input type="number" id="det-in-min" value="120" step="15" min="0" max="720">
+                    <button type="button" class="btn-step" onclick="ajustarValor('det-in-min', 15)">+</button>
+                  </div>
+                  <div class="input-hint"><span>Minutos desde T0</span></div>
+                </div>
+
+                <div class="form-group">
+                  <label for="det-in-ph">pH Medido:</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('det-in-ph', -0.05)">−</button>
+                    <input type="number" id="det-in-ph" value="5.20" step="0.01" min="3.8" max="7.2">
+                    <button type="button" class="btn-step" onclick="ajustarValor('det-in-ph', 0.05)">+</button>
+                  </div>
+                  <div class="input-hint"><span>pH-metro [3.8 – 7.2]</span></div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="det-in-temp">Temperatura Baño (°C):</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('det-in-temp', -0.5)">−</button>
+                    <input type="number" id="det-in-temp" value="42.0" step="0.1" min="20" max="52">
+                    <button type="button" class="btn-step" onclick="ajustarValor('det-in-temp', 0.5)">+</button>
+                  </div>
+                  <div class="input-hint"><span>Sensor del Baño María</span></div>
+                </div>
+
+                <div class="form-group">
+                  <label for="det-in-brix">°Brix (Opcional):</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('det-in-brix', -0.5)">−</button>
+                    <input type="number" id="det-in-brix" value="" placeholder="Ej. 7.5" step="0.1" min="3" max="25">
+                    <button type="button" class="btn-step" onclick="ajustarValor('det-in-brix', 0.5)">+</button>
+                  </div>
+                  <div class="input-hint"><span>Refractómetro</span></div>
+                </div>
+              </div>
+
+              <button type="button" class="btn-simulate" onclick="guardarLecturaEnEnsayoSeleccionado()" style="background:linear-gradient(135deg, #059669 0%, #10b981 100%); margin-top:10px;">
+                💾 Guardar Lectura en SQLite & Recalibrar Curva
+              </button>
+            </div>
+
+            <!-- Derecha: Tabla de Lecturas del Ensayo -->
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span style="font-weight:700; font-size:13.5px; color:#1e293b;">📋 Lecturas Registradas de este Ensayo:</span>
+                <span id="det-lecturas-badge" style="font-size:11px; font-weight:800; color:#0284c7; background:#e0f2fe; padding:2px 8px; border-radius:6px;">2 lecturas</span>
+              </div>
+              <div style="max-height:280px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;">
+                <table class="milestones-table" style="margin-top:0;">
+                  <thead>
+                    <tr>
+                      <th>Tiempo</th>
+                      <th>pH</th>
+                      <th>Temp</th>
+                      <th>°Brix</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="det-lecturas-tbody">
+                    <!-- Dinámico -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- PESTAÑA 3: DEMOSTRADOR EN VIVO & RECALIBRACIÓN (DR. SANTACRUZ) -->
     <div id="tab-monitoreo-vivo" class="tab-panel">
       <div class="grid-main">
 
@@ -1076,41 +1317,7 @@
       </div>
     </div>
 
-    <!-- PESTAÑA 3: HISTORIAL EN SQLITE -->
-    <div id="tab-historial" class="tab-panel">
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">💾 Historial de Predicciones y Simulaciones (SQLite Local)</div>
-            <div class="card-subtitle">Registros guardados en <code>backend/data/prediyogur_local.sqlite</code></div>
-          </div>
-          <button onclick="cargarHistorial()" style="background:#f1f5f9; border:1px solid var(--border); padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px;">
-            🔄 Refrescar Tabla
-          </button>
-        </div>
 
-        <div style="overflow-x:auto;">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Lote / Código</th>
-                <th>Sustrato</th>
-                <th>Temp (°C)</th>
-                <th>Inóculo</th>
-                <th>Tiempo Corte</th>
-                <th>Viscosidad Predicha</th>
-                <th>Calidad Gel</th>
-                <th>Fecha/Hora</th>
-              </tr>
-            </thead>
-            <tbody id="historial-tbody">
-              <tr><td colspan="9" style="text-align:center; color:#94a3b8; padding:30px;">Cargando registros desde SQLite...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
 
     <!-- PESTAÑA 4: MÉTRICAS CIENTÍFICAS -->
     <div id="tab-metricas" class="tab-panel">
@@ -1620,10 +1827,10 @@
 
       const tabMap = {
         'simulador': 0,
-        'monitoreo-vivo': 1,
-        'bioquimica': 2,
-        'feedback': 3,
-        'historial': 4,
+        'ensayos': 1,
+        'monitoreo-vivo': 2,
+        'bioquimica': 3,
+        'feedback': 4,
         'metricas': 5
       };
       const buttons = document.querySelectorAll('.tab-btn');
@@ -1636,7 +1843,12 @@
       const panel = document.getElementById('tab-' + tabId);
       if (panel) panel.classList.add('active');
 
-      if (tabId === 'historial') cargarHistorial();
+      if (tabId === 'ensayos') {
+        cargarListaEnsayos();
+        if (detalleChartInstance) {
+          setTimeout(() => detalleChartInstance.resize(), 100);
+        }
+      }
       if (tabId === 'metricas') cargarMetricas();
       if (tabId === 'monitoreo-vivo') {
         if (!liveChartInstance) {
@@ -1733,8 +1945,8 @@
     let ensayoActivo = null;
     let lecturasEnsayoActivo = [];
 
-    // Iniciar el Ensayo y Generar Predicción
-    function iniciarEnsayoSimulacion() {
+    // Iniciar el Ensayo y Guardarlo en SQLite
+    async function iniciarEnsayoSimulacion() {
       const loteInput = document.getElementById('sim-lote-nombre');
       const loteNombre = (loteInput ? loteInput.value : '').trim();
       if (!loteNombre) {
@@ -1750,34 +1962,63 @@
       const inoc = parseFloat(document.getElementById('sim-inoculo').value);
       const vol = parseFloat(document.getElementById('sim-volumen').value);
 
-      ensayoActivo = {
-        loteId: loteNombre,
-        investigador,
-        sustrato,
-        azucar,
-        temp,
-        inoc,
-        vol,
-        fechaInicio: new Date()
-      };
+      try {
+        const res = await fetch('/api/ai/trials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lote_id: loteNombre,
+            investigador,
+            tipo_sustrato: sustrato,
+            tipo_azucar: azucar,
+            temperatura_c: temp,
+            masa_inoculo_g: inoc,
+            volumen_ml: vol
+          })
+        });
 
-      lecturasEnsayoActivo = [
-        { tiempo_minutos: 0, ph: 6.25, temperatura: temp, indice_refraccion: 10.5 }
-      ];
+        const data = await res.json();
+        if (!data.success) {
+          alert('⚠️ ' + (data.message || 'Error al crear el ensayo en SQLite.'));
+          return;
+        }
 
-      // Cambiar de Panel de Espera a Panel de Resultados
-      document.getElementById('panel-espera').style.display = 'none';
-      document.getElementById('panel-resultados').style.display = 'block';
+        ensayoActivo = {
+          loteId: loteNombre,
+          investigador,
+          sustrato,
+          azucar,
+          temp,
+          inoc,
+          vol,
+          fechaInicio: new Date()
+        };
 
-      // Actualizar encabezado del ensayo activo
-      document.getElementById('active-lote-title').innerText = ensayoActivo.loteId;
-      const horaStr = ensayoActivo.fechaInicio.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      document.getElementById('active-metadata-sub').innerText = `Responsable: ${ensayoActivo.investigador} | Matriz: ${sustrato.toUpperCase()} (${temp}°C / ${((inoc/vol)*100).toFixed(2)}%) | Inicio: ${horaStr}`;
+        lecturasEnsayoActivo = [
+          { tiempo_minutos: 0, ph: 6.50, temperatura: temp, indice_refraccion: null }
+        ];
 
-      if (!chartInstance) initChart();
+        // Guardar lote como activo en localStorage para persistencia al recargar
+        localStorage.setItem('prediyogur_active_trial_id', loteNombre);
 
-      renderizarTablaLecturasActivas();
-      ejecutarSimulacion();
+        // Actualizar vista local en simulador por si regresa
+        document.getElementById('panel-espera').style.display = 'none';
+        document.getElementById('panel-resultados').style.display = 'block';
+        document.getElementById('active-lote-title').innerText = ensayoActivo.loteId;
+        const horaStr = ensayoActivo.fechaInicio.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('active-metadata-sub').innerText = `Responsable: ${ensayoActivo.investigador} | Matriz: ${sustrato.toUpperCase()} (${temp}°C / ${((inoc/vol)*100).toFixed(2)}%) | Inicio: ${horaStr}`;
+
+        if (!chartInstance) initChart();
+        renderizarTablaLecturasActivas();
+        ejecutarSimulacion();
+
+        // Abrir automáticamente el ensayo en la pestaña de Archivo y Monitoreo
+        await abrirEnsayoEnMonitoreo(loteNombre);
+
+      } catch (err) {
+        console.error('Error al iniciar ensayo:', err);
+        alert('⚠️ Error de conexión al crear el ensayo en SQLite.');
+      }
     }
 
     // Reiniciar y volver al estado de espera
@@ -2350,11 +2591,525 @@
       }
     }
 
+    // ==========================================
+    // GESTIÓN DE ENSAYOS Y LOTES EN SQLITE (ARCHIVO Y MONITOREO ACTIVO)
+    // ==========================================
+    let detalleChartInstance = null;
+    let ensayoSeleccionado = null;
+
+    // Carga la lista completa de ensayos desde SQLite y renderiza las tarjetas apiladas
+    async function cargarListaEnsayos() {
+      const container = document.getElementById('ensayos-cards-list');
+      const badgeTotal = document.getElementById('badge-total-ensayos');
+      if (!container) return;
+
+      try {
+        const res = await fetch('/api/ai/trials');
+        const data = await res.json();
+        if (!data.success) {
+          container.innerHTML = '<div style="text-align:center; padding:24px; color:#ef4444;">Error al cargar ensayos desde SQLite.</div>';
+          return;
+        }
+
+        const trials = data.data.trials || [];
+        if (badgeTotal) badgeTotal.innerText = trials.length;
+
+        if (trials.length === 0) {
+          container.innerHTML = `
+            <div style="text-align:center; padding:40px 20px; background:#f8fafc; border:1.5px dashed var(--border); border-radius:10px;">
+              <div style="font-size:36px; margin-bottom:10px;">📂</div>
+              <h4 style="font-size:16px; font-weight:800; color:#1e293b; margin-bottom:6px;">No hay ensayos archivados todavía</h4>
+              <p style="font-size:13px; color:#64748b; margin-bottom:16px;">Configura tu primer ensayo en la pestaña de Simulación para comenzar a monitorear.</p>
+              <button onclick="switchTab('simulador')" class="btn-simulate" style="width:auto; margin:0 auto; padding:8px 18px; font-size:13px;">
+                ➕ Configurar Primer Ensayo
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        let html = '';
+        trials.forEach((t) => {
+          const fecha = new Date(t.creado_en).toLocaleString();
+          const esActivo = t.estado !== 'COMPLETADO';
+          const diff = t.diferencia_minutos || 0;
+          let ritmoTag = '⭐ Nominal';
+          let ritmoColor = '#0284c7';
+          if (diff < -3) {
+            ritmoTag = `⚡ Acelerado (${Math.abs(diff)}m antes)`;
+            ritmoColor = '#059669';
+          } else if (diff > 3) {
+            ritmoTag = `❄️ Retraso (+${diff}m)`;
+            ritmoColor = '#d97706';
+          }
+
+          html += `
+            <div class="card" style="margin-bottom:10px; border-left:4px solid ${esActivo ? '#0284c7' : '#94a3b8'}; transition:transform 0.15s; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+                <div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:17px; font-weight:800; color:#0f172a;">🏷️ ${t.lote_id}</span>
+                    <span class="badge" style="background:${esActivo ? '#dcfce7' : '#f1f5f9'}; color:${esActivo ? '#15803d' : '#64748b'}; font-weight:800; font-size:11px;">
+                      ${esActivo ? '🟢 En Monitoreo' : '🏁 Completado'}
+                    </span>
+                  </div>
+                  <div style="font-size:12px; color:#64748b; margin-top:3px;">
+                    <span>👤 ${t.investigador}</span> • <span>📅 ${fecha}</span>
+                  </div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button type="button" onclick="abrirEnsayoEnMonitoreo('${t.lote_id}')" class="btn-simulate" style="width:auto; padding:7px 16px; font-size:12.5px; background:linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+                    📂 Abrir Ensayo & Actualizar
+                  </button>
+                  <button type="button" onclick="eliminarEnsayoDesdeLista('${t.lote_id}')" style="background:#fee2e2; border:1px solid #fecaca; color:#b91c1c; padding:7px 12px; border-radius:8px; cursor:pointer; font-weight:700; font-size:12px;" title="Eliminar este ensayo">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+
+              <div style="display:flex; flex-wrap:wrap; gap:8px; font-size:12px; color:#334155; background:#f8fafc; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0;">
+                <div style="display:flex; align-items:center; gap:4px;">
+                  <span>🌡️ Incubación:</span> <strong>${t.temperatura_c.toFixed(1)} °C</strong>
+                </div>
+                <div style="color:#cbd5e1;">|</div>
+                <div style="display:flex; align-items:center; gap:4px;">
+                  <span>🧪 Inóculo:</span> <strong>${t.porcentaje_inoculo.toFixed(2)}% (${t.masa_inoculo_g}g / ${t.volumen_ml}mL)</strong>
+                </div>
+                <div style="color:#cbd5e1;">|</div>
+                <div style="display:flex; align-items:center; gap:4px;">
+                  <span>⏱️ Corte (pH 4.50):</span> <strong style="color:#0284c7;">${t.tiempo_corte_estimado_horas} h (~${t.tiempo_corte_estimado_minutos} min)</strong>
+                </div>
+                <div style="color:#cbd5e1;">|</div>
+                <div style="display:flex; align-items:center; gap:4px;">
+                  <span>📊 Lecturas:</span> <strong>${t.total_lecturas} ${t.total_lecturas === 1 ? 'lectura (T0)' : 'lecturas'}</strong>
+                </div>
+                <div style="color:#cbd5e1;">|</div>
+                <div style="display:flex; align-items:center; gap:4px;">
+                  <span>Ritmo:</span> <strong style="color:${ritmoColor};">${ritmoTag}</strong>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+        actualizarBannerSimuladorConUltimo(trials);
+
+      } catch (err) {
+        console.error('Error al cargar lista de ensayos:', err);
+        container.innerHTML = '<div style="text-align:center; padding:24px; color:#ef4444;">Error de conexión al cargar ensayos.</div>';
+      }
+
+      cargarHistorial();
+    }
+
+    function actualizarBannerSimuladorConUltimo(trials) {
+      const banner = document.getElementById('panel-espera-banner-activo');
+      const loteEl = document.getElementById('banner-activo-lote');
+      const detEl = document.getElementById('banner-activo-detalles');
+      if (!banner || !loteEl || !detEl) return;
+
+      const activoId = localStorage.getItem('prediyogur_active_trial_id');
+      let target = (trials || []).find(t => t.lote_id === activoId);
+      if (!target && trials && trials.length > 0) {
+        target = trials[0];
+        localStorage.setItem('prediyogur_active_trial_id', target.lote_id);
+      }
+
+      if (target) {
+        loteEl.innerText = target.lote_id;
+        detEl.innerText = `Investigador: ${target.investigador} • ${target.total_lecturas} ${target.total_lecturas === 1 ? 'lectura (T0)' : 'lecturas'} • Corte estimado a pH 4.50: ${target.tiempo_corte_estimado_horas} h`;
+        banner.style.display = 'block';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    function reanudarUltimoEnsayoActivo() {
+      const activoId = localStorage.getItem('prediyogur_active_trial_id');
+      if (activoId) {
+        abrirEnsayoEnMonitoreo(activoId);
+      } else {
+        switchTab('ensayos');
+      }
+    }
+
+    // Abre un ensayo específico, muestra su curva interactiva y su panel de actualización periódica
+    async function abrirEnsayoEnMonitoreo(loteId) {
+      if (!loteId) return;
+      try {
+        const res = await fetch(`/api/ai/trials/${encodeURIComponent(loteId)}`);
+        const data = await res.json();
+        if (!data.success) {
+          alert('⚠️ ' + (data.message || 'No se pudo cargar el ensayo.'));
+          return;
+        }
+
+        ensayoSeleccionado = data.data.trial;
+        const rec = data.data.recalibracion;
+        const curva = data.data.curvaRecalibrada || [];
+
+        localStorage.setItem('prediyogur_active_trial_id', loteId);
+
+        // Cambiar a pestaña de ensayos
+        switchTab('ensayos');
+
+        // Mostrar detalle, ocultar lista
+        const listCont = document.getElementById('ensayos-lista-container');
+        const detCont = document.getElementById('ensayos-detalle-container');
+        if (listCont) listCont.style.display = 'none';
+        if (detCont) detCont.style.display = 'block';
+
+        // Llenar encabezado
+        document.getElementById('det-lote-id').innerText = ensayoSeleccionado.lote_id;
+        document.getElementById('det-investigador').innerText = '👤 ' + ensayoSeleccionado.investigador;
+        document.getElementById('det-fecha-creacion').innerText = '📅 Creado: ' + new Date(ensayoSeleccionado.creado_en).toLocaleString();
+
+        const badgeEstado = document.getElementById('det-estado-badge');
+        if (ensayoSeleccionado.estado === 'COMPLETADO') {
+          badgeEstado.innerText = '🏁 Ensayo Completado';
+          badgeEstado.style.background = '#e2e8f0';
+          badgeEstado.style.color = '#334155';
+        } else {
+          badgeEstado.innerText = '🟢 En Monitoreo Activo';
+          badgeEstado.style.background = '#dcfce7';
+          badgeEstado.style.color = '#15803d';
+        }
+
+        // Llenar KPIs
+        document.getElementById('det-kpi-tiempo').innerText = `${ensayoSeleccionado.tiempo_corte_estimado_horas} h`;
+        document.getElementById('det-kpi-minutos').innerText = `~${ensayoSeleccionado.tiempo_corte_estimado_minutos} min (${ensayoSeleccionado.diferencia_minutos > 0 ? '+' : ''}${ensayoSeleccionado.diferencia_minutos} min)`;
+
+        const razonVel = rec && rec.factorVelocidadKinetic ? rec.factorVelocidadKinetic.toFixed(2) + 'x' : '1.00x';
+        document.getElementById('det-kpi-velocidad').innerText = razonVel;
+        const ritmoEl = document.getElementById('det-kpi-ritmo');
+        if (ensayoSeleccionado.diferencia_minutos < -3) {
+          ritmoEl.innerText = `⚡ Acelerado (${Math.abs(ensayoSeleccionado.diferencia_minutos)} min antes)`;
+          ritmoEl.style.color = '#059669';
+        } else if (ensayoSeleccionado.diferencia_minutos > 3) {
+          ritmoEl.innerText = `❄️ Ralentizado (+${ensayoSeleccionado.diferencia_minutos} min)`;
+          ritmoEl.style.color = '#d97706';
+        } else {
+          ritmoEl.innerText = '⭐ Ritmo nominal';
+          ritmoEl.style.color = '#0284c7';
+        }
+
+        document.getElementById('det-kpi-temp').innerText = `${ensayoSeleccionado.temperatura_c.toFixed(1)} °C`;
+        document.getElementById('det-kpi-inoculo').innerText = `${ensayoSeleccionado.porcentaje_inoculo.toFixed(2)}%`;
+        document.getElementById('det-kpi-masa').innerText = `${ensayoSeleccionado.masa_inoculo_g} g / ${ensayoSeleccionado.volumen_ml} mL`;
+
+        // Banner diagnóstico
+        const diagText = document.getElementById('det-diagnostico-texto');
+        if (diagText) {
+          diagText.innerText = (rec && rec.diagnostico) || ensayoSeleccionado.diagnostico || 'Monitoreo activo del ensayo en curso.';
+        }
+
+        // Llenar tabla de lecturas
+        renderizarTablaLecturasDetalle(ensayoSeleccionado.lecturas || []);
+
+        // Sugerir siguiente lectura en el formulario
+        const ult = ensayoSeleccionado.lecturas && ensayoSeleccionado.lecturas[ensayoSeleccionado.lecturas.length - 1];
+        if (ult) {
+          const proxMin = Math.min(600, ult.tiempo_minutos + (ult.tiempo_minutos < 180 ? 60 : 30));
+          const phSugerido = Math.max(4.0, ult.ph - 0.35);
+          document.getElementById('det-in-min').value = proxMin;
+          document.getElementById('det-in-ph').value = phSugerido.toFixed(2);
+          document.getElementById('det-in-temp').value = ensayoSeleccionado.temperatura_c.toFixed(1);
+        }
+
+        // Renderizar gráfico interactivo
+        renderizarGraficoDetalle(curva, ensayoSeleccionado.lecturas || []);
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      } catch (err) {
+        console.error('Error al abrir ensayo:', err);
+        alert('⚠️ Error de conexión al cargar los datos del ensayo.');
+      }
+    }
+
+    // Renderiza la curva cinética y los puntos medidos reales en el canvas
+    function renderizarGraficoDetalle(curva, lecturas) {
+      const canvas = document.getElementById('chart-ensayo-detalle');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      if (detalleChartInstance) {
+        detalleChartInstance.destroy();
+      }
+
+      const labels = curva.map(p => p.minutos + 'm');
+      const phProyeccion = curva.map(p => p.phPredicho);
+      const corteLine = curva.map(() => 4.50);
+
+      // Puntos experimentales reales
+      const puntosRealesMap = {};
+      (lecturas || []).forEach(l => {
+        puntosRealesMap[l.tiempo_minutos] = l.ph;
+      });
+
+      const datosPuntosReales = curva.map(p => {
+        return puntosRealesMap[p.minutos] !== undefined ? puntosRealesMap[p.minutos] : null;
+      });
+
+      detalleChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Mediciones Reales en Matraz (pH)',
+              data: datosPuntosReales,
+              borderColor: '#0284c7',
+              backgroundColor: '#0284c7',
+              pointRadius: 6,
+              pointHoverRadius: 9,
+              pointBackgroundColor: '#0284c7',
+              pointBorderColor: '#ffffff',
+              pointBorderWidth: 2,
+              showLine: false,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Curva Cinética Recalibrada por IA',
+              data: phProyeccion,
+              borderColor: '#0284c7',
+              backgroundColor: 'rgba(2, 132, 199, 0.08)',
+              borderWidth: 3,
+              fill: true,
+              tension: 0.35,
+              pointRadius: 0,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Límite Crítico pH 4.50 (Corte)',
+              data: corteLine,
+              borderColor: '#ef4444',
+              borderWidth: 2,
+              borderDash: [5, 4],
+              pointRadius: 0,
+              fill: false,
+              yAxisID: 'y'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { font: { weight: 700, size: 12 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.raw} pH`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#f1f5f9' },
+              title: { display: true, text: 'Tiempo de Incubación (minutos)', font: { weight: 700 } }
+            },
+            y: {
+              min: 4.0,
+              max: 6.8,
+              grid: { color: '#f1f5f9' },
+              title: { display: true, text: 'pH', font: { weight: 700 } }
+            }
+          }
+        }
+      });
+    }
+
+    // Renderiza la tabla de lecturas del ensayo seleccionado
+    function renderizarTablaLecturasDetalle(lecturas) {
+      const tbody = document.getElementById('det-lecturas-tbody');
+      const badge = document.getElementById('det-lecturas-badge');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (badge) {
+        badge.innerText = `${lecturas.length} ${lecturas.length === 1 ? 'lectura (T0)' : 'lecturas'}`;
+      }
+
+      lecturas.forEach((l) => {
+        const tr = document.createElement('tr');
+        const min = Number(l.tiempo_minutos);
+        const hora = (min / 60).toFixed(1);
+        tr.innerHTML = `
+          <td><strong>${min} min</strong> (${hora} h)</td>
+          <td><span style="font-weight:800; color:#0284c7; font-size:13px;">${l.ph.toFixed(2)}</span></td>
+          <td>${l.temperatura ? l.temperatura.toFixed(1) : '--'} °C</td>
+          <td>${l.indice_refraccion !== null && l.indice_refraccion !== undefined ? l.indice_refraccion.toFixed(1) + ' °Bx' : '--'}</td>
+          <td>
+            ${min > 0 ? `<button type="button" onclick="eliminarLecturaDetalle(${min})" style="background:#fee2e2; border:none; color:#b91c1c; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:11px;" title="Eliminar lectura">✕</button>` : '<span style="color:#94a3b8; font-size:11px;">T0</span>'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Guarda una lectura periódica en el ensayo abierto actualmente en SQLite
+    async function guardarLecturaEnEnsayoSeleccionado() {
+      if (!ensayoSeleccionado) return;
+      const loteId = ensayoSeleccionado.lote_id;
+      const min = parseFloat(document.getElementById('det-in-min').value);
+      const ph = parseFloat(document.getElementById('det-in-ph').value);
+      const temp = parseFloat(document.getElementById('det-in-temp').value) || ensayoSeleccionado.temperatura_c;
+      const brixVal = document.getElementById('det-in-brix').value;
+      const brix = brixVal ? parseFloat(brixVal) : null;
+
+      if (isNaN(min) || min < 0) {
+        alert('⚠️ Por favor ingrese un tiempo en minutos válido (>= 0).');
+        return;
+      }
+      if (isNaN(ph) || ph < 3.8 || ph > 7.2) {
+        alert('⚠️ El pH medido debe encontrarse dentro del rango biológico [3.80 - 7.20].');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/ai/trials/${encodeURIComponent(loteId)}/readings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tiempo_minutos: min,
+            ph,
+            temperatura: temp,
+            indice_refraccion: brix
+          })
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          alert('⚠️ ' + (data.message || 'Error al guardar lectura'));
+          return;
+        }
+
+        // Recargar ensayo activo con su curva recalculada
+        await abrirEnsayoEnMonitoreo(loteId);
+
+      } catch (err) {
+        console.error('Error al guardar lectura:', err);
+        alert('⚠️ Error de conexión al registrar la lectura en SQLite.');
+      }
+    }
+
+    // Elimina una lectura periódica específica
+    async function eliminarLecturaDetalle(min) {
+      if (!ensayoSeleccionado) return;
+      if (!confirm(`¿Desea eliminar la lectura del minuto ${min}?`)) return;
+
+      try {
+        const res = await fetch(`/api/ai/trials/${encodeURIComponent(ensayoSeleccionado.lote_id)}/readings/${min}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert('⚠️ ' + (data.message || 'Error al eliminar lectura.'));
+          return;
+        }
+        await abrirEnsayoEnMonitoreo(ensayoSeleccionado.lote_id);
+      } catch (err) {
+        console.error('Error al eliminar lectura:', err);
+        alert('⚠️ Error de conexión.');
+      }
+    }
+
+    // Marca el ensayo como completado
+    async function finalizarEnsayoActivo() {
+      if (!ensayoSeleccionado) return;
+      if (!confirm(`¿Marcar el ensayo '${ensayoSeleccionado.lote_id}' como COMPLETADO?`)) return;
+
+      try {
+        const res = await fetch('/api/ai/trials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lote_id: ensayoSeleccionado.lote_id,
+            investigador: ensayoSeleccionado.investigador,
+            tipo_sustrato: ensayoSeleccionado.tipo_sustrato,
+            tipo_azucar: ensayoSeleccionado.tipo_azucar,
+            temperatura_c: ensayoSeleccionado.temperatura_c,
+            masa_inoculo_g: ensayoSeleccionado.masa_inoculo_g,
+            volumen_ml: ensayoSeleccionado.volumen_ml,
+            estado: 'COMPLETADO'
+          })
+        });
+        await abrirEnsayoEnMonitoreo(ensayoSeleccionado.lote_id);
+      } catch (err) {
+        console.error('Error al finalizar ensayo:', err);
+      }
+    }
+
+    // Elimina el ensayo actual desde la vista de detalle
+    async function eliminarEnsayoActual() {
+      if (!ensayoSeleccionado) return;
+      const loteId = ensayoSeleccionado.lote_id;
+      if (!confirm(`¿Está seguro de eliminar definitivamente el ensayo '${loteId}' y todas sus mediciones de SQLite?`)) return;
+
+      try {
+        const res = await fetch(`/api/ai/trials/${encodeURIComponent(loteId)}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (localStorage.getItem('prediyogur_active_trial_id') === loteId) {
+            localStorage.removeItem('prediyogur_active_trial_id');
+          }
+          cerrarDetalleEnsayo();
+        } else {
+          alert('⚠️ ' + (data.message || 'Error al eliminar'));
+        }
+      } catch (err) {
+        console.error('Error al eliminar ensayo:', err);
+      }
+    }
+
+    // Elimina un ensayo directamente desde la lista
+    async function eliminarEnsayoDesdeLista(loteId) {
+      if (!confirm(`¿Desea eliminar definitivamente el lote '${loteId}' de SQLite?`)) return;
+      try {
+        const res = await fetch(`/api/ai/trials/${encodeURIComponent(loteId)}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (localStorage.getItem('prediyogur_active_trial_id') === loteId) {
+            localStorage.removeItem('prediyogur_active_trial_id');
+          }
+          cargarListaEnsayos();
+        } else {
+          alert('⚠️ ' + (data.message || 'Error al eliminar'));
+        }
+      } catch (err) {
+        console.error('Error al eliminar:', err);
+      }
+    }
+
+    // Vuelve a la lista de ensayos archivados
+    function cerrarDetalleEnsayo() {
+      ensayoSeleccionado = null;
+      const detCont = document.getElementById('ensayos-detalle-container');
+      const listCont = document.getElementById('ensayos-lista-container');
+      if (detCont) detCont.style.display = 'none';
+      if (listCont) listCont.style.display = 'block';
+      cargarListaEnsayos();
+    }
+
     // Inicio
     window.addEventListener('DOMContentLoaded', () => {
       initLiveChart();
       validarYActualizar();
       cargarMetricas();
+      cargarListaEnsayos();
+
+      const activoId = localStorage.getItem('prediyogur_active_trial_id');
+      if (activoId) {
+        console.log('📌 Lote activo detectado en almacenamiento local:', activoId);
+      }
     });
   </script>
 </body>

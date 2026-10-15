@@ -9,6 +9,12 @@ const {
   getSavedSimulations,
   submitFeedbackBatch,
   recalibrateDynamicTrajectory,
+  listTrials,
+  getTrial,
+  createTrial,
+  addTrialReading,
+  deleteTrial,
+  deleteTrialReading,
 } = require('../controllers/ai.controller');
 
 const router = express.Router();
@@ -39,6 +45,14 @@ router.post('/simulate', simulateTrajectory);
 
 // Recalibración Dinámica en Tiempo Real con Asimilación de Datos Observados
 router.post('/recalibrate', recalibrateDynamicTrajectory);
+
+// Gestión y Persistencia de Ensayos Experimentales de Laboratorio (SQLite)
+router.get('/trials', listTrials);
+router.post('/trials', createTrial);
+router.get('/trials/:loteId', getTrial);
+router.post('/trials/:loteId/readings', addTrialReading);
+router.delete('/trials/:loteId/readings/:min', deleteTrialReading);
+router.delete('/trials/:loteId', deleteTrial);
 
 // Historial de simulaciones en SQLite local
 router.get('/simulations', getSavedSimulations);

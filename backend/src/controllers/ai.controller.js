@@ -12,6 +12,12 @@ const {
   listarPredicciones,
   insertarMuestrasFeedback,
   contarFeedback,
+  guardarEnsayoLaboratorio,
+  listarEnsayosLaboratorio,
+  obtenerEnsayoLaboratorio,
+  registrarLecturaEnEnsayo,
+  eliminarEnsayoLaboratorio,
+  eliminarLecturaDeEnsayo,
 } = require('../ai/sqliteStore');
 const {
   validarParametrosSimulacion,
@@ -337,6 +343,364 @@ const recalibrateDynamicTrajectory = (req, res) => {
   }
 };
 
+/**
+ * Lista todos los ensayos experimentales ordenados cronológicamente
+ */
+const listTrials = (_req, res) => {
+  try {
+    const trials = listarEnsayosLaboratorio(100);
+    return res.status(200).json({
+      success: true,
+      data: {
+        total: trials.length,
+        trials,
+      },
+      message: 'Listado de ensayos de laboratorio recuperado de SQLite.',
+      error: null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message: 'Error al listar los ensayos de laboratorio.',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Obtiene un ensayo específico con su proyección cinética recalculada
+ */
+const getTrial = (req, res) => {
+  try {
+    const { loteId } = req.params;
+    const trial = obtenerEnsayoLaboratorio(loteId);
+    if (!trial) {
+      return res.status(404).json({
+        success: false,
+        data: null,
+        message: `El ensayo con lote '${loteId}' no existe en SQLite.`,
+        error: 'TRIAL_NOT_FOUND',
+      });
+    }
+
+    // Recalibrar o proyectar dinámicamente con sus lecturas registradas
+    const rec = recalibrarTrayectoriaDinamica({
+      configuracion: {
+        temperaturaC: trial.temperatura_c,
+        masaInoculoG: trial.masa_inoculo_g,
+        volumenMl: trial.volumen_ml,
+        tipoSustrato: trial.tipo_sustrato,
+        tipoAzucar: trial.tipo_azucar,
+      },
+      lecturas: trial.lecturas,
+      intervaloMinutos: 15,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        trial,
+        recalibracion: rec,
+        curvaRecalibrada: rec.curvaCompleta || rec.curvaProyeccion,
+        curvaProyeccion: rec.curvaProyeccion,
+      },
+      message: `Ensayo '${loteId}' recuperado con proyección cinética actualizada.`,
+      error: null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message: 'Error al recuperar el ensayo de laboratorio.',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Crea un nuevo ensayo experimental y lo persiste en SQLite
+ */
+const createTrial = (req, res) => {
+  const validacion = validarParametrosSimulacion(req.body);
+  if (!validacion.esValido) {
+    return res.status(400).json({
+      success: false,
+      data: null,
+      message: 'Parámetros fisicoquímicos fuera de rango biológico.',
+      errores: validacion.errores,
+      error: 'VALIDATION_ERROR',
+    });
+  }
+
+  try {
+    const params = validacion.parametrosSaneados;
+    const loteId = String(req.body.lote_id || req.body.loteId || 'LOTE-EXP-' + Date.now()).trim();
+    const investigador = String(req.body.investigador || 'Lab. Química de Alimentos — ULEAM').trim();
+
+    const corte = predecirTiempoCorte({
+      temperaturaC: params.temperaturaC,
+      masaInoculoG: params.masaInoculoG,
+      volumenMl: params.volumenMl,
+      tipoAzucar: params.tipoAzucar,
+    });
+
+    const visco = predecirViscosidad({
+      temperaturaC: params.temperaturaC,
+      masaInoculoG: params.masaInoculoG,
+      volumenMl: params.volumenMl,
+    });
+
+    const trayectoria = generarTrayectoria({
+      temperaturaC: params.temperaturaC,
+      masaInoculoG: params.masaInoculoG,
+      volumenMl: params.volumenMl,
+      tipoSustrato: params.tipoSustrato,
+      tipoAzucar: params.tipoAzucar,
+      intervaloMinutos: 15,
+    });
+
+    const initialLecturas = [
+      {
+        tiempo_minutos: 0,
+        ph: 6.50,
+        temperatura: params.temperaturaC,
+        indice_refraccion: null,
+        registrado_en: new Date().toISOString(),
+      },
+    ];
+
+    const trial = guardarEnsayoLaboratorio({
+      lote_id: loteId,
+      investigador,
+      tipo_sustrato: params.tipoSustrato,
+      tipo_azucar: params.tipoAzucar,
+      temperatura_c: params.temperaturaC,
+      masa_inoculo_g: params.masaInoculoG,
+      volumen_ml: params.volumenMl,
+      porcentaje_inoculo: params.porcentajeInoculo,
+      tiempo_corte_inicial_horas: corte.tiempoCorteHoras,
+      tiempo_corte_inicial_minutos: corte.tiempoCorteMinutos,
+      tiempo_corte_estimado_horas: corte.tiempoCorteHoras,
+      tiempo_corte_estimado_minutos: corte.tiempoCorteMinutos,
+      diferencia_minutos: 0,
+      estado: 'EN_CURSO',
+      lecturas: initialLecturas,
+      diagnostico: visco.diagnostico,
+    });
+
+    // Guardar también en auditoría de predicciones
+    guardarPrediccion({
+      lote_id: loteId,
+      investigador,
+      tipo_sustrato: params.tipoSustrato,
+      temperatura_c: params.temperaturaC,
+      masa_inoculo_g: params.masaInoculoG,
+      volumen_ml: params.volumenMl,
+      porcentaje_inoculo: params.porcentajeInoculo,
+      tiempo_corte_horas: corte.tiempoCorteHoras,
+      tiempo_corte_minutos: corte.tiempoCorteMinutos,
+      viscosidad_predicha_mpas: visco.viscosidadPredichaMpaS,
+      calidad_gel: visco.calidadGel,
+      diagnostico: visco.diagnostico,
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        trial,
+        corte,
+        viscosidad: visco,
+        curva: trayectoria.curva,
+        advertencias: validacion.advertencias,
+      },
+      message: `¡Ensayo '${loteId}' creado y registrado con éxito en SQLite!`,
+      error: null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message: 'Error al registrar el ensayo en SQLite.',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Agrega una lectura periódica a un ensayo existente y recalibra dinámicamente
+ */
+const addTrialReading = (req, res) => {
+  const { loteId } = req.params;
+  const trial = obtenerEnsayoLaboratorio(loteId);
+  if (!trial) {
+    return res.status(404).json({
+      success: false,
+      data: null,
+      message: `El ensayo con lote '${loteId}' no existe en SQLite.`,
+      error: 'TRIAL_NOT_FOUND',
+    });
+  }
+
+  const min = Number(req.body.tiempo_minutos !== undefined ? req.body.tiempo_minutos : req.body.minutos);
+  const ph = Number(req.body.ph);
+  const temp = Number(req.body.temperatura !== undefined ? req.body.temperatura : (req.body.temperatura_c || trial.temperatura_c));
+  const brix = req.body.indice_refraccion !== undefined && req.body.indice_refraccion !== null
+    ? Number(req.body.indice_refraccion)
+    : (req.body.brix !== undefined && req.body.brix !== null ? Number(req.body.brix) : null);
+
+  if (isNaN(min) || min < 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'El tiempo transcurrido en minutos debe ser mayor o igual a 0.',
+      error: 'VALIDATION_ERROR',
+    });
+  }
+  if (isNaN(ph) || ph < 3.8 || ph > 7.2) {
+    return res.status(400).json({
+      success: false,
+      message: 'El pH medido debe encontrarse dentro del rango biológico [3.80 - 7.20].',
+      error: 'VALIDATION_ERROR',
+    });
+  }
+
+  try {
+    const updatedLecturas = [...trial.lecturas];
+    const idx = updatedLecturas.findIndex((l) => Number(l.tiempo_minutos !== undefined ? l.tiempo_minutos : l.minutos) === min);
+    const readingEntry = {
+      tiempo_minutos: min,
+      ph,
+      temperatura: temp,
+      indice_refraccion: brix,
+      registrado_en: new Date().toISOString(),
+    };
+    if (idx >= 0) {
+      updatedLecturas[idx] = readingEntry;
+    } else {
+      updatedLecturas.push(readingEntry);
+    }
+    updatedLecturas.sort((a, b) => Number(a.tiempo_minutos) - Number(b.tiempo_minutos));
+
+    // Recalibrar dinámica
+    const rec = recalibrarTrayectoriaDinamica({
+      configuracion: {
+        temperaturaC: trial.temperatura_c,
+        masaInoculoG: trial.masa_inoculo_g,
+        volumenMl: trial.volumen_ml,
+        tipoSustrato: trial.tipo_sustrato,
+        tipoAzucar: trial.tipo_azucar,
+      },
+      lecturas: updatedLecturas,
+      intervaloMinutos: 15,
+    });
+
+    const updatedTrial = registrarLecturaEnEnsayo(loteId, readingEntry, rec);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        trial: updatedTrial,
+        recalibracion: rec,
+        curvaRecalibrada: rec.curvaCompleta || rec.curvaProyeccion,
+        curvaProyeccion: rec.curvaProyeccion,
+      },
+      message: `Lectura en minuto ${min} guardada con éxito en SQLite y proyección recalibrada.`,
+      error: null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message: 'Error al registrar la lectura en SQLite.',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Elimina un ensayo experimental de SQLite
+ */
+const deleteTrial = (req, res) => {
+  try {
+    const { loteId } = req.params;
+    const ok = eliminarEnsayoLaboratorio(loteId);
+    if (!ok) {
+      return res.status(404).json({
+        success: false,
+        message: `El ensayo con lote '${loteId}' no existe o ya fue eliminado.`,
+        error: 'TRIAL_NOT_FOUND',
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: `Ensayo '${loteId}' eliminado exitosamente de SQLite.`,
+      error: null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Error al eliminar el ensayo de SQLite.',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Elimina una lectura específica de un ensayo y recalcula la trayectoria
+ */
+const deleteTrialReading = (req, res) => {
+  try {
+    const { loteId, min } = req.params;
+    const minNum = Number(min);
+    if (minNum === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se puede eliminar la lectura de inicio (T0).',
+        error: 'VALIDATION_ERROR',
+      });
+    }
+
+    const updatedTrial = eliminarLecturaDeEnsayo(loteId, minNum);
+    if (!updatedTrial) {
+      return res.status(404).json({
+        success: false,
+        message: `El ensayo '${loteId}' no existe.`,
+        error: 'TRIAL_NOT_FOUND',
+      });
+    }
+
+    // Recalibrar dinámicamente con las lecturas restantes
+    const rec = recalibrarTrayectoriaDinamica({
+      configuracion: {
+        temperaturaC: updatedTrial.temperatura_c,
+        masaInoculoG: updatedTrial.masa_inoculo_g,
+        volumenMl: updatedTrial.volumen_ml,
+        tipoSustrato: updatedTrial.tipo_sustrato,
+        tipoAzucar: updatedTrial.tipo_azucar,
+      },
+      lecturas: updatedTrial.lecturas,
+      intervaloMinutos: 15,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        trial: updatedTrial,
+        recalibracion: rec,
+        curvaRecalibrada: rec.curvaCompleta || rec.curvaProyeccion,
+      },
+      message: `Lectura en minuto ${min} eliminada con éxito.`,
+      error: null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Error al eliminar la lectura de SQLite.',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getModelMetrics,
   getExperimentalDataset,
@@ -345,4 +709,10 @@ module.exports = {
   getSavedSimulations,
   submitFeedbackBatch,
   recalibrateDynamicTrajectory,
+  listTrials,
+  getTrial,
+  createTrial,
+  addTrialReading,
+  deleteTrial,
+  deleteTrialReading,
 };
