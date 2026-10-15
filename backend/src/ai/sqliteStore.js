@@ -25,6 +25,8 @@ const db = new DatabaseSync(sqliteFilePath);
 db.exec(`
   CREATE TABLE IF NOT EXISTS predicciones_historial (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lote_id TEXT DEFAULT 'LOTE-DEFAULT',
+    investigador TEXT DEFAULT 'Lab. ULEAM',
     tipo_sustrato TEXT NOT NULL,
     temperatura_c REAL NOT NULL,
     masa_inoculo_g REAL NOT NULL,
@@ -54,12 +56,25 @@ db.exec(`
   );
 `);
 
+// Migración defensiva si la tabla ya existía sin las columnas
+try {
+  db.exec(`ALTER TABLE predicciones_historial ADD COLUMN lote_id TEXT DEFAULT 'LOTE-DEFAULT'`);
+} catch (e) {}
+try {
+  db.exec(`ALTER TABLE predicciones_historial ADD COLUMN investigador TEXT DEFAULT 'Lab. ULEAM'`);
+} catch (e) {}
+
 /**
  * Guarda una simulación o predicción realizada en el historial
  */
 function guardarPrediccion(p) {
+  const loteId = String(p.lote_id || p.loteId || p.nombre_lote || p.codigo || 'LOTE-CHV-' + Math.floor(100 + Math.random() * 900)).trim();
+  const investigador = String(p.investigador || p.usuario || 'Lab. Química de Alimentos — ULEAM').trim();
+
   const insert = db.prepare(`
     INSERT INTO predicciones_historial (
+      lote_id,
+      investigador,
       tipo_sustrato,
       temperatura_c,
       masa_inoculo_g,
@@ -71,11 +86,13 @@ function guardarPrediccion(p) {
       calidad_gel,
       diagnostico,
       creado_en
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const creadoEn = new Date().toISOString();
   const info = insert.run(
+    loteId,
+    investigador,
     p.tipoSustrato || p.tipo_sustrato || 'vaca',
     Number(p.temperaturaC || p.temperatura_c || 42),
     Number(p.masaInoculoG || p.masa_inoculo_g || 18.75),
@@ -92,6 +109,8 @@ function guardarPrediccion(p) {
   return {
     id: info.lastInsertRowid,
     ...p,
+    lote_id: loteId,
+    investigador,
     creado_en: creadoEn,
   };
 }

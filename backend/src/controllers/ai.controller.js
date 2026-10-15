@@ -167,6 +167,8 @@ const simulateTrajectory = (req, res) => {
     if (guardar) {
       try {
         guardarPrediccion({
+          lote_id: req.body?.lote_id || req.body?.nombre_lote || req.body?.codigo || 'LOTE-SIM-' + Math.floor(100 + Math.random() * 900),
+          investigador: req.body?.investigador || 'Lab. Química de Alimentos — ULEAM',
           tipo_sustrato: params.tipoSustrato,
           temperatura_c: params.temperaturaC,
           masa_inoculo_g: params.masaInoculoG,

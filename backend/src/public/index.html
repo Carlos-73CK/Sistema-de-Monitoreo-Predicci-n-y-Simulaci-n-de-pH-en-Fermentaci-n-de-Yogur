@@ -271,7 +271,22 @@
             <div class="card-header">
               <div>
                 <div class="card-title">🔬 Configuración del Bioproceso</div>
-                <div class="card-subtitle">Ajuste fino de variables o seleccione un escenario calibrado</div>
+                <div class="card-subtitle">Asigne el nombre del lote y defina las condiciones experimentales</div>
+              </div>
+            </div>
+
+            <!-- Identificador del Lote / Ensayo y Responsable -->
+            <div style="background:#f8fafc; border:1.5px solid var(--border); border-radius:10px; padding:12px; margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:8px;">
+                <div class="label-row">
+                  <label for="sim-lote-nombre" style="font-size:12.5px; font-weight:700; color:#1e293b;">🏷️ Código / Nombre del Lote o Ensayo:</label>
+                  <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:10px; font-weight:800;">Requerido</span>
+                </div>
+                <input type="text" id="sim-lote-nombre" value="LOTE-CHV-2026-001" placeholder="Ej. LOTE-EXP-2026-001" style="width:100%; padding:8px 12px; border:1.5px solid var(--border); border-radius:7px; font-weight:700; font-size:13px; color:#0f172a;" oninput="validarYActualizar()">
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label for="sim-investigador" style="font-size:11.5px; font-weight:600; color:#64748b;">👤 Investigador / Grupo:</label>
+                <input type="text" id="sim-investigador" value="Lab. Química de Alimentos — ULEAM" placeholder="Nombre del operador o grupo" style="width:100%; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; color:#334155;">
               </div>
             </div>
 
@@ -392,21 +407,64 @@
               <div class="input-error-msg" id="volumen-error">⚠️ Volumen fuera de escala (50 - 1000 mL)</div>
             </div>
 
-            <button class="btn-simulate" id="btn-ejecutar" onclick="ejecutarSimulacion()">
-              ⚡ Ejecutar Simulación Cinética
+            <button class="btn-simulate" id="btn-ejecutar" onclick="iniciarEnsayoSimulacion()" style="background:linear-gradient(135deg, #0284c7 0%, #0369a1 100%); font-size:14px; padding:12px 18px;">
+              🚀 Crear Ensayo & Generar Predicción
             </button>
           </div>
         </div>
 
-        <!-- Columna Derecha: Gráfica, KPIs y Medidor Reológico -->
+        <!-- Columna Derecha: Estado de Espera / Diagnóstico Reológico y Seguimiento -->
         <div>
-          <div class="card">
-            <div class="card-header">
-              <div>
-                <div class="card-title">📊 Diagnóstico Reológico y Curva Temporal</div>
-                <div class="card-subtitle">Decaimiento sigmoidal de Hill calibrado con los datos de laboratorio</div>
+          <!-- Panel de Espera Inicial (Se muestra mientras no se ha creado el ensayo) -->
+          <div id="panel-espera" class="card" style="text-align:center; padding:38px 24px;">
+            <div style="width:70px; height:70px; margin:0 auto 16px; background:#e0f2fe; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:32px; box-shadow:0 4px 12px rgba(2, 132, 199, 0.15);">
+              🧪
+            </div>
+            <h3 style="font-size:19px; font-weight:800; color:#0f172a; margin-bottom:8px;">
+              Esperando Inicio de Ensayo de Fermentación
+            </h3>
+            <p style="font-size:13px; color:#64748b; max-width:540px; margin:0 auto 20px; line-height:1.6;">
+              No hay ninguna predicción activa aún. Para comenzar, define el código del lote y ajusta las variables de incubación en el panel izquierdo, luego pulsa <strong>"Crear Ensayo & Generar Predicción"</strong>.
+            </p>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; max-width:620px; margin:0 auto 22px; text-align:left;">
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                <span style="font-size:11px; font-weight:800; color:#0284c7;">1. CREAR LOTE</span>
+                <p style="font-size:12px; color:#475569; margin-top:4px;">Asigna el nombre del lote, responsable y matriz láctea (vaca o vegetal).</p>
               </div>
-              <span class="badge badge-green" id="kpi-estado-badge">Condición Óptima</span>
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                <span style="font-size:11px; font-weight:800; color:#10b981;">2. PROYECCIÓN CINÉTICA</span>
+                <p style="font-size:12px; color:#475569; margin-top:4px;">La IA estima el tiempo de incubación inicial a pH 4.50 y la viscosidad final.</p>
+              </div>
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                <span style="font-size:11px; font-weight:800; color:#f59e0b;">3. ACTUALIZACIÓN EN VIVO</span>
+                <p style="font-size:12px; color:#475569; margin-top:4px;">A cada lectura tomada en el laboratorio, la IA recalcula la curva en tiempo real.</p>
+              </div>
+            </div>
+
+            <button onclick="iniciarEnsayoSimulacion()" style="background:#0284c7; color:white; border:none; padding:11px 22px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 2px 6px rgba(2, 132, 199, 0.25);">
+              ⚡ Crear Ensayo con Parámetros Calibrados (42 °C / 7.5% Chivería)
+            </button>
+          </div>
+
+          <!-- Panel de Resultados y Monitoreo Activo (Se muestra una vez creado el ensayo) -->
+          <div id="panel-resultados" class="card" style="display:none;">
+            <div class="card-header" style="flex-wrap:wrap; gap:8px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="card-title">🔬 Ensayo Activo:</span>
+                  <span id="active-lote-title" style="font-size:16px; font-weight:800; color:#0284c7;">LOTE-CHV-2026-001</span>
+                  <span class="badge badge-green" id="kpi-estado-badge">En Curso</span>
+                </div>
+                <div class="card-subtitle" id="active-metadata-sub">
+                  Responsable: Lab. ULEAM | Iniciado: 14/10/2026
+                </div>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button onclick="reiniciarEnsayoSimulador()" style="background:#f1f5f9; border:1px solid #cbd5e1; color:#475569; padding:5px 12px; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer;" title="Reiniciar y crear otro lote">
+                  ➕ Nuevo Ensayo
+                </button>
+              </div>
             </div>
 
             <!-- Alerta Térmica Informativa -->
@@ -419,25 +477,25 @@
             <div class="kpis-row">
               <div class="kpi-tile">
                 <span class="kpi-header">Tiempo a pH 4.5</span>
-                <span class="kpi-number" id="kpi-tiempo" style="color:#0284c7;">4.25 h</span>
-                <span class="kpi-footer" id="kpi-minutos" style="color:#64748b;">~255 minutos</span>
+                <span class="kpi-number" id="kpi-tiempo" style="color:#0284c7;">-- h</span>
+                <span class="kpi-footer" id="kpi-minutos" style="color:#64748b;">-- minutos</span>
               </div>
 
               <div class="kpi-tile">
                 <span class="kpi-header">Viscosidad Final</span>
-                <span class="kpi-number" id="kpi-viscosidad" style="color:#10b981;">2639</span>
+                <span class="kpi-number" id="kpi-viscosidad" style="color:#10b981;">--</span>
                 <span class="kpi-footer" style="color:#059669;">mPa·s (rotor 4, 60 rpm)</span>
               </div>
 
               <div class="kpi-tile">
                 <span class="kpi-header">Calidad de Coágulo</span>
-                <span class="kpi-number" id="kpi-calidad" style="font-size:15px; color:#15803d; margin: 8px 0;">FIRME / ESTABLE</span>
+                <span class="kpi-number" id="kpi-calidad" style="font-size:14px; color:#15803d; margin: 8px 0;">--</span>
                 <span class="kpi-footer" style="color:#64748b;">Red de caseína</span>
               </div>
 
               <div class="kpi-tile">
                 <span class="kpi-header">Consumo Azúcares</span>
-                <span class="kpi-number" id="kpi-brix" style="color:#f59e0b;">5.7 °Bx</span>
+                <span class="kpi-number" id="kpi-brix" style="color:#f59e0b;">-- °Bx</span>
                 <span class="kpi-footer" style="color:#64748b;">De 10.5 a 5.7 °Brix</span>
               </div>
             </div>
@@ -446,10 +504,10 @@
             <div class="visco-meter">
               <div class="visco-meter-header">
                 <span>Escala Reológica Estimada (Firmeza del Gel)</span>
-                <span id="meter-val-text" style="color:#0284c7;">2639 mPa·s</span>
+                <span id="meter-val-text" style="color:#0284c7;">-- mPa·s</span>
               </div>
               <div class="meter-track">
-                <div class="meter-pin" id="visco-pin" style="left: 80%;"></div>
+                <div class="meter-pin" id="visco-pin" style="left: 50%;"></div>
               </div>
               <div class="meter-labels">
                 <span>0 (Líquido)</span>
@@ -479,6 +537,79 @@
             <!-- Canvas del Gráfico Dinámico -->
             <div class="chart-box">
               <canvas id="cineticaChart"></canvas>
+            </div>
+
+            <!-- SECCIÓN INTEGRADA: ACTUALIZAR ENSAYO EN TIEMPO REAL -->
+            <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px; padding:16px; margin: 18px 0;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                <div>
+                  <h4 style="font-size:13.5px; font-weight:800; color:#0f172a;">⏱️ Actualizar Ensayo en Tiempo Real (Ingreso de Lecturas a los Minutos / Horas)</h4>
+                  <p style="font-size:11.5px; color:#64748b;">A medida que pasen los minutos u horas, ingresa las lecturas del pH-metro y la IA irá recalibrando la predicción:</p>
+                </div>
+                <span id="active-readings-count" class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800;">1 lectura inicial (T0)</span>
+              </div>
+
+              <!-- Fila de Steppers para la nueva lectura -->
+              <div class="form-row" style="margin-bottom:10px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label style="font-size:11.5px; font-weight:700;">Minutos Transcurridos:</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('act-min', -15)">−</button>
+                    <input type="number" id="act-min" value="60" step="15" min="0" max="720">
+                    <button type="button" class="btn-step" onclick="ajustarValor('act-min', 15)">+</button>
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0;">
+                  <label style="font-size:11.5px; font-weight:700;">pH Medido:</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('act-ph', -0.05)">−</button>
+                    <input type="number" id="act-ph" value="6.00" step="0.01" min="3.8" max="7.2">
+                    <button type="button" class="btn-step" onclick="ajustarValor('act-ph', 0.05)">+</button>
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0;">
+                  <label style="font-size:11.5px; font-weight:700;">Temp Baño (°C):</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('act-temp', -0.5)">−</button>
+                    <input type="number" id="act-temp" value="42.0" step="0.1" min="20" max="52">
+                    <button type="button" class="btn-step" onclick="ajustarValor('act-temp', 0.5)">+</button>
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0;">
+                  <label style="font-size:11.5px; font-weight:700;">°Brix (Opcional):</label>
+                  <div class="stepper-input">
+                    <button type="button" class="btn-step" onclick="ajustarValor('act-brix', -0.5)">−</button>
+                    <input type="number" id="act-brix" value="9.5" step="0.1" min="3" max="18">
+                    <button type="button" class="btn-step" onclick="ajustarValor('act-brix', 0.5)">+</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <button class="btn-simulate" onclick="agregarLecturaYRecalibrar()" style="background:#059669; padding:8px 16px; font-size:12.5px; margin:0; flex:1; max-width:280px;">
+                  🔄 Registrar Lectura y Recalibrar IA
+                </button>
+                <div id="act-feedback-text" style="font-size:12px; font-weight:700; color:#0369a1;">
+                </div>
+              </div>
+
+              <!-- Resumen dinámico de recalibración -->
+              <div id="act-recalib-summary" style="display:none; margin-top:12px; background:#ffffff; border:1.5px solid #bae6fd; border-radius:8px; padding:10px 14px;">
+              </div>
+
+              <!-- Tabla de lecturas registradas en este ensayo activo -->
+              <div style="margin-top:12px; max-height:160px; overflow-y:auto;">
+                <table class="milestones-table" style="font-size:11.5px; margin:0;">
+                  <thead>
+                    <tr><th>Minuto</th><th>pH Medido</th><th>Temp (°C)</th><th>°Brix</th><th>Acción</th></tr>
+                  </thead>
+                  <tbody id="act-readings-tbody">
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <!-- Tabla Resumen de Hitos de Fermentación -->
@@ -963,13 +1094,13 @@
             <thead>
               <tr>
                 <th>ID</th>
+                <th>Lote / Código</th>
                 <th>Sustrato</th>
                 <th>Temp (°C)</th>
                 <th>Inóculo</th>
                 <th>Tiempo Corte</th>
                 <th>Viscosidad Predicha</th>
                 <th>Calidad Gel</th>
-                <th>Diagnóstico</th>
                 <th>Fecha/Hora</th>
               </tr>
             </thead>
@@ -1598,6 +1729,204 @@
       document.getElementById('btn-ejecutar').disabled = !esValido;
     }
 
+    // Estado del Ensayo Activo en el Simulador
+    let ensayoActivo = null;
+    let lecturasEnsayoActivo = [];
+
+    // Iniciar el Ensayo y Generar Predicción
+    function iniciarEnsayoSimulacion() {
+      const loteInput = document.getElementById('sim-lote-nombre');
+      const loteNombre = (loteInput ? loteInput.value : '').trim();
+      if (!loteNombre) {
+        alert('⚠️ Por favor ingrese un código o nombre para el ensayo/lote (ej. LOTE-CHV-2026-001).');
+        if (loteInput) loteInput.focus();
+        return;
+      }
+
+      const investigador = (document.getElementById('sim-investigador').value || 'Lab. Química de Alimentos').trim();
+      const sustrato = document.getElementById('sim-sustrato').value;
+      const azucar = document.getElementById('sim-azucar').value;
+      const temp = parseFloat(document.getElementById('sim-temp').value);
+      const inoc = parseFloat(document.getElementById('sim-inoculo').value);
+      const vol = parseFloat(document.getElementById('sim-volumen').value);
+
+      ensayoActivo = {
+        loteId: loteNombre,
+        investigador,
+        sustrato,
+        azucar,
+        temp,
+        inoc,
+        vol,
+        fechaInicio: new Date()
+      };
+
+      lecturasEnsayoActivo = [
+        { tiempo_minutos: 0, ph: 6.25, temperatura: temp, indice_refraccion: 10.5 }
+      ];
+
+      // Cambiar de Panel de Espera a Panel de Resultados
+      document.getElementById('panel-espera').style.display = 'none';
+      document.getElementById('panel-resultados').style.display = 'block';
+
+      // Actualizar encabezado del ensayo activo
+      document.getElementById('active-lote-title').innerText = ensayoActivo.loteId;
+      const horaStr = ensayoActivo.fechaInicio.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('active-metadata-sub').innerText = `Responsable: ${ensayoActivo.investigador} | Matriz: ${sustrato.toUpperCase()} (${temp}°C / ${((inoc/vol)*100).toFixed(2)}%) | Inicio: ${horaStr}`;
+
+      if (!chartInstance) initChart();
+
+      renderizarTablaLecturasActivas();
+      ejecutarSimulacion();
+    }
+
+    // Reiniciar y volver al estado de espera
+    function reiniciarEnsayoSimulador() {
+      if (confirm('¿Desea cerrar el ensayo actual y configurar uno nuevo desde cero?')) {
+        ensayoActivo = null;
+        lecturasEnsayoActivo = [];
+        document.getElementById('panel-resultados').style.display = 'none';
+        document.getElementById('panel-espera').style.display = 'block';
+        document.getElementById('sim-lote-nombre').value = 'LOTE-CHV-' + Math.floor(100 + Math.random() * 900);
+      }
+    }
+
+    // Renderizar lecturas registradas del ensayo activo
+    function renderizarTablaLecturasActivas() {
+      const tbody = document.getElementById('act-readings-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      lecturasEnsayoActivo.forEach((l, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${l.tiempo_minutos} min</strong> (${(l.tiempo_minutos/60).toFixed(1)} h)</td>
+          <td><span style="font-weight:800; color:#0284c7;">${l.ph.toFixed(2)}</span></td>
+          <td>${l.temperatura ? l.temperatura.toFixed(1) : '42.0'} °C</td>
+          <td>${l.indice_refraccion !== null && l.indice_refraccion !== undefined ? l.indice_refraccion.toFixed(1) + ' °Bx' : '--'}</td>
+          <td>
+            ${idx > 0 ? `<button onclick="eliminarLecturaActiva(${idx})" style="background:#fee2e2; border:none; color:#b91c1c; padding:2px 8px; border-radius:4px; cursor:pointer; font-size:11px;">✕</button>` : '<span style="color:#94a3b8; font-size:11px;">T0</span>'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const badge = document.getElementById('active-readings-count');
+      if (badge) {
+        badge.innerText = `${lecturasEnsayoActivo.length} ${lecturasEnsayoActivo.length === 1 ? 'lectura (T0)' : 'lecturas registradas'}`;
+      }
+
+      const ult = lecturasEnsayoActivo[lecturasEnsayoActivo.length - 1];
+      if (ult) {
+        const proxMin = Math.min(600, ult.tiempo_minutos + (ult.tiempo_minutos < 180 ? 60 : 30));
+        const phSugerido = Math.max(4.0, ult.ph - 0.35);
+        const actMinInput = document.getElementById('act-min');
+        const actPhInput = document.getElementById('act-ph');
+        if (actMinInput) actMinInput.value = proxMin;
+        if (actPhInput) actPhInput.value = phSugerido.toFixed(2);
+      }
+    }
+
+    // Agregar lectura periódica y recalibrar en vivo
+    async function agregarLecturaYRecalibrar() {
+      if (!ensayoActivo) return;
+
+      const min = parseFloat(document.getElementById('act-min').value);
+      const ph = parseFloat(document.getElementById('act-ph').value);
+      const temp = parseFloat(document.getElementById('act-temp').value) || ensayoActivo.temp;
+      const brixVal = document.getElementById('act-brix').value;
+      const brix = brixVal ? parseFloat(brixVal) : null;
+
+      if (isNaN(min) || min < 0) {
+        alert('⚠️ Por favor ingrese un tiempo en minutos válido (>= 0).');
+        return;
+      }
+      if (isNaN(ph) || ph < 3.8 || ph > 7.2) {
+        alert('⚠️ El pH medido debe encontrarse dentro del rango biológico de laboratorio [3.80 - 7.20].');
+        return;
+      }
+
+      const idxExist = lecturasEnsayoActivo.findIndex(l => l.tiempo_minutos === min);
+      if (idxExist >= 0) {
+        lecturasEnsayoActivo[idxExist] = { tiempo_minutos: min, ph, temperatura: temp, indice_refraccion: brix };
+      } else {
+        lecturasEnsayoActivo.push({ tiempo_minutos: min, ph, temperatura: temp, indice_refraccion: brix });
+      }
+
+      lecturasEnsayoActivo.sort((a, b) => a.tiempo_minutos - b.tiempo_minutos);
+      renderizarTablaLecturasActivas();
+
+      try {
+        const res = await fetch('/api/ai/recalibrate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lote_id: ensayoActivo.loteId,
+            tipo_sustrato: ensayoActivo.sustrato,
+            tipo_azucar: ensayoActivo.azucar,
+            temperatura_c: ensayoActivo.temp,
+            masa_inoculo_g: ensayoActivo.inoc,
+            volumen_ml: ensayoActivo.vol,
+            lecturas_en_curso: lecturasEnsayoActivo
+          })
+        });
+
+        const data = await res.json();
+        if (!data.success) return;
+
+        const sim = data.data;
+        const pred = sim.prediccionCorte;
+
+        // Actualizar KPIs del ensayo activo
+        document.getElementById('kpi-tiempo').innerText = pred.tiempoCorteRecalibradoHoras + ' h';
+        document.getElementById('kpi-minutos').innerText = `~${pred.tiempoCorteRecalibradoMinutos} min (${pred.diferenciaMinutos > 0 ? '+' : ''}${pred.diferenciaMinutos} min)`;
+
+        // Resumen dinámico
+        const sumEl = document.getElementById('act-recalib-summary');
+        sumEl.style.display = 'block';
+        const diff = pred.diferenciaMinutos;
+        let colorClass = '#0284c7';
+        let tagText = '⭐ Ritmo nominal exacto';
+        if (diff < -3) {
+          colorClass = '#059669';
+          tagText = `⚡ Acidificación acelerada (${Math.abs(diff)} min antes)`;
+        } else if (diff > 3) {
+          colorClass = '#d97706';
+          tagText = `❄️ Acidificación ralentizada (+${diff} min de retraso)`;
+        }
+
+        sumEl.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <span style="font-weight:800; font-size:13px; color:${colorClass};">${tagText} (Velocidad: ${pred.razonVelocidad}x)</span>
+            <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700;">Corte proyectado a pH 4.5: ${pred.tiempoCorteRecalibradoHoras} h (~${pred.tiempoCorteRecalibradoMinutos} min)</span>
+          </div>
+          <p style="font-size:12px; color:#475569; margin-top:6px; line-height:1.4;">${pred.diagnostico}</p>
+        `;
+
+        // Actualizar curva en el gráfico
+        if (chartInstance) {
+          const labels = sim.curvaRecalibrada.map(p => p.minutos + 'm');
+          const phData = sim.curvaRecalibrada.map(p => p.phPredicho);
+          const corteLine = sim.curvaRecalibrada.map(() => 4.50);
+
+          chartInstance.data.labels = labels;
+          chartInstance.data.datasets[0].data = phData;
+          chartInstance.data.datasets[2].data = corteLine;
+          chartInstance.update();
+        }
+
+      } catch (err) {
+        console.error('Error al recalibrar:', err);
+      }
+    }
+
+    function eliminarLecturaActiva(idx) {
+      if (idx === 0) return;
+      lecturasEnsayoActivo.splice(idx, 1);
+      renderizarTablaLecturasActivas();
+      agregarLecturaYRecalibrar();
+    }
+
     // Aplicar Presets
     function aplicarPreset(inoculo, temp, vol, elementId) {
       document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
@@ -1609,7 +1938,9 @@
       document.getElementById('sim-volumen').value = vol;
 
       validarYActualizar();
-      ejecutarSimulacion();
+      if (ensayoActivo) {
+        ejecutarSimulacion();
+      }
     }
 
     let alarmaAcusticaHabilitada = true;
@@ -1644,7 +1975,6 @@
         if (audioCtx.state === 'suspended') audioCtx.resume();
 
         const now = audioCtx.currentTime;
-        // Tono de alerta doble de laboratorio (880 Hz -> 1174 Hz)
         const osc1 = audioCtx.createOscillator();
         const gain1 = audioCtx.createGain();
         osc1.type = 'sine';
@@ -1690,7 +2020,7 @@
       else if (tipo === 'sacarosa') tag.innerText = 'Sacarosa Añadida';
       else tag.innerText = 'Lactosa Nativa';
 
-      ejecutarSimulacion();
+      if (ensayoActivo) ejecutarSimulacion();
     }
 
     // Selección de Sustrato
@@ -1704,16 +2034,14 @@
       const hint = document.getElementById('azucar-hint');
 
       if (tipo === 'chocho' || tipo === 'coco') {
-        // En matrices vegetales NO hay lactosa
         lactosaPill.classList.add('disabled');
         hint.style.display = 'block';
         if (document.getElementById('sim-azucar').value === 'lactosa') {
           seleccionarAzucar('sacarosa', sacarosaPill);
-        } else {
+        } else if (ensayoActivo) {
           ejecutarSimulacion();
         }
       } else {
-        // Leche de vaca
         lactosaPill.classList.remove('disabled');
         hint.style.display = 'none';
         seleccionarAzucar('lactosa', lactosaPill);
@@ -1722,6 +2050,8 @@
 
     // Ejecutar Simulación vía REST API
     async function ejecutarSimulacion() {
+      const loteNombre = (document.getElementById('sim-lote-nombre')?.value || ensayoActivo?.loteId || 'LOTE-CHV-001').trim();
+      const investigador = (document.getElementById('sim-investigador')?.value || ensayoActivo?.investigador || 'Lab. ULEAM').trim();
       const sustrato = document.getElementById('sim-sustrato').value;
       const azucar = document.getElementById('sim-azucar').value;
       const temperatura = parseFloat(document.getElementById('sim-temp').value);
@@ -1733,6 +2063,8 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            lote_id: loteNombre,
+            investigador: investigador,
             tipo_sustrato: sustrato,
             tipo_azucar: azucar,
             temperatura_c: temperatura,
@@ -1894,13 +2226,13 @@
             return `
               <tr>
                 <td><strong>#${s.id}</strong></td>
+                <td><span style="font-weight:700; color:#0284c7;">${s.lote_id || ('LOTE-' + s.id)}</span></td>
                 <td><span class="badge-status badge-optimal">${s.tipo_sustrato.toUpperCase()}</span></td>
                 <td>${s.temperatura_c} °C</td>
                 <td>${s.porcentaje_inoculo}% (${s.masa_inoculo_g}g)</td>
                 <td><strong>${s.tiempo_corte_horas} h</strong> (${s.tiempo_corte_minutos} min)</td>
                 <td><span style="font-weight:800; color:#0284c7;">${s.viscosidad_predicha_mpas} mPa·s</span></td>
                 <td><small style="font-weight:700;">${s.calidad_gel || 'ESTANDAR'}</small></td>
-                <td><small>${s.diagnostico ? s.diagnostico.substring(0, 45) + '...' : '--'}</small></td>
                 <td><small style="color:#64748b;">${horaStr}</small></td>
               </tr>
             `;
@@ -2020,10 +2352,8 @@
 
     // Inicio
     window.addEventListener('DOMContentLoaded', () => {
-      initChart();
       initLiveChart();
       validarYActualizar();
-      ejecutarSimulacion();
       cargarMetricas();
     });
   </script>
