@@ -61,7 +61,7 @@ PrediYogur/
 - **Carlos Delgado:** Director de Proyecto / Coordinación General y Desarrollo Móvil
 - **Alex Patiño:** Base de Datos (PostgreSQL)
 - **Juan Murillo:** Backend (Node.js + Express)
-- **Jordan Mesa:** API REST e Integraciones
+- **Jordan Meza:** API REST e Integraciones
 - **Jinger Pérez:** Frontend y Visualización de Datos
 
 ---
