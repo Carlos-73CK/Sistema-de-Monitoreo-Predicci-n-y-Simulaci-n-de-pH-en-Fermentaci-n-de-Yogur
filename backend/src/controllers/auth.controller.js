@@ -1,71 +1,124 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
+const {
+  crearUsuarioSQLite,
+  buscarUsuarioPorEmailSQLite,
+  buscarUsuarioPorIdSQLite,
+  listarUsuariosSQLite,
+} = require('../ai/sqliteStore');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'prediyogur_super_secret_key_2026';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 /**
- * Registra un nuevo usuario en PostgreSQL con contraseña hasheada con bcrypt
+ * Validador de formato de correo electrónico
+ */
+function esEmailValido(correo) {
+  if (!correo || typeof correo !== 'string') return false;
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(correo.trim());
+}
+
+/**
+ * Registra un nuevo usuario en SQLite (y sincroniza con PostgreSQL si está disponible)
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  */
 const register = async (req, res) => {
   const { nombre, email, password, rol = 'estudiante' } = req.body || {};
 
-  if (!nombre || !email || !password) {
+  // Validaciones rigurosas
+  const errores = [];
+  if (!nombre || typeof nombre !== 'string' || nombre.trim().length < 2) {
+    errores.push('El nombre completo debe tener al menos 2 caracteres.');
+  }
+
+  if (!email || !esEmailValido(email)) {
+    errores.push('Debe proporcionar una dirección de correo electrónico válida (ej: usuario@uleam.edu.ec).');
+  }
+
+  if (!password || typeof password !== 'string' || password.length < 6) {
+    errores.push('La contraseña debe tener un mínimo de 6 caracteres para garantizar la seguridad.');
+  }
+
+  const rolNormalizado = String(rol || 'estudiante').trim().toLowerCase();
+  const rolesValidos = ['docente', 'estudiante', 'investigador'];
+  const rolFinal = rolesValidos.includes(rolNormalizado) ? rolNormalizado : 'estudiante';
+
+  if (errores.length > 0) {
     return res.status(400).json({
       success: false,
       data: null,
-      message: 'Debe proporcionar nombre, email y password.',
+      message: errores[0],
+      errores,
       error: 'VALIDATION_ERROR',
     });
   }
 
-  // Validar rol según restricciones de la base de datos
-  const rolNormalizado = String(rol).trim().toLowerCase();
-  const rolesValidos = ['docente', 'estudiante', 'investigador'];
-  const rolFinal = rolesValidos.includes(rolNormalizado) ? rolNormalizado : 'estudiante';
+  const emailLimpio = email.trim().toLowerCase();
+  const nombreLimpio = nombre.trim();
 
   try {
-    // 1. Validar si ya existe un usuario con el mismo correo
-    const userExistente = await pool.query(
-      `SELECT id FROM usuarios WHERE LOWER(correo) = LOWER($1) LIMIT 1`,
-      [email.trim()]
-    );
-
-    if (userExistente.rowCount > 0) {
+    // 1. Validar si ya existe en SQLite
+    const existenteSQLite = buscarUsuarioPorEmailSQLite(emailLimpio);
+    if (existenteSQLite) {
       return res.status(409).json({
         success: false,
         data: null,
-        message: 'El correo electrónico ya se encuentra registrado.',
+        message: 'El correo electrónico ya se encuentra registrado en el sistema.',
         error: 'USER_ALREADY_EXISTS',
       });
     }
 
-    // 2. Hashear la contraseña con bcrypt (10 rounds de salt)
+    // 2. Hashear la contraseña con bcrypt (10 rounds)
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // 3. Insertar usuario en la tabla usuarios de PostgreSQL
-    const result = await pool.query(
-      `INSERT INTO usuarios (nombre, correo, contrasena, rol)
-       VALUES ($1, LOWER($2), $3, $4)
-       RETURNING id, nombre, correo, rol, created_at`,
-      [nombre.trim(), email.trim(), hashedPassword, rolFinal]
-    );
+    // 3. Crear usuario en SQLite (almacén garantizado y autónomo)
+    const nuevoUsuario = crearUsuarioSQLite(nombreLimpio, emailLimpio, hashedPassword, rolFinal);
 
-    const nuevoUsuario = result.rows[0];
+    // 4. Intentar sincronización con PostgreSQL si la base remota está conectada
+    try {
+      if (pool && typeof pool.query === 'function') {
+        const pgCheck = await pool.query(
+          `SELECT id FROM usuarios WHERE LOWER(correo) = LOWER($1) LIMIT 1`,
+          [emailLimpio]
+        );
+        if (pgCheck.rowCount === 0) {
+          await pool.query(
+            `INSERT INTO usuarios (nombre, correo, contrasena, rol)
+             VALUES ($1, LOWER($2), $3, $4)`,
+            [nombreLimpio, emailLimpio, hashedPassword, rolFinal]
+          );
+        }
+      }
+    } catch (pgErr) {
+      console.warn('[Auth] Sincronización secundaria PostgreSQL omitida (modo SQLite autónomo):', pgErr.message);
+    }
+
+    // 5. Emitir token JWT firmado para autenticación inmediata
+    const payload = {
+      id: nuevoUsuario.id,
+      email: nuevoUsuario.email,
+      rol: nuevoUsuario.rol,
+      nombre: nuevoUsuario.nombre,
+    };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
     return res.status(201).json({
       success: true,
       data: {
+        token,
         user: {
           id: nuevoUsuario.id,
           nombre: nuevoUsuario.nombre,
-          email: nuevoUsuario.correo,
+          email: nuevoUsuario.email,
           rol: nuevoUsuario.rol,
           created_at: nuevoUsuario.created_at,
         },
       },
-      message: 'Usuario registrado correctamente.',
+      message: `¡Bienvenido(a) a PrediYogur, ${nuevoUsuario.nombre}! Cuenta creada exitosamente.`,
       error: null,
     });
   } catch (error) {
@@ -79,7 +132,7 @@ const register = async (req, res) => {
 };
 
 /**
- * Autentica un usuario contra PostgreSQL, valida hash con bcrypt y firma un JWT real
+ * Autentica un usuario contra SQLite (con fallback a PostgreSQL), valida hash con bcrypt y firma un JWT real
  * @param {import('express').Request} req
  * @param {import('express').Response} res
  */
@@ -90,40 +143,57 @@ const login = async (req, res) => {
     return res.status(400).json({
       success: false,
       data: null,
-      message: 'Debe enviar email y password.',
+      message: 'Debe ingresar su correo electrónico y contraseña.',
       error: 'VALIDATION_ERROR',
     });
   }
 
-  try {
-    // 1. Consultar usuario por correo
-    const result = await pool.query(
-      `SELECT id, nombre, correo, contrasena, rol
-       FROM usuarios
-       WHERE LOWER(correo) = LOWER($1)
-       LIMIT 1`,
-      [email.trim()]
-    );
+  const emailLimpio = String(email).trim().toLowerCase();
 
-    if (result.rowCount === 0) {
+  try {
+    // 1. Consultar usuario en SQLite
+    let usuario = buscarUsuarioPorEmailSQLite(emailLimpio);
+
+    // Si no está en SQLite, intentar buscar en PostgreSQL como respaldo
+    if (!usuario) {
+      try {
+        if (pool && typeof pool.query === 'function') {
+          const pgRes = await pool.query(
+            `SELECT id, nombre, correo, contrasena, rol
+             FROM usuarios
+             WHERE LOWER(correo) = LOWER($1)
+             LIMIT 1`,
+            [emailLimpio]
+          );
+          if (pgRes.rowCount > 0) {
+            const pgUser = pgRes.rows[0];
+            // Importar a SQLite para futuras consultas
+            crearUsuarioSQLite(pgUser.nombre, pgUser.correo, pgUser.contrasena, pgUser.rol);
+            usuario = buscarUsuarioPorEmailSQLite(emailLimpio);
+          }
+        }
+      } catch (pgErr) {
+        console.warn('[Auth] Fallback a PostgreSQL no disponible:', pgErr.message);
+      }
+    }
+
+    if (!usuario) {
       return res.status(401).json({
         success: false,
         data: null,
-        message: 'Credenciales inválidas.',
+        message: 'Credenciales inválidas. Correo o contraseña incorrectos.',
         error: 'AUTH_INVALID_CREDENTIALS',
       });
     }
 
-    const usuario = result.rows[0];
-
     // 2. Comparar contraseña en texto plano con el hash de bcrypt
-    const passwordValido = await bcrypt.compare(password, usuario.contrasena);
+    const passwordValido = await bcrypt.compare(String(password), usuario.contrasena);
 
     if (!passwordValido) {
       return res.status(401).json({
         success: false,
         data: null,
-        message: 'Credenciales inválidas.',
+        message: 'Credenciales inválidas. Correo o contraseña incorrectos.',
         error: 'AUTH_INVALID_CREDENTIALS',
       });
     }
@@ -136,10 +206,7 @@ const login = async (req, res) => {
       nombre: usuario.nombre,
     };
 
-    const secret = process.env.JWT_SECRET || 'prediyogur_super_secret_key_2026';
-    const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
-
-    const token = jwt.sign(payload, secret, { expiresIn });
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
     return res.status(200).json({
       success: true,
@@ -152,14 +219,14 @@ const login = async (req, res) => {
           rol: usuario.rol,
         },
       },
-      message: 'Inicio de sesión exitoso.',
+      message: `¡Sesión iniciada correctamente! Bienvenido(a) ${usuario.nombre}.`,
       error: null,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
       data: null,
-      message: 'No fue posible iniciar sesión.',
+      message: 'No fue posible iniciar sesión en este momento.',
       error: error.message,
     });
   }
@@ -188,8 +255,34 @@ const getPerfil = (req, res) => {
   });
 };
 
+/**
+ * Retorna la lista de usuarios para propósitos de pruebas / selector de perfil
+ */
+const getUsuariosDisponibles = (_req, res) => {
+  try {
+    const usuarios = listarUsuariosSQLite();
+    return res.status(200).json({
+      success: true,
+      data: {
+        total: usuarios.length,
+        usuarios,
+      },
+      message: 'Lista de usuarios disponibles recuperada.',
+      error: null,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message: 'Error al recuperar usuarios.',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getPerfil,
+  getUsuariosDisponibles,
 };

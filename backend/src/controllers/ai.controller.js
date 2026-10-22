@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const {
   predecirPunto,
   predecirTiempoCorte,
@@ -343,19 +344,52 @@ const recalibrateDynamicTrajectory = (req, res) => {
   }
 };
 
+
 /**
- * Lista todos los ensayos experimentales ordenados cronológicamente
+ * Extrae el usuario autenticado desde req.user o desde el token Bearer en headers
  */
-const listTrials = (_req, res) => {
+function extraerUsuarioDePeticion(req) {
+  if (req.user && req.user.email) return req.user;
+  const authHeader = req.headers['authorization'] || req.headers.authorization;
+  if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) return null;
+  const token = authHeader.substring(7).trim();
+  if (!token) return null;
   try {
-    const trials = listarEnsayosLaboratorio(100);
+    const secret = process.env.JWT_SECRET || 'prediyogur_super_secret_key_2026';
+    return jwt.verify(token, secret);
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Lista todos los ensayos experimentales ordenados cronológicamente (soporta filtro por usuario)
+ */
+const listTrials = (req, res) => {
+  try {
+    const usuarioAuth = extraerUsuarioDePeticion(req);
+    const { usuario_email, mis_ensayos } = req.query || {};
+
+    let filtroEmail = null;
+    if (usuario_email && String(usuario_email).trim()) {
+      filtroEmail = String(usuario_email).trim().toLowerCase();
+    } else if (mis_ensayos === 'true' || mis_ensayos === '1') {
+      if (usuarioAuth && usuarioAuth.email) {
+        filtroEmail = usuarioAuth.email.toLowerCase();
+      }
+    }
+
+    const trials = listarEnsayosLaboratorio(100, filtroEmail);
     return res.status(200).json({
       success: true,
       data: {
         total: trials.length,
+        filtro_usuario: filtroEmail || 'todos',
         trials,
       },
-      message: 'Listado de ensayos de laboratorio recuperado de SQLite.',
+      message: filtroEmail
+        ? `Listado de ensayos propios filtrados para '${filtroEmail}'.`
+        : 'Listado de ensayos de laboratorio recuperado de SQLite.',
       error: null,
     });
   } catch (error) {
@@ -438,6 +472,21 @@ const createTrial = (req, res) => {
     const loteId = String(req.body.lote_id || req.body.loteId || 'LOTE-EXP-' + Date.now()).trim();
     const investigador = String(req.body.investigador || 'Lab. Química de Alimentos — ULEAM').trim();
 
+    // Determinar usuario propietario del ensayo (vía token, body o inferencia)
+    const usuarioAuth = extraerUsuarioDePeticion(req);
+    let usuarioEmail = (req.body.usuario_email || (usuarioAuth && usuarioAuth.email) || '').trim().toLowerCase();
+    let usuarioId = req.body.usuario_id || (usuarioAuth && usuarioAuth.id) || null;
+
+    if (!usuarioEmail) {
+      if (investigador.toLowerCase().includes('santacruz')) {
+        usuarioEmail = 'dr.santacruz@uleam.edu.ec';
+        usuarioId = 1;
+      } else {
+        usuarioEmail = 'carlos.delgado@uleam.edu.ec';
+        usuarioId = 2;
+      }
+    }
+
     const corte = predecirTiempoCorte({
       temperaturaC: params.temperaturaC,
       masaInoculoG: params.masaInoculoG,
@@ -473,6 +522,8 @@ const createTrial = (req, res) => {
     const trial = guardarEnsayoLaboratorio({
       lote_id: loteId,
       investigador,
+      usuario_email: usuarioEmail,
+      usuario_id: usuarioId,
       tipo_sustrato: params.tipoSustrato,
       tipo_azucar: params.tipoAzucar,
       temperatura_c: params.temperaturaC,

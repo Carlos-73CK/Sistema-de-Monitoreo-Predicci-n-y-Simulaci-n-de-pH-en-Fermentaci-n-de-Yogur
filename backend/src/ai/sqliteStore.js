@@ -11,6 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
+const bcrypt = require('bcryptjs');
 
 // Asegurar existencia del directorio backend/data
 const dataDir = path.resolve(__dirname, '../../data');
@@ -74,9 +75,54 @@ db.exec(`
     lecturas_json TEXT NOT NULL DEFAULT '[]',
     diagnostico TEXT,
     creado_en TEXT NOT NULL,
-    actualizado_en TEXT NOT NULL
+    actualizado_en TEXT NOT NULL,
+    usuario_id INTEGER DEFAULT 1,
+    usuario_email TEXT DEFAULT 'carlos.delgado@uleam.edu.ec'
   );
 `);
+
+// Tabla de usuarios locales para autenticación y asignación de muestras
+db.exec(`
+  CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    correo TEXT UNIQUE NOT NULL,
+    contrasena TEXT NOT NULL,
+    rol TEXT DEFAULT 'estudiante',
+    creado_en TEXT NOT NULL
+  );
+`);
+
+// Migración defensiva de columnas en ensayos_laboratorio
+try {
+  db.exec(`ALTER TABLE ensayos_laboratorio ADD COLUMN usuario_id INTEGER DEFAULT 1`);
+} catch (e) {}
+try {
+  db.exec(`ALTER TABLE ensayos_laboratorio ADD COLUMN usuario_email TEXT DEFAULT 'carlos.delgado@uleam.edu.ec'`);
+} catch (e) {}
+
+// Sembrar usuarios predeterminados si la tabla está vacía
+try {
+  const countUsers = db.prepare(`SELECT COUNT(*) as total FROM usuarios`).get();
+  if (!countUsers || countUsers.total === 0) {
+    const saltRounds = 10;
+    const insertUser = db.prepare(`
+      INSERT INTO usuarios (nombre, correo, contrasena, rol, creado_en)
+      VALUES (?, LOWER(?), ?, ?, ?)
+    `);
+    const now = new Date().toISOString();
+    insertUser.run('Dr. Stalin Santacruz Terán', 'dr.santacruz@uleam.edu.ec', bcrypt.hashSync('santacruz2026', saltRounds), 'investigador', now);
+    insertUser.run('Carlos Delgado', 'carlos.delgado@uleam.edu.ec', bcrypt.hashSync('carlos2026', saltRounds), 'investigador', now);
+    insertUser.run('Estudiante ULEAM', 'estudiante@uleam.edu.ec', bcrypt.hashSync('estudiante2026', saltRounds), 'estudiante', now);
+  }
+} catch (e) {
+  console.warn('[SQLite] Aviso al sembrar usuarios base:', e.message);
+}
+
+// Vincular lote de prueba existente al investigador Carlos Delgado
+try {
+  db.prepare(`UPDATE ensayos_laboratorio SET usuario_email = 'carlos.delgado@uleam.edu.ec', investigador = 'Carlos Delgado' WHERE lote_id = 'prueba1'`).run();
+} catch (e) {}
 
 // Migración defensiva si la tabla predicciones_historial ya existía sin las columnas
 try {
@@ -303,6 +349,8 @@ function contarFeedback() {
 function guardarEnsayoLaboratorio(e) {
   const loteId = String(e.lote_id || e.loteId || 'LOTE-EXP-' + Date.now()).trim();
   const investigador = String(e.investigador || 'Lab. Química de Alimentos — ULEAM').trim();
+  const usuarioEmail = String(e.usuario_email || e.usuarioEmail || 'carlos.delgado@uleam.edu.ec').trim().toLowerCase();
+  const usuarioId = Number(e.usuario_id || e.usuarioId || 1);
   const tipoSustrato = e.tipoSustrato || e.tipo_sustrato || 'vaca';
   const tipoAzucar = e.tipoAzucar || e.tipo_azucar || 'sacarosa';
   const tempC = Number(e.temperaturaC || e.temperatura_c || 42.0);
@@ -348,7 +396,9 @@ function guardarEnsayoLaboratorio(e) {
         estado = ?,
         lecturas_json = ?,
         diagnostico = ?,
-        actualizado_en = ?
+        actualizado_en = ?,
+        usuario_email = COALESCE(?, usuario_email),
+        usuario_id = COALESCE(?, usuario_id)
       WHERE lote_id = ?
     `).run(
       investigador,
@@ -365,6 +415,8 @@ function guardarEnsayoLaboratorio(e) {
       JSON.stringify(lecturas),
       diagnostico,
       now,
+      usuarioEmail,
+      usuarioId,
       loteId
     );
   } else {
@@ -373,8 +425,8 @@ function guardarEnsayoLaboratorio(e) {
         lote_id, investigador, tipo_sustrato, tipo_azucar, temperatura_c, masa_inoculo_g, volumen_ml,
         porcentaje_inoculo, tiempo_corte_inicial_horas, tiempo_corte_inicial_minutos,
         tiempo_corte_estimado_horas, tiempo_corte_estimado_minutos, diferencia_minutos,
-        estado, lecturas_json, diagnostico, creado_en, actualizado_en
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        estado, lecturas_json, diagnostico, creado_en, actualizado_en, usuario_id, usuario_email
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       loteId,
       investigador,
@@ -393,7 +445,9 @@ function guardarEnsayoLaboratorio(e) {
       JSON.stringify(lecturas),
       diagnostico,
       now,
-      now
+      now,
+      usuarioId,
+      usuarioEmail
     );
   }
 
@@ -403,8 +457,13 @@ function guardarEnsayoLaboratorio(e) {
 /**
  * Retorna todos los ensayos ordenados cronológicamente (más recientes primero)
  */
-function listarEnsayosLaboratorio(limite = 100) {
-  const rows = db.prepare(`SELECT * FROM ensayos_laboratorio ORDER BY actualizado_en DESC, id DESC LIMIT ?`).all(limite);
+function listarEnsayosLaboratorio(limite = 100, filtroUsuarioEmail = null) {
+  let rows;
+  if (filtroUsuarioEmail) {
+    rows = db.prepare(`SELECT * FROM ensayos_laboratorio WHERE LOWER(usuario_email) = LOWER(?) ORDER BY actualizado_en DESC, id DESC LIMIT ?`).all(String(filtroUsuarioEmail).trim(), limite);
+  } else {
+    rows = db.prepare(`SELECT * FROM ensayos_laboratorio ORDER BY actualizado_en DESC, id DESC LIMIT ?`).all(limite);
+  }
   return rows.map((r) => {
     let lecturas = [];
     try {
@@ -416,6 +475,8 @@ function listarEnsayosLaboratorio(limite = 100) {
       id: r.id,
       lote_id: r.lote_id,
       investigador: r.investigador,
+      usuario_id: r.usuario_id || 1,
+      usuario_email: r.usuario_email || 'carlos.delgado@uleam.edu.ec',
       tipo_sustrato: r.tipo_sustrato,
       tipo_azucar: r.tipo_azucar,
       temperatura_c: r.temperatura_c,
@@ -453,6 +514,8 @@ function obtenerEnsayoLaboratorio(loteId) {
     id: r.id,
     lote_id: r.lote_id,
     investigador: r.investigador,
+    usuario_id: r.usuario_id || 1,
+    usuario_email: r.usuario_email || 'carlos.delgado@uleam.edu.ec',
     tipo_sustrato: r.tipo_sustrato,
     tipo_azucar: r.tipo_azucar,
     temperatura_c: r.temperatura_c,
@@ -553,6 +616,49 @@ function eliminarLecturaDeEnsayo(loteId, min) {
   return obtenerEnsayoLaboratorio(loteId);
 }
 
+
+/**
+ * Crea un nuevo usuario en la base de datos SQLite local
+ */
+function crearUsuarioSQLite(nombre, correo, contrasenaHash, rol = 'estudiante') {
+  const now = new Date().toISOString();
+  const info = db.prepare(`
+    INSERT INTO usuarios (nombre, correo, contrasena, rol, creado_en)
+    VALUES (?, LOWER(?), ?, ?, ?)
+  `).run(String(nombre).trim(), String(correo).trim(), contrasenaHash, String(rol).trim().toLowerCase(), now);
+
+  return {
+    id: info.lastInsertRowid,
+    nombre: String(nombre).trim(),
+    email: String(correo).trim().toLowerCase(),
+    rol: String(rol).trim().toLowerCase(),
+    created_at: now,
+  };
+}
+
+/**
+ * Busca un usuario por correo electrónico en SQLite
+ */
+function buscarUsuarioPorEmailSQLite(correo) {
+  if (!correo) return null;
+  return db.prepare(`SELECT * FROM usuarios WHERE LOWER(correo) = LOWER(?)`).get(String(correo).trim()) || null;
+}
+
+/**
+ * Busca un usuario por ID en SQLite
+ */
+function buscarUsuarioPorIdSQLite(id) {
+  if (!id) return null;
+  return db.prepare(`SELECT id, nombre, correo, rol, creado_en FROM usuarios WHERE id = ?`).get(Number(id)) || null;
+}
+
+/**
+ * Lista todos los usuarios registrados en SQLite
+ */
+function listarUsuariosSQLite() {
+  return db.prepare(`SELECT id, nombre, correo, rol, creado_en FROM usuarios ORDER BY id ASC`).all();
+}
+
 module.exports = {
   db,
   sqliteFilePath,
@@ -567,4 +673,8 @@ module.exports = {
   registrarLecturaEnEnsayo,
   eliminarEnsayoLaboratorio,
   eliminarLecturaDeEnsayo,
+  crearUsuarioSQLite,
+  buscarUsuarioPorEmailSQLite,
+  buscarUsuarioPorIdSQLite,
+  listarUsuariosSQLite,
 };

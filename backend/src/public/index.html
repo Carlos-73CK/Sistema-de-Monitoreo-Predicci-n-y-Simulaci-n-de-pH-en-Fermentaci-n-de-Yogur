@@ -246,6 +246,8 @@
         <span class="badge badge-white">👨‍🔬 Dr. Stalin Gustavo Santacruz Terán</span>
         <span class="badge badge-green">⭐ R² = 0.9774 (97.74% Precisión)</span>
         <span class="badge badge-blue" id="storage-pill">💾 SQLite Local Autónomo</span>
+        <!-- Botón / Perfil de Usuario Autenticado -->
+        <div id="header-user-section" style="display:inline-flex; align-items:center; margin-left:4px;"></div>
       </div>
     </div>
   </header>
@@ -678,6 +680,22 @@
               <button type="button" onclick="cargarListaEnsayos()" style="background:#f1f5f9; border:1px solid var(--border); padding:8px 14px; border-radius:8px; font-weight:700; cursor:pointer; font-size:12px; color:#334155;">
                 🔄 Refrescar Lotes
               </button>
+            </div>
+          </div>
+
+          <!-- Selector de Aislamiento y Pertenencia de Muestras (Mis Muestras vs Todo el Laboratorio) -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin:4px 0 16px; background:#f8fafc; border:1.5px solid var(--border); border-radius:10px; padding:10px 14px;">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" id="btn-filtro-mis-ensayos" onclick="setFiltroEnsayos('mis_ensayos')" style="background:#0284c7; color:white; border:none; border-radius:7px; padding:7px 16px; font-size:12.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(2,132,199,0.25); transition:all 0.2s;">
+                👤 Mis Muestras & Ensayos (<span id="count-mis-ensayos">0</span>)
+              </button>
+              <button type="button" id="btn-filtro-todos-ensayos" onclick="setFiltroEnsayos('todos')" style="background:white; color:#475569; border:1px solid #cbd5e1; border-radius:7px; padding:7px 16px; font-size:12.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
+                🌐 Todos los Ensayos del Lab (<span id="count-todos-ensayos">0</span>)
+              </button>
+            </div>
+            <div id="filtro-usuario-label" style="font-size:12px; color:#475569; font-weight:600; display:flex; align-items:center; gap:6px;">
+              <span>Muestras asignadas a:</span>
+              <span id="filtro-usuario-badge" class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:11px;">Carlos Delgado</span>
             </div>
           </div>
 
@@ -1955,7 +1973,7 @@
         return;
       }
 
-      const investigador = (document.getElementById('sim-investigador').value || 'Lab. Química de Alimentos').trim();
+      const investigador = (document.getElementById('sim-investigador').value || (currentUser ? currentUser.nombre : 'Lab. Química de Alimentos')).trim();
       const sustrato = document.getElementById('sim-sustrato').value;
       const azucar = document.getElementById('sim-azucar').value;
       const temp = parseFloat(document.getElementById('sim-temp').value);
@@ -1963,12 +1981,17 @@
       const vol = parseFloat(document.getElementById('sim-volumen').value);
 
       try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (currentToken) headers['Authorization'] = 'Bearer ' + currentToken;
+
         const res = await fetch('/api/ai/trials', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             lote_id: loteNombre,
             investigador,
+            usuario_email: currentUser ? currentUser.email : undefined,
+            usuario_id: currentUser ? currentUser.id : undefined,
             tipo_sustrato: sustrato,
             tipo_azucar: azucar,
             temperatura_c: temp,
@@ -3099,8 +3122,350 @@
       cargarListaEnsayos();
     }
 
+
+    // ==========================================
+    // 🔐 GESTIÓN DE AUTENTICACIÓN Y SESIÓN (ULEAM)
+    // ==========================================
+    let currentUser = null;
+    let currentToken = null;
+
+    // Inicializa la sesión desde localStorage o define usuario por defecto para pruebas
+    function initAuth() {
+      try {
+        const savedToken = localStorage.getItem('prediyogur_auth_token');
+        const savedUserStr = localStorage.getItem('prediyogur_auth_user');
+
+        if (savedToken && savedUserStr) {
+          currentToken = savedToken;
+          currentUser = JSON.parse(savedUserStr);
+        } else {
+          // Sesión activa por defecto con el investigador Carlos Delgado
+          currentUser = {
+            id: 2,
+            nombre: 'Carlos Delgado',
+            email: 'carlos.delgado@uleam.edu.ec',
+            rol: 'investigador'
+          };
+          currentToken = 'dev_token_uleam_2026';
+          localStorage.setItem('prediyogur_auth_token', currentToken);
+          localStorage.setItem('prediyogur_auth_user', JSON.stringify(currentUser));
+        }
+      } catch (e) {
+        console.warn('Error al restaurar sesión:', e);
+      }
+
+      renderHeaderUserSection();
+      aplicarUsuarioAlFormulario();
+    }
+
+    // Renderiza el badge o botón de usuario en la barra superior
+    function renderHeaderUserSection() {
+      const wrapper = document.getElementById('header-user-section');
+      if (!wrapper) return;
+
+      if (currentUser) {
+        const rolIcon = currentUser.rol === 'estudiante' ? '🎓' : (currentUser.rol === 'docente' ? '📚' : '🔬');
+        const rolLabel = currentUser.rol.toUpperCase();
+
+        wrapper.innerHTML = `
+          <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.18); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.3); border-radius:9999px; padding:3px 5px 3px 12px;">
+            <div style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:white;">
+              <span>${rolIcon}</span>
+              <span>${currentUser.nombre}</span>
+              <span style="font-size:10px; background:rgba(255,255,255,0.25); padding:1px 6px; border-radius:6px; font-weight:800;">${rolLabel}</span>
+            </div>
+            <button type="button" onclick="openAuthModal('login')" title="Cambiar de usuario o iniciar sesión con otra cuenta" style="background:#0284c7; color:white; border:none; border-radius:9999px; padding:4px 10px; font-size:11px; font-weight:800; cursor:pointer; margin-left:4px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
+              🔄 Cambiar
+            </button>
+            <button type="button" onclick="cerrarSesion()" title="Cerrar sesión" style="background:rgba(239, 68, 68, 0.85); color:white; border:none; border-radius:9999px; padding:4px 8px; font-size:11px; font-weight:800; cursor:pointer;" title="Cerrar Sesión">
+              ✕
+            </button>
+          </div>
+        `;
+      } else {
+        wrapper.innerHTML = `
+          <button type="button" onclick="openAuthModal('login')" class="badge" style="background:#0284c7; color:white; border:none; cursor:pointer; font-size:12px; font-weight:800; padding:6px 14px; box-shadow:0 2px 8px rgba(2,132,199,0.4);">
+            🔐 Iniciar Sesión / Registro
+          </button>
+        `;
+      }
+    }
+
+    // Auto-rellena el campo del investigador en Tab 1 con el usuario activo
+    function aplicarUsuarioAlFormulario() {
+      const invInput = document.getElementById('sim-investigador');
+      if (invInput && currentUser && currentUser.nombre) {
+        invInput.value = currentUser.nombre;
+      }
+    }
+
+    // Abre el modal de autenticación
+    function openAuthModal(tab = 'login') {
+      const modal = document.getElementById('auth-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        switchAuthTab(tab);
+      }
+    }
+
+    // Cierra el modal de autenticación
+    function closeAuthModal() {
+      const modal = document.getElementById('auth-modal');
+      if (modal) modal.style.display = 'none';
+      limpiarErroresAuth();
+    }
+
+    // Alterna pestañas Login / Register
+    function switchAuthTab(tab) {
+      limpiarErroresAuth();
+      const pLogin = document.getElementById('auth-panel-login');
+      const pReg = document.getElementById('auth-panel-register');
+      const btnLogin = document.getElementById('tab-auth-login-btn');
+      const btnReg = document.getElementById('tab-auth-register-btn');
+
+      if (tab === 'login') {
+        if (pLogin) pLogin.style.display = 'block';
+        if (pReg) pReg.style.display = 'none';
+        if (btnLogin) {
+          btnLogin.style.background = 'white';
+          btnLogin.style.color = '#0284c7';
+          btnLogin.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+        }
+        if (btnReg) {
+          btnReg.style.background = 'transparent';
+          btnReg.style.color = '#64748b';
+          btnReg.style.boxShadow = 'none';
+        }
+      } else {
+        if (pLogin) pLogin.style.display = 'none';
+        if (pReg) pReg.style.display = 'block';
+        if (btnReg) {
+          btnReg.style.background = 'white';
+          btnReg.style.color = '#059669';
+          btnReg.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+        }
+        if (btnLogin) {
+          btnLogin.style.background = 'transparent';
+          btnLogin.style.color = '#64748b';
+          btnLogin.style.boxShadow = 'none';
+        }
+      }
+    }
+
+    function limpiarErroresAuth() {
+      const eLogin = document.getElementById('login-error-banner');
+      const eReg = document.getElementById('register-error-banner');
+      if (eLogin) { eLogin.style.display = 'none'; eLogin.innerText = ''; }
+      if (eReg) { eReg.style.display = 'none'; eReg.innerText = ''; }
+    }
+
+    function togglePassVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.innerText = '🙈 Ocultar';
+      } else {
+        input.type = 'password';
+        btn.innerText = '👁️ Mostrar';
+      }
+    }
+
+    // Login rápido para demostración
+    function quickLogin(email, password) {
+      document.getElementById('login-email').value = email;
+      document.getElementById('login-password').value = password;
+      ejecutarLogin();
+    }
+
+    // Ejecuta la petición de Login
+    async function ejecutarLogin(event) {
+      if (event) event.preventDefault();
+      limpiarErroresAuth();
+
+      const email = (document.getElementById('login-email').value || '').trim();
+      const password = (document.getElementById('login-password').value || '').trim();
+
+      const errorBanner = document.getElementById('login-error-banner');
+      const btnSubmit = document.getElementById('btn-submit-login');
+
+      if (!email || !password) {
+        if (errorBanner) {
+          errorBanner.innerText = '⚠️ Ingrese su correo electrónico y contraseña.';
+          errorBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = '⏳ Verificando credenciales...';
+      }
+
+      try {
+        const res = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+          if (errorBanner) {
+            errorBanner.innerText = '⚠️ ' + (data.message || 'Credenciales inválidas.');
+            errorBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        // Éxito: Guardar sesión
+        currentToken = data.data.token;
+        currentUser = data.data.user;
+        localStorage.setItem('prediyogur_auth_token', currentToken);
+        localStorage.setItem('prediyogur_auth_user', JSON.stringify(currentUser));
+
+        renderHeaderUserSection();
+        aplicarUsuarioAlFormulario();
+        closeAuthModal();
+
+        // Refrescar lista de ensayos para mostrar "Mis Muestras" del nuevo usuario
+        await cargarListaEnsayos();
+
+        alert(`¡Bienvenido(a), ${currentUser.nombre}! Ahora puedes gestionar tus muestras en tu perfil.`);
+
+      } catch (err) {
+        console.error('Error en login:', err);
+        if (errorBanner) {
+          errorBanner.innerText = '⚠️ Error de conexión con el servidor de autenticación.';
+          errorBanner.style.display = 'block';
+        }
+      } finally {
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.innerText = '🚀 Iniciar Sesión en PrediYogur';
+        }
+      }
+    }
+
+    // Ejecuta la petición de Registro de nuevo usuario
+    async function ejecutarRegistro(event) {
+      if (event) event.preventDefault();
+      limpiarErroresAuth();
+
+      const nombre = (document.getElementById('reg-nombre').value || '').trim();
+      const email = (document.getElementById('reg-email').value || '').trim();
+      const rol = document.getElementById('reg-rol').value;
+      const password = document.getElementById('reg-password').value;
+      const passConfirm = document.getElementById('reg-password-confirm').value;
+
+      const errorBanner = document.getElementById('register-error-banner');
+      const btnSubmit = document.getElementById('btn-submit-reg');
+
+      if (!nombre || nombre.length < 2) {
+        if (errorBanner) {
+          errorBanner.innerText = '⚠️ El nombre debe tener al menos 2 caracteres.';
+          errorBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        if (errorBanner) {
+          errorBanner.innerText = '⚠️ Ingrese un formato de correo electrónico válido (ej: usuario@uleam.edu.ec).';
+          errorBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (password.length < 6) {
+        if (errorBanner) {
+          errorBanner.innerText = '⚠️ La contraseña debe tener al menos 6 caracteres.';
+          errorBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (password !== passConfirm) {
+        if (errorBanner) {
+          errorBanner.innerText = '⚠️ Las contraseñas no coinciden. Verifíquelas e intente nuevamente.';
+          errorBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = '⏳ Creando cuenta en SQLite...';
+      }
+
+      try {
+        const res = await fetch('/api/v1/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, email, password, rol })
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+          if (errorBanner) {
+            errorBanner.innerText = '⚠️ ' + (data.message || 'No fue posible registrar la cuenta.');
+            errorBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        // Éxito: Guardar sesión
+        currentToken = data.data.token;
+        currentUser = data.data.user;
+        localStorage.setItem('prediyogur_auth_token', currentToken);
+        localStorage.setItem('prediyogur_auth_user', JSON.stringify(currentUser));
+
+        renderHeaderUserSection();
+        aplicarUsuarioAlFormulario();
+        closeAuthModal();
+
+        // Cambiar filtro a Mis Ensayos (que estará limpio al ser nuevo usuario)
+        filtroEnsayosMode = 'mis_ensayos';
+        await cargarListaEnsayos();
+
+        alert(`¡Cuenta creada exitosamente! Bienvenido(a) al equipo del laboratorio, ${currentUser.nombre}.`);
+
+      } catch (err) {
+        console.error('Error en registro:', err);
+        if (errorBanner) {
+          errorBanner.innerText = '⚠️ Error de comunicación al registrar la cuenta.';
+          errorBanner.style.display = 'block';
+        }
+      } finally {
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.innerText = '✨ Crear Mi Cuenta y Comenzar';
+        }
+      }
+    }
+
+    // Cierra sesión
+    function cerrarSesion() {
+      if (!confirm('¿Desea cerrar su sesión actual en el laboratorio?')) return;
+      localStorage.removeItem('prediyogur_auth_token');
+      localStorage.removeItem('prediyogur_auth_user');
+      currentUser = null;
+      currentToken = null;
+
+      renderHeaderUserSection();
+      const invInput = document.getElementById('sim-investigador');
+      if (invInput) invInput.value = 'Lab. Química de Alimentos — ULEAM';
+
+      // Cambiar a vista de todos los ensayos
+      setFiltroEnsayos('todos');
+    }
+
     // Inicio
     window.addEventListener('DOMContentLoaded', () => {
+      initAuth();
       initLiveChart();
       validarYActualizar();
       cargarMetricas();
@@ -3112,5 +3477,152 @@
       }
     });
   </script>
+
+  <!-- MODAL DE AUTENTICACIÓN (LOGIN & REGISTRO DE INVESTIGADORES / ESTUDIANTES) -->
+  <div id="auth-modal" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15, 23, 42, 0.7); backdrop-filter:blur(5px); align-items:center; justify-content:center; padding:16px;">
+    <div style="background:white; border-radius:16px; width:100%; max-width:460px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow:hidden; border:1px solid #e2e8f0; animation:modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+      
+      <!-- Modal Header -->
+      <div style="background:linear-gradient(135deg, #0f172a 0%, #0369a1 100%); color:white; padding:18px 22px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:36px; height:36px; background:rgba(255,255,255,0.15); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px;">
+            🔐
+          </div>
+          <div>
+            <h3 style="font-size:16px; font-weight:800; margin:0; letter-spacing:-0.3px;">Acceso al Laboratorio ULEAM</h3>
+            <p style="font-size:11.5px; color:#bae6fd; margin:2px 0 0 0;">PrediYogur • Control de Muestras por Perfil</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeAuthModal()" style="background:rgba(255,255,255,0.15); border:none; color:white; width:30px; height:30px; border-radius:50%; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+      </div>
+
+      <!-- Modal Tabs Switcher -->
+      <div style="display:flex; border-bottom:1.5px solid #f1f5f9; background:#f8fafc; padding:4px 6px;">
+        <button type="button" id="tab-auth-login-btn" onclick="switchAuthTab('login')" style="flex:1; padding:10px 12px; font-weight:800; font-size:13px; border:none; background:white; color:#0284c7; border-radius:8px; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:all 0.2s;">
+          🔑 Iniciar Sesión
+        </button>
+        <button type="button" id="tab-auth-register-btn" onclick="switchAuthTab('register')" style="flex:1; padding:10px 12px; font-weight:700; font-size:13px; border:none; background:transparent; color:#64748b; border-radius:8px; cursor:pointer; transition:all 0.2s;">
+          📝 Crear Cuenta Nueva
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div style="padding:22px;">
+
+        <!-- ================= PANEL 1: INICIAR SESIÓN ================= -->
+        <div id="auth-panel-login">
+          <div id="login-error-banner" style="display:none; background:#fee2e2; border:1px solid #fecaca; color:#b91c1c; padding:10px 14px; border-radius:8px; font-size:12px; font-weight:600; margin-bottom:14px; line-height:1.4;"></div>
+
+          <form onsubmit="ejecutarLogin(event)">
+            <div class="form-group" style="margin-bottom:14px;">
+              <label for="login-email" style="font-size:12px; font-weight:700; color:#334155; margin-bottom:6px; display:block;">Correo Institucional:</label>
+              <input type="email" id="login-email" placeholder="ej: carlos.delgado@uleam.edu.ec" required style="width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; color:#0f172a; transition:border-color 0.2s;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label for="login-password" style="font-size:12px; font-weight:700; color:#334155;">Contraseña:</label>
+                <button type="button" onclick="togglePassVisibility('login-password', this)" style="background:none; border:none; font-size:11px; color:#0284c7; font-weight:700; cursor:pointer;">👁️ Mostrar</button>
+              </div>
+              <input type="password" id="login-password" placeholder="••••••••" required style="width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; color:#0f172a; transition:border-color 0.2s;">
+            </div>
+
+            <button type="submit" id="btn-submit-login" class="btn-simulate" style="width:100%; padding:11px; font-size:14px; background:linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+              🚀 Iniciar Sesión en PrediYogur
+            </button>
+          </form>
+
+          <!-- Separador -->
+          <div style="margin:20px 0 14px; display:flex; align-items:center; gap:10px;">
+            <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+            <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px;">Acceso Rápido de Prueba</span>
+            <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+          </div>
+
+          <!-- Botones 1-clic para Cuentas Sembradas -->
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <button type="button" onclick="quickLogin('carlos.delgado@uleam.edu.ec', 'carlos2026')" style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:8px; padding:8px 12px; text-align:left; cursor:pointer; transition:all 0.15s; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong style="font-size:12.5px; color:#0f172a;">⚡ Carlos Delgado</strong>
+                <div style="font-size:11px; color:#64748b;">Investigador • carlos.delgado@uleam.edu.ec</div>
+              </div>
+              <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:10px;">Entrar</span>
+            </button>
+
+            <button type="button" onclick="quickLogin('dr.santacruz@uleam.edu.ec', 'santacruz2026')" style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:8px; padding:8px 12px; text-align:left; cursor:pointer; transition:all 0.15s; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong style="font-size:12.5px; color:#0f172a;">⚡ Dr. Stalin Santacruz</strong>
+                <div style="font-size:11px; color:#64748b;">Investigador Principal • dr.santacruz@uleam.edu.ec</div>
+              </div>
+              <span class="badge" style="background:#dcfce7; color:#15803d; font-size:10px;">Entrar</span>
+            </button>
+
+            <button type="button" onclick="quickLogin('estudiante@uleam.edu.ec', 'estudiante2026')" style="background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:8px; padding:8px 12px; text-align:left; cursor:pointer; transition:all 0.15s; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong style="font-size:12.5px; color:#0f172a;">⚡ Estudiante ULEAM</strong>
+                <div style="font-size:11px; color:#64748b;">Estudiante / Tesista • estudiante@uleam.edu.ec</div>
+              </div>
+              <span class="badge" style="background:#fef3c7; color:#b45309; font-size:10px;">Entrar</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ================= PANEL 2: REGISTRO NUEVO ================= -->
+        <div id="auth-panel-register" style="display:none;">
+          <div id="register-error-banner" style="display:none; background:#fee2e2; border:1px solid #fecaca; color:#b91c1c; padding:10px 14px; border-radius:8px; font-size:12px; font-weight:600; margin-bottom:14px; line-height:1.4;"></div>
+
+          <form onsubmit="ejecutarRegistro(event)">
+            <div class="form-group" style="margin-bottom:12px;">
+              <label for="reg-nombre" style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; display:block;">Nombre Completo:</label>
+              <input type="text" id="reg-nombre" placeholder="ej: Ing. Jordan Meza" required style="width:100%; padding:9px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; color:#0f172a;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:12px;">
+              <label for="reg-email" style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; display:block;">Correo Institucional:</label>
+              <input type="email" id="reg-email" placeholder="ej: jordan.meza@uleam.edu.ec" required style="width:100%; padding:9px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; color:#0f172a;">
+            </div>
+
+            <div class="form-group" style="margin-bottom:12px;">
+              <label for="reg-rol" style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; display:block;">Rol en el Laboratorio:</label>
+              <select id="reg-rol" style="width:100%; padding:9px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; color:#0f172a; background:white; font-weight:600;">
+                <option value="investigador">🔬 Investigador / Docente Investigador</option>
+                <option value="estudiante" selected>🎓 Estudiante / Tesista ULEAM</option>
+                <option value="docente">📚 Docente de Cátedra</option>
+              </select>
+            </div>
+
+            <div class="form-row" style="margin-bottom:14px;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label for="reg-password" style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; display:block;">Contraseña (mín 6):</label>
+                <input type="password" id="reg-password" placeholder="••••••••" required minlength="6" style="width:100%; padding:9px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; color:#0f172a;">
+              </div>
+
+              <div class="form-group" style="margin-bottom:0;">
+                <label for="reg-password-confirm" style="font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; display:block;">Confirmar:</label>
+                <input type="password" id="reg-password-confirm" placeholder="••••••••" required minlength="6" style="width:100%; padding:9px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:13px; color:#0f172a;">
+              </div>
+            </div>
+
+            <div style="font-size:11px; color:#64748b; margin-bottom:14px; line-height:1.4;">
+              🛡️ Al registrarte, se creará tu perfil personal de laboratorio en SQLite. Tus muestras y lotes archivados quedarán vinculados a tu cuenta.
+            </div>
+
+            <button type="submit" id="btn-submit-reg" class="btn-simulate" style="width:100%; padding:11px; font-size:14px; background:linear-gradient(135deg, #059669 0%, #10b981 100%);">
+              ✨ Crear Mi Cuenta y Comenzar
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @keyframes modalPop {
+      0% { opacity:0; transform:scale(0.95) translateY(8px); }
+      100% { opacity:1; transform:scale(1) translateY(0); }
+    }
+  </style>
+
 </body>
 </html>
