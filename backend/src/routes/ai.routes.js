@@ -15,6 +15,7 @@ const {
   addTrialReading,
   deleteTrial,
   deleteTrialReading,
+  exportTrialData,
 } = require('../controllers/ai.controller');
 
 const router = express.Router();
@@ -49,6 +50,7 @@ router.post('/recalibrate', recalibrateDynamicTrajectory);
 // Gestión y Persistencia de Ensayos Experimentales de Laboratorio (SQLite)
 router.get('/trials', listTrials);
 router.post('/trials', createTrial);
+router.get('/trials/:loteId/export', exportTrialData);
 router.get('/trials/:loteId', getTrial);
 router.post('/trials/:loteId/readings', addTrialReading);
 router.delete('/trials/:loteId/readings/:min', deleteTrialReading);
