@@ -752,6 +752,73 @@ const deleteTrialReading = (req, res) => {
   }
 };
 
+
+/**
+ * Exporta las lecturas y datos de un ensayo en formato CSV o JSON
+ * Diseñado para herramientas como Excel u OriginLab del Dr. Santacruz
+ */
+const exportTrialData = (req, res) => {
+  try {
+    const { loteId } = req.params;
+    const formato = String(req.query.formato || 'csv').trim().toLowerCase();
+
+    const trial = obtenerEnsayoLaboratorio(loteId);
+    if (!trial) {
+      return res.status(404).json({
+        success: false,
+        data: null,
+        message: `El ensayo con lote '${loteId}' no existe.`,
+        error: 'TRIAL_NOT_FOUND',
+      });
+    }
+
+    if (formato === 'json') {
+      return res.status(200).json({
+        success: true,
+        data: trial,
+      });
+    }
+
+    if (formato !== 'csv') {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "Formato no soportado. Los formatos permitidos son 'csv' y 'json'.",
+        error: 'INVALID_FORMAT',
+      });
+    }
+
+    // Formato CSV
+    const headers = 'tiempo_minutos,ph,temperatura,indice_refraccion,fecha_registro';
+    const rows = (trial.lecturas || []).map((l) => {
+      const tiempoMinutos = l.tiempo_minutos !== undefined ? l.tiempo_minutos : (l.minutos !== undefined ? l.minutos : '');
+      const ph = l.ph !== undefined && l.ph !== null ? l.ph : '';
+      const temperatura = l.temperatura !== undefined && l.temperatura !== null
+        ? l.temperatura
+        : (l.temperatura_c !== undefined && l.temperatura_c !== null ? l.temperatura_c : '');
+      const indiceRefraccion = l.indice_refraccion !== undefined && l.indice_refraccion !== null
+        ? l.indice_refraccion
+        : (l.brix !== undefined && l.brix !== null ? l.brix : '');
+      const fechaRegistro = l.fecha_registro || l.registrado_en || l.created_at || '';
+
+      return `${tiempoMinutos},${ph},${temperatura},${indiceRefraccion},${fechaRegistro}`;
+    });
+
+    const csvContent = [headers, ...rows].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${loteId}_cinetica.csv"`);
+    return res.status(200).send(csvContent);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message: 'Error al exportar los datos del ensayo.',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getModelMetrics,
   getExperimentalDataset,
@@ -766,4 +833,6 @@ module.exports = {
   addTrialReading,
   deleteTrial,
   deleteTrialReading,
+  exportTrialData,
 };
+
