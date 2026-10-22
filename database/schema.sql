@@ -41,3 +41,22 @@ COMMENT ON COLUMN ensayos.porcentaje_inoculo IS 'Porcentaje de inóculo utilizad
 COMMENT ON COLUMN ensayos.tiempo_corte_estimado_minutos IS 'Tiempo estimado de corte del cuajo al alcanzar pH 4.50 en minutos';
 COMMENT ON COLUMN ensayos.diferencia_minutos IS 'Desviación en minutos respecto al tiempo cinético ideal';
 COMMENT ON COLUMN ensayos.usuario_email IS 'Vínculo con el correo del investigador responsable del ensayo';
+
+-- Tabla de Lecturas Periódicas de Monitoreo
+CREATE TABLE IF NOT EXISTS lecturas_ensayo (
+    id SERIAL PRIMARY KEY,
+    ensayo_id INTEGER NOT NULL REFERENCES ensayos(id) ON DELETE CASCADE,
+    minutos INTEGER NOT NULL,
+    ph NUMERIC(4, 2) NOT NULL,
+    temperatura NUMERIC(4, 1),
+    indice_refraccion NUMERIC(4, 2),
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_ensayo_minutos UNIQUE (ensayo_id, minutos)
+);
+
+COMMENT ON TABLE lecturas_ensayo IS 'Serie temporal de mediciones cinéticas registradas durante cada ensayo';
+COMMENT ON COLUMN lecturas_ensayo.indice_refraccion IS 'Medición de °Brix mediante refractómetro';
+
+-- Índices de Rendimiento
+CREATE INDEX IF NOT EXISTS idx_ensayos_usuario_email ON ensayos(usuario_email);
+CREATE INDEX IF NOT EXISTS idx_lecturas_ensayo_minutos ON lecturas_ensayo(ensayo_id, minutos ASC);

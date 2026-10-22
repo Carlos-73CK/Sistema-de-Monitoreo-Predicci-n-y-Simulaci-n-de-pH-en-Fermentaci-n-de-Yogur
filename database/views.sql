@@ -5,7 +5,8 @@
 
 -- Vista 1: Resumen de ensayos agrupados por usuario/investigador
 CREATE OR REPLACE VIEW vw_resumen_ensayos_usuario AS
-u.nombre AS investigador_nombre,
+SELECT 
+    u.nombre AS investigador_nombre,
     u.email AS investigador_email,
     u.rol AS usuario_rol,
     COUNT(e.id) AS total_lotes_registrados,
