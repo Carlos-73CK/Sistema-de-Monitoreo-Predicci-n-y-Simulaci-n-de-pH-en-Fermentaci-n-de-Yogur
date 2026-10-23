@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   Alert,
   Pressable,
@@ -7,16 +7,23 @@ import {
   Text,
   TextInput,
   View,
+  ActivityIndicator,
 } from 'react-native';
+import { AuthContext } from '../context/AuthContext';
+import ensayosService from '../services/ensayosService';
 import theme from '../styles/theme';
 
 export default function NuevoEnsayoScreen({ navigation }) {
+  const { user } = useContext(AuthContext);
+
   const [nombreLote, setNombreLote] = useState('LOTE-CHV-' + Math.floor(100 + Math.random() * 900));
   const [sustrato, setSustrato] = useState('vaca');
+  const [tipoAzucar, setTipoAzucar] = useState('lactosa');
   const [masaInoculo, setMasaInoculo] = useState('18.75');
   const [temperaturaObjetivo, setTemperaturaObjetivo] = useState('42.0');
   const [volumenLeche, setVolumenLeche] = useState('250');
-  const [tipoAzucar, setTipoAzucar] = useState('lactosa');
+
+  const [cargando, setCargando] = useState(false);
   const [errorValidacion, setErrorValidacion] = useState(null);
 
   const aplicarPreset = (masa, temp) => {
@@ -43,7 +50,7 @@ export default function NuevoEnsayoScreen({ navigation }) {
     setVolumenLeche(String(nuevo));
   };
 
-  const handleCrearEnsayo = () => {
+  const handleCrearEnsayo = async () => {
     const masaNum = parseFloat(masaInoculo);
     const tempNum = parseFloat(temperaturaObjetivo);
     const volNum = parseFloat(volumenLeche);
@@ -67,30 +74,53 @@ export default function NuevoEnsayoScreen({ navigation }) {
 
     setErrorValidacion(null);
 
-    const nuevoEnsayo = {
-      id: Date.now(),
-      codigo: nombreLote.trim(),
-      nombre_lote: nombreLote.trim(),
-      tipoSustrato: sustrato,
-      masaInoculoG: masaNum,
-      temperaturaObjetivo: tempNum,
-      volumenMl: volNum,
-      tipoAzucar,
-      estado: 'en_proceso',
-      created_at: new Date().toISOString(),
-    };
+    try {
+      setCargando(true);
 
-    Alert.alert(
-      '✅ Ensayo Iniciado',
-      `Lote ${nuevoEnsayo.codigo} registrado exitosamente. Pasando al módulo de monitoreo en tiempo real.`,
-      [
-        {
-          text: 'Comenzar Monitoreo',
-          onPress: () => navigation.navigate('Monitoreo', { ensayo: nuevoEnsayo }),
-        },
-      ]
-    );
+      const nuevoEnsayo = await ensayosService.crearEnsayo({
+        lote_id: nombreLote.trim(),
+        investigador: user?.nombre || 'Investigador ULEAM',
+        usuario_email: user?.email,
+        usuario_id: user?.id,
+        tipo_sustrato: sustrato,
+        tipo_azucar: tipoAzucar,
+        temperatura_c: tempNum,
+        masa_inoculo_g: masaNum,
+        volumen_ml: volNum,
+      });
+
+      Alert.alert(
+        '✅ Ensayo Iniciado',
+        `Lote "${nombreLote.trim()}" registrado en SQLite bajo el perfil de ${user?.nombre || 'tu cuenta'}. Pasando a monitoreo en vivo...`,
+        [
+          {
+            text: 'Comenzar Monitoreo',
+            onPress: () =>
+              navigation.navigate('Monitoreo', {
+                ensayo: {
+                  id: nuevoEnsayo.id,
+                  codigo: nombreLote.trim(),
+                  loteId: nombreLote.trim(),
+                  tipoSustrato: sustrato,
+                  tipoAzucar: tipoAzucar,
+                  masaInoculoG: masaNum,
+                  temperaturaObjetivo: tempNum,
+                  volumenMl: volNum,
+                  investigador: user?.nombre || 'Investigador ULEAM',
+                },
+              }),
+          },
+        ]
+      );
+    } catch (err) {
+      console.error('Error al crear ensayo:', err);
+      Alert.alert('Error', 'No fue posible crear el ensayo en la base de datos local SQLite.');
+    } finally {
+      setCargando(false);
+    }
   };
+
+  const pct = ((parseFloat(masaInoculo) || 0) / (parseFloat(volumenLeche) || 250) * 100).toFixed(1);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -103,7 +133,7 @@ export default function NuevoEnsayoScreen({ navigation }) {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>1. Identificación del Lote</Text>
+        <Text style={styles.sectionTitle}>1. Identificación del Lote & Perfil</Text>
         <View style={styles.formGroup}>
           <Text style={styles.label}>Código / Nombre de Lote</Text>
           <TextInput
@@ -112,6 +142,9 @@ export default function NuevoEnsayoScreen({ navigation }) {
             onChangeText={setNombreLote}
             placeholder="Ej: LOTE-CHV-101"
           />
+          <Text style={styles.hint}>
+            Asignado a: 👤 {user?.nombre || 'Investigador Titular'} ({user?.email || 'carlos.delgado@uleam.edu.ec'})
+          </Text>
         </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 16 }]}>2. Matriz / Tipo de Leche</Text>
@@ -134,20 +167,20 @@ export default function NuevoEnsayoScreen({ navigation }) {
           ))}
         </View>
 
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>3. Escenarios Preconfigurados</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 18 }]}>3. Escenarios Preconfigurados</Text>
         <View style={styles.presetsGrid}>
           <Pressable
             style={[styles.presetBtn, masaInoculo === '18.75' && temperaturaObjetivo === '42.0' && styles.presetBtnActive]}
             onPress={() => aplicarPreset(18.75, 42.0)}
           >
-            <Text style={styles.presetTitle}>⭐ 42 °C / 7.5%</Text>
-            <Text style={styles.presetSub}>Óptimo laboratorio</Text>
+            <Text style={styles.presetTitle}>⭐ 42 °C / 7.5% Inóculo</Text>
+            <Text style={styles.presetSub}>Óptimo laboratorio (2639 mPa·s)</Text>
           </Pressable>
           <Pressable
             style={[styles.presetBtn, masaInoculo === '6.25' && temperaturaObjetivo === '42.0' && styles.presetBtnActive]}
             onPress={() => aplicarPreset(6.25, 42.0)}
           >
-            <Text style={styles.presetTitle}>🧪 42 °C / 2.5%</Text>
+            <Text style={styles.presetTitle}>🧪 42 °C / 2.5% Inóculo</Text>
             <Text style={styles.presetSub}>Cinética lenta</Text>
           </Pressable>
         </View>
@@ -156,9 +189,9 @@ export default function NuevoEnsayoScreen({ navigation }) {
         <View style={styles.row}>
           <View style={styles.col}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={styles.label}>Inóculo (g)</Text>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#0284c7' }}>
-                {((parseFloat(masaInoculo) || 0) / (parseFloat(volumenLeche) || 250) * 100).toFixed(1)}%
+              <Text style={styles.label}>Inóculo Chivería (g)</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#0284C7' }}>
+                {pct}%
               </Text>
             </View>
             <View style={styles.stepperBox}>
@@ -262,8 +295,16 @@ export default function NuevoEnsayoScreen({ navigation }) {
           </View>
         )}
 
-        <Pressable style={styles.btnCrear} onPress={handleCrearEnsayo}>
-          <Text style={styles.btnCrearText}>🚀 Iniciar Ensayo y Comenzar Monitoreo</Text>
+        <Pressable
+          style={[styles.btnCrear, cargando && styles.btnDisabled]}
+          onPress={handleCrearEnsayo}
+          disabled={cargando}
+        >
+          {cargando ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text style={styles.btnCrearText}>🚀 Iniciar Ensayo y Guardar en SQLite</Text>
+          )}
         </Pressable>
       </View>
     </ScrollView>
@@ -272,7 +313,7 @@ export default function NuevoEnsayoScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
-  content: { padding: 18, paddingBottom: 40 },
+  content: { padding: 18, paddingBottom: 40, maxWidth: 680, width: '100%', alignSelf: 'center' },
   header: { marginBottom: 16 },
   eyebrow: { fontSize: 12, fontWeight: '700', color: '#0284c7', textTransform: 'uppercase', marginBottom: 4 },
   title: { fontSize: 24, fontWeight: '800', color: '#0f172a' },
@@ -299,6 +340,7 @@ const styles = StyleSheet.create({
   errorText: { color: '#991b1b', fontSize: 12, fontWeight: '600' },
   btnCrear: { backgroundColor: '#0284c7', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
   btnCrearText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
+  btnDisabled: { opacity: 0.6 },
   stepperBox: {
     flexDirection: 'row',
     alignItems: 'center',

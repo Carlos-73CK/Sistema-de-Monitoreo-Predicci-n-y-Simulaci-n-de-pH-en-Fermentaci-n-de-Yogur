@@ -18,24 +18,51 @@ El sistema implementa el modelo biofísico no lineal de **Hill** con asimilació
 
 ---
 
-## 📂 Arquitectura del Repositorio
+## 📂 Arquitectura del Repositorio (Universal React Native + Modular)
 
-El proyecto está diseñado bajo una **arquitectura desacoplada** estructurada como un monorepo:
+El proyecto está diseñado bajo una **arquitectura desacoplada y universal** (Web + Android nativo) estructurada en un monorepo:
 
 ```text
 PrediYogur/
-├── backend/      # Servidor API REST en Node.js + Express + SQLite autónomo integrado
-│   ├── src/ai/         # Algoritmos cinéticos (Hill), predicción y persistencia SQLite
-│   ├── src/public/     # Frontend Web Responsivo (accesible desde PC y celulares)
-│   └── src/server.js   # Punto de entrada del servidor (puerto 5000)
-├── mobile/       # Aplicación móvil nativa en React Native (Android / iOS)
-│   ├── src/screens/    # Pantallas nativas (Dashboard, Nuevo Ensayo, Monitoreo, Simulación)
-│   ├── src/navigation/ # React Navigation
-│   └── src/services/   # Cliente Axios conectado al backend
-├── database/     # Scripts DDL y semillas para PostgreSQL (opcional para producción)
-├── docs/         # Documentación de arquitectura (ARCHITECTURE.md) y despliegue
-└── package.json  # Scripts raíz para orquestar todo el espacio de trabajo
+├── PrediYogur.apk          # 📱 Binario APK de producción listo para instalar en Android
+├── backend/                # Servidor API REST en Node.js + Express + SQLite autónomo integrado
+│   ├── src/ai/             # Algoritmos cinéticos (Hill), predicción y persistencia SQLite
+│   ├── src/controllers/    # Controladores modulares REST (auth, trials, etc.)
+│   ├── src/routes/         # Enrutamiento semántico versionado (/api/v1/auth, /api/ai)
+│   └── src/server.js       # Punto de entrada del servidor (puerto 5000)
+├── mobile/                 # Frontend Universal en React Native (Web + Android APK nativo)
+│   ├── android/            # Proyecto nativo Gradle 8.6 + Android SDK 34 / NDK 26.1
+│   ├── src/context/        # AuthContext (JWT, roles, switch de cuentas)
+│   ├── src/screens/        # Pantallas modulares (eliminando el monolito HTML de 3600 líneas):
+│   │   ├── DashboardScreen.js           # Panel de control y métricas globales
+│   │   ├── SimulacionScreen.js          # Simulador cinético What-If (Hill)
+│   │   ├── NuevoEnsayoScreen.js         # Creación y parametrización de lotes
+│   │   ├── MonitoreoScreen.js           # Registro de lecturas con recálculo dinámico
+│   │   ├── EnsayosArchivadosScreen.js   # Histórico con exportación CSV/JSON
+│   │   ├── DemostradorVivoScreen.js     # Demostración pedagógica con 1-clic
+│   │   ├── BioquimicaScreen.js          # Fundamento bioquímico ULEAM (κ-caseína)
+│   │   ├── FeedbackLoopScreen.js        # Aprendizaje continuo y reentrenamiento
+│   │   └── MetricasModeloScreen.js      # Validación R²=0.9774, RMSE=0.0961
+│   ├── src/components/     # Componentes compartidos (HeaderBar, AuthModal, etc.)
+│   ├── src/services/       # Clientes Axios desacoplados (api, authService, ensayosService)
+│   ├── index.js            # Punto de entrada nativo Android (AppRegistry)
+│   └── index.web.js        # Punto de entrada Web (Vite + React Native Web)
+├── database/               # Scripts DDL y semillas para PostgreSQL (opcional para producción)
+├── docs/                   # Documentación de arquitectura (ARCHITECTURE.md) y despliegue
+└── package.json            # Scripts raíz para orquestar todo el espacio de trabajo
 ```
+
+---
+
+## 📱 APK para Android (Listo para Instalar)
+
+Para responder a la solicitud docente de entrega directa del binario móvil sin configuraciones complejas:
+* **Archivo:** `PrediYogur.apk` (ubicado en la raíz del repositorio).
+* **Compilación:** Android Release APK con React Native 0.74, Gradle 8.6, NDK 26.1, bundle JS optimizado y assets empaquetados.
+* **Instalación:**
+  1. Copia `PrediYogur.apk` a tu teléfono Android (vía USB, Telegram, WhatsApp o Google Drive).
+  2. Ábrelo en el celular y selecciona **Instalar** (permite "Instalar aplicaciones de fuentes desconocidas" si el teléfono lo solicita).
+  3. ¡Listo! La app abrirá directamente el entorno universal de PrediYogur con todas las pantallas y simulaciones.
 
 ---
 
@@ -47,37 +74,29 @@ PrediYogur/
 
 ---
 
-### Opción A: Levantar Backend + Web Responsiva (Recomendada para Pruebas Inmediatas)
+### Opción A: Levantar la Aplicación Web Universal (Recomendada para PC y Navegadores)
 
-El backend incluye una base de datos **SQLite local autónoma** (`backend/data/prediyogur_local.sqlite`) que se inicializa automáticamente, por lo que **no necesitas instalar PostgreSQL ni Docker para empezar a probar**.
-
-1. **Clonar el repositorio (si aún no lo tienes):**
+1. **Iniciar el Backend (Terminal 1):**
    ```bash
-   git clone https://github.com/Carlos-73CK/Sistema-de-Monitoreo-Predicci-n-y-Simulaci-n-de-pH-en-Fermentaci-n-de-Yogur.git
-   cd Sistema-de-Monitoreo-Predicci-n-y-Simulaci-n-de-pH-en-Fermentaci-n-de-Yogur
+   npm run dev:backend
    ```
+   *Servidor escuchando en `http://localhost:5000` con SQLite integrado.*
 
-2. **Instalar dependencias del backend:**
+2. **Iniciar la Aplicación Web Universal (Terminal 2):**
    ```bash
-   cd backend
-   npm install
+   npm run dev:web
    ```
+   *Abre automáticamente en `http://localhost:5173` con interfaz React Native optimizada y responsiva.*
 
-3. **Iniciar el servidor en modo desarrollo:**
-   ```bash
-   npm run dev
-   ```
+---
 
-4. **Acceder a la plataforma:**
-   * **Desde tu computadora:** Abre tu navegador web en [http://localhost:5000](http://localhost:5000).
-   * **Desde tu teléfono móvil (Web Responsiva):**
-     1. Conecta tu celular a la **misma red Wi-Fi** de tu computadora.
-     2. En tu PC, abre una terminal y consulta tu dirección IP local (ejecuta `ipconfig` en Windows o `ifconfig` en Linux/Mac; ej. `192.168.1.15`).
-     3. Abre el navegador de tu celular (Chrome o Safari) e ingresa:
-        ```text
-        http://TU_IP_LOCAL:5000   (Ejemplo: http://192.168.1.15:5000)
-        ```
-     4. La interfaz se adaptará fluidamente a la pantalla del móvil con controles táctiles optimizados.
+### Opción B: Recompilar el APK de Android
+
+Si realizas cambios en el código y deseas generar un nuevo instalador `.apk`:
+```bash
+npm run build:apk
+```
+El archivo resultante se generará en `mobile/android/app/build/outputs/apk/release/app-release.apk`.
 
 ---
 
@@ -168,6 +187,7 @@ Desde la carpeta principal del proyecto puedes utilizar los atajos directos:
 
 ## 📡 Endpoints Principales de la API REST
 
+* `GET /api/docs` — 📖 **Documentación Interactiva Swagger / OpenAPI 3.0** (pruebas en vivo de todos los endpoints).
 * `GET /api/health` — Verificación de estado del servidor y base de datos.
 * `GET /api/ai/metrics` — Métricas bioestadísticas de validación del modelo ($R^2$, RMSE, MAE).
 * `GET /api/ai/dataset` — Dataset experimental de calibración del Dr. Santacruz.

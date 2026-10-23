@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,50 +10,77 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AuthContext } from '../context/AuthContext';
 import authService from '../services/authService';
 import theme from '../styles/theme';
 
 export default function RegistroScreen({ navigation }) {
+  const { login } = useContext(AuthContext);
+
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rol, setRol] = useState('estudiante');
+
   const [cargando, setCargando] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   const handleRegistro = async () => {
-    if (!nombre.trim() || !email.trim() || !password) {
-      Alert.alert('Campos requeridos', 'Por favor completa todos los campos del formulario.');
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    const cleanNombre = nombre.trim();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanNombre || cleanNombre.length < 2) {
+      setErrorMsg('⚠️ El nombre completo debe tener al menos 2 caracteres.');
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Contraseña corta', 'La contraseña debe tener al menos 6 caracteres.');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      setErrorMsg('⚠️ Ingrese un correo electrónico institucional válido (ej: usuario@uleam.edu.ec).');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setErrorMsg('⚠️ La contraseña debe tener al menos 6 caracteres.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error de contraseña', 'Las contraseñas no coinciden.');
+      setErrorMsg('⚠️ Las contraseñas no coinciden. Verifíquelas.');
       return;
     }
 
     try {
       setCargando(true);
-      await authService.register({
-        nombre: nombre.trim(),
-        email: email.trim().toLowerCase(),
+      const res = await authService.register({
+        nombre: cleanNombre,
+        email: cleanEmail,
         password,
         rol,
       });
 
-      Alert.alert(
-        '¡Registro Exitoso!',
-        'Tu cuenta ha sido creada. Ahora puedes iniciar sesión en PrediYogur.',
-        [{ text: 'Iniciar Sesión', onPress: () => navigation.navigate('Login') }]
-      );
+      if (res && res.data) {
+        setSuccessMsg(`¡Bienvenido(a) ${cleanNombre}! Cuenta creada con éxito.`);
+        // Auto-login con el token y datos devueltos
+        await login(res.data.token, res.data.user);
+      } else {
+        setErrorMsg('⚠️ ' + (res?.message || 'No se pudo completar el registro.'));
+      }
     } catch (error) {
-      const msg = error.response?.data?.message || 'No se pudo completar el registro.';
-      Alert.alert('Error de Registro', msg);
+      console.warn('[RegistroScreen] Error:', error);
+      const serverMsg = error.response?.data?.message;
+      if (serverMsg) {
+        setErrorMsg('⚠️ ' + serverMsg);
+      } else {
+        setErrorMsg('⚠️ Error al comunicarse con el servidor de autenticación.');
+      }
     } finally {
       setCargando(false);
     }
@@ -69,34 +96,53 @@ export default function RegistroScreen({ navigation }) {
           <Text style={styles.eyebrow}>Facultad de Ciencias de la Vida - ULEAM</Text>
           <Text style={styles.title}>Crear Cuenta</Text>
           <Text style={styles.subtitle}>
-            Regístrate para registrar ensayos y simulaciones de fermentación láctea.
+            Regístrate para aislar tus lotes, simular curvas cinéticas y registrar ensayos de fermentación.
           </Text>
         </View>
 
         <View style={styles.formCard}>
+          {/* Mensajes de Estado */}
+          {errorMsg ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          ) : null}
+
+          {successMsg ? (
+            <View style={styles.successBox}>
+              <Text style={styles.successText}>{successMsg}</Text>
+            </View>
+          ) : null}
+
           {/* Nombre completo */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nombre completo</Text>
+            <Text style={styles.label}>Nombre completo del investigador / estudiante</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ej. Carlos Delgado"
+              placeholder="Ej. Ing. Juan Murillo"
               placeholderTextColor={theme.colors.textMuted}
               value={nombre}
-              onChangeText={setNombre}
+              onChangeText={(t) => {
+                setNombre(t);
+                setErrorMsg('');
+              }}
             />
           </View>
 
-          {/* Correo */}
+          {/* Correo institucional */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Correo institucional</Text>
             <TextInput
               style={styles.input}
-              placeholder="ejemplo@uleam.edu.ec"
+              placeholder="usuario@uleam.edu.ec"
               placeholderTextColor={theme.colors.textMuted}
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(t) => {
+                setEmail(t);
+                setErrorMsg('');
+              }}
             />
           </View>
 
@@ -105,9 +151,9 @@ export default function RegistroScreen({ navigation }) {
             <Text style={styles.label}>Rol en el laboratorio</Text>
             <View style={styles.rolesRow}>
               {[
-                { id: 'estudiante', label: 'Estudiante' },
-                { id: 'investigador', label: 'Investigador' },
-                { id: 'docente', label: 'Docente' },
+                { id: 'estudiante', label: '🎓 Estudiante' },
+                { id: 'investigador', label: '🔬 Investigador' },
+                { id: 'docente', label: '📚 Docente' },
               ].map((item) => (
                 <Pressable
                   key={item.id}
@@ -132,27 +178,43 @@ export default function RegistroScreen({ navigation }) {
 
           {/* Contraseña */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contraseña</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Contraseña (mínimo 6 caracteres)</Text>
+              <Pressable onPress={() => setShowPassword(!showPassword)}>
+                <Text style={styles.toggleEye}>{showPassword ? '🙈 Ocultar' : '👁️ Mostrar'}</Text>
+              </Pressable>
+            </View>
             <TextInput
               style={styles.input}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="••••••••"
               placeholderTextColor={theme.colors.textMuted}
-              secureTextEntry
+              secureTextEntry={!showPassword}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(t) => {
+                setPassword(t);
+                setErrorMsg('');
+              }}
             />
           </View>
 
           {/* Confirmar contraseña */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Confirmar contraseña</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Confirmar contraseña</Text>
+              <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                <Text style={styles.toggleEye}>{showConfirmPassword ? '🙈 Ocultar' : '👁️ Mostrar'}</Text>
+              </Pressable>
+            </View>
             <TextInput
               style={styles.input}
               placeholder="Repite tu contraseña"
               placeholderTextColor={theme.colors.textMuted}
-              secureTextEntry
+              secureTextEntry={!showConfirmPassword}
               value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              onChangeText={(t) => {
+                setConfirmPassword(t);
+                setErrorMsg('');
+              }}
             />
           </View>
 
@@ -161,9 +223,11 @@ export default function RegistroScreen({ navigation }) {
             onPress={handleRegistro}
             disabled={cargando}
           >
-            <Text style={styles.primaryButtonText}>
-              {cargando ? 'Registrando...' : 'Registrar Cuenta'}
-            </Text>
+            {cargando ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.primaryButtonText}>✨ Registrar Cuenta y Comenzar</Text>
+            )}
           </Pressable>
         </View>
 
@@ -187,6 +251,9 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing.xxl,
+    maxWidth: 540,
+    width: '100%',
+    alignSelf: 'center',
   },
   header: {
     marginBottom: theme.spacing.lg,
@@ -195,17 +262,21 @@ const styles = StyleSheet.create({
     ...theme.typography.caption,
     color: theme.colors.primary,
     textTransform: 'uppercase',
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.5,
     marginBottom: theme.spacing.xs,
   },
   title: {
     ...theme.typography.title,
     color: theme.colors.text,
+    fontSize: 28,
+    fontWeight: '800',
   },
   subtitle: {
     ...theme.typography.body,
     color: theme.colors.textMuted,
     marginTop: theme.spacing.xs,
+    lineHeight: 20,
   },
   formCard: {
     backgroundColor: theme.colors.surface,
@@ -215,17 +286,54 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     ...theme.shadows.card,
   },
+  errorBox: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#F87171',
+    borderWidth: 1,
+    borderRadius: theme.radii.md,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  errorText: {
+    color: '#991B1B',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  successBox: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#4ADE80',
+    borderWidth: 1,
+    borderRadius: theme.radii.md,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  successText: {
+    color: '#166534',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   inputGroup: {
     marginBottom: theme.spacing.md,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   label: {
     ...theme.typography.caption,
     color: theme.colors.text,
-    fontWeight: '600',
-    marginBottom: theme.spacing.xs,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  toggleEye: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: theme.colors.primary,
   },
   input: {
-    minHeight: 46,
+    height: 46,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.radii.md,
@@ -237,11 +345,11 @@ const styles = StyleSheet.create({
   rolesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: theme.spacing.xs,
+    gap: 6,
   },
   rolePill: {
     flex: 1,
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 8,
     borderRadius: theme.radii.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -253,22 +361,23 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
   },
   roleText: {
-    ...theme.typography.caption,
+    fontSize: 11,
     color: theme.colors.textMuted,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   roleTextActive: {
     color: theme.colors.surface,
   },
   button: {
-    minHeight: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.radii.md,
     marginTop: theme.spacing.md,
+    ...theme.shadows.card,
   },
   primaryButton: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#059669',
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -276,7 +385,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     ...theme.typography.body,
     color: theme.colors.surface,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   footer: {
     flexDirection: 'row',
@@ -284,6 +393,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.xs,
     marginTop: theme.spacing.xl,
+    flexWrap: 'wrap',
   },
   footerText: {
     ...theme.typography.body,
@@ -292,6 +402,7 @@ const styles = StyleSheet.create({
   loginLink: {
     ...theme.typography.body,
     color: theme.colors.primary,
-    fontWeight: '700',
+    fontWeight: '800',
+    textDecorationLine: 'underline',
   },
 });

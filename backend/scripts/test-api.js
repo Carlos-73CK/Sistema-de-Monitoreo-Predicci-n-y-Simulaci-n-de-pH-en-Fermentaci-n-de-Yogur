@@ -217,6 +217,15 @@ async function runTests() {
       assert.ok(Array.isArray(body.data.lecturas), 'El ensayo en JSON debe contener el array de lecturas');
     });
 
+    // --- TEST 8: GET /api/docs.json (Documentación OpenAPI / Swagger) ---
+    await testCase('GET /api/docs.json responde 200 con especificación OpenAPI 3.0', async () => {
+      const res = await fetch(`${baseUrl}/api/docs.json`);
+      assert.strictEqual(res.status, 200, `Se esperaba HTTP 200 pero se recibió ${res.status}`);
+      const doc = await res.json();
+      assert.strictEqual(doc.openapi, '3.0.3', 'Se esperaba openapi: 3.0.3');
+      assert.ok(doc.paths && doc.paths['/api/ai/simulate'], 'Debe contener la ruta de simulación documentada');
+    });
+
   } catch (globalErr) {
     console.error(`\n${colors.red}${colors.bold}Error global durante la ejecución de las pruebas:${colors.reset}`, globalErr);
     failedTests++;

@@ -4,24 +4,32 @@
   "main": "App.js",
   "scripts": {
     "start": "react-native start",
+    "web": "vite --host",
+    "build:web": "vite build",
     "android": "react-native run-android",
+    "build:apk": "cd android && gradlew assembleRelease",
     "ios": "react-native run-ios"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^1.23.1",
+    "@react-native-masked-view/masked-view": "^0.3.2",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/stack": "^6.4.1",
     "axios": "^1.7.2",
     "react": "18.2.0",
+    "react-dom": "^18.2.0",
     "react-native": "0.74.2",
     "react-native-gesture-handler": "^2.16.2",
     "react-native-safe-area-context": "^4.10.5",
-    "react-native-screens": "^3.31.1"
+    "react-native-screens": "^3.31.1",
+    "react-native-web": "^0.21.4"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
     "@babel/preset-env": "^7.24.0",
-    "@babel/runtime": "^7.24.0"
+    "@babel/runtime": "^7.24.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "vite": "^8.3.5"
   },
   "private": true
 }

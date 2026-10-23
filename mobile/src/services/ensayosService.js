@@ -1,83 +1,151 @@
 import api from './api';
 
 /**
- * Servicio de Gestión de Ensayos y Lecturas Cinéticas
- * Respeta las reglas de negocio del Dr. Stalin Santacruz (ULEAM):
- * - Inóculo Chivería en gramos
- * - Temperatura objetivo 42 °C (alerta si fuera de 41 - 43 °C)
- * - pH de corte en 4.5
- * - Registro obligatorio de viscosidad final al suspender
+ * Servicio Universal de Ensayos y Persistencia en SQLite
+ * Conecta directamente con los endpoints /api/ai/trials del backend
+ * Aislamiento de muestras por usuario y soporte de exportación CSV/JSON
  */
 export const ensayosService = {
   /**
-   * Obtiene la lista de todos los ensayos registrados
+   * Obtiene la lista de ensayos registrados en SQLite
+   * @param {Object} [filtros]
+   * @param {string} [filtros.usuarioEmail] - Filtrar por email del investigador
+   * @param {boolean} [filtros.misEnsayos] - Filtrar únicamente las muestras del usuario autenticado
+   * @returns {Promise<Array>} Lista de ensayos
    */
-  getEnsayos: async () => {
-    const response = await api.get('/ensayos');
-    return response.data;
+  getEnsayos: async (filtros = {}) => {
+    try {
+      const params = {};
+      if (filtros.usuarioEmail) {
+        params.usuario_email = filtros.usuarioEmail;
+      }
+      if (filtros.misEnsayos) {
+        params.mis_ensayos = 'true';
+      }
+
+      const res = await api.get('/ai/trials', { params });
+      if (res.data && res.data.data) {
+        return res.data.data;
+      }
+      return res.data || [];
+    } catch (err) {
+      console.warn('[ensayosService] Error al listar /ai/trials, intentando /ensayos:', err.message);
+      try {
+        const fallback = await api.get('/ensayos');
+        return fallback.data?.data || fallback.data || [];
+      } catch (fallbackErr) {
+        console.error('[ensayosService] Fallaron ambos endpoints:', fallbackErr.message);
+        throw fallbackErr;
+      }
+    }
   },
 
   /**
-   * Obtiene el detalle completo de un ensayo junto con su serie temporal de lecturas
-   * @param {number|string} id 
+   * Obtiene un ensayo específico con todas sus lecturas cinéticas por loteId
+   * @param {string} loteId 
+   * @returns {Promise<Object>}
    */
-  getEnsayoPorId: async (id) => {
-    const response = await api.get(`/ensayos/${id}`);
-    return response.data;
+  getEnsayoPorLoteId: async (loteId) => {
+    const res = await api.get(`/ai/trials/${encodeURIComponent(loteId)}`);
+    return res.data?.data || res.data;
   },
 
   /**
-   * Registra un nuevo ensayo de fermentación
+   * Registra un nuevo lote de fermentación en SQLite
    * @param {Object} datos
-   * @param {string} datos.codigo - Código o identificador del lote/ensayo
-   * @param {string} datos.tipoSustrato - 'vaca', 'chocho', 'coco', u otro
-   * @param {number} datos.masaInoculoG - Masa de yogur Chivería en gramos
-   * @param {number} [datos.temperaturaObjetivo=42.0] - Temperatura de baño maría (°C)
-   * @param {number} [datos.volumenMl=1000] - Volumen de la muestra en mL
-   * @param {string} [datos.observaciones] - Notas iniciales de formulación
    */
   crearEnsayo: async (datos) => {
-    const response = await api.post('/ensayos', {
-      codigo: datos.codigo,
-      tipo_sustrato: datos.tipoSustrato,
-      masa_inoculo_g: Number(datos.masaInoculoG),
-      temperatura_objetivo: datos.temperaturaObjetivo ? Number(datos.temperaturaObjetivo) : 42.0,
-      volumen_ml: datos.volumenMl ? Number(datos.volumenMl) : 1000,
-      observaciones: datos.observaciones || '',
-    });
-    return response.data;
+    const payload = {
+      lote_id: datos.lote_id || datos.codigo || datos.nombre_lote,
+      investigador: datos.investigador || 'Investigador ULEAM',
+      usuario_email: datos.usuario_email,
+      usuario_id: datos.usuario_id,
+      tipo_sustrato: datos.tipo_sustrato || datos.tipoSustrato || 'vaca',
+      tipo_azucar: datos.tipo_azucar || datos.tipoAzucar || 'lactosa',
+      temperatura_c: Number(datos.temperatura_c ?? datos.temperaturaObjetivo ?? 42.0),
+      masa_inoculo_g: Number(datos.masa_inoculo_g ?? datos.masaInoculoG ?? 18.75),
+      volumen_ml: Number(datos.volumen_ml ?? datos.volumenMl ?? 250),
+    };
+
+    const res = await api.post('/ai/trials', payload);
+    return res.data?.data || res.data;
   },
 
   /**
-   * Agrega una lectura periódica al ensayo activo
-   * @param {number|string} ensayoId 
+   * Agrega una lectura periódica de monitoreo al ensayo
+   * @param {string} loteId
    * @param {Object} lectura
-   * @param {number} lectura.minutos - Tiempo transcurrido en minutos
-   * @param {number} lectura.ph - Medición de pH (rango típico ~7.0 a 4.5)
-   * @param {number} lectura.temperatura - Temperatura en baño maría (°C)
    */
-  registrarLectura: async (ensayoId, lectura) => {
-    const response = await api.post(`/ensayos/${ensayoId}/lecturas`, {
-      minutos: Number(lectura.minutos),
+  agregarLectura: async (loteId, lectura) => {
+    const payload = {
+      minutos: Number(lectura.minutos ?? lectura.tiempo_minutos),
       ph: Number(lectura.ph),
-      temperatura: Number(lectura.temperatura),
-    });
-    return response.data;
+      temperatura: Number(lectura.temperatura ?? 42.0),
+      indice_refraccion: lectura.indice_refraccion !== undefined && lectura.indice_refraccion !== null
+        ? Number(lectura.indice_refraccion)
+        : null,
+    };
+
+    const res = await api.post(`/ai/trials/${encodeURIComponent(loteId)}/readings`, payload);
+    return res.data?.data || res.data;
   },
 
   /**
-   * Finaliza el ensayo de fermentación (habitualmente al alcanzar pH 4.5)
-   * @param {number|string} ensayoId 
-   * @param {Object} cierre
-   * @param {number} cierre.viscosidadFinal - Viscosidad final obligatoria (mPa·s / cP)
-   * @param {string} [cierre.observaciones] - Notas de cierre
+   * Elimina una lectura periódica de un lote
+   * @param {string} loteId 
+   * @param {number} minuto 
    */
-  finalizarEnsayo: async (ensayoId, cierre) => {
-    const response = await api.patch(`/ensayos/${ensayoId}/finalizar`, {
-      viscosidad_final: Number(cierre.viscosidadFinal),
-      observaciones: cierre.observaciones || '',
+  eliminarLectura: async (loteId, minuto) => {
+    const res = await api.delete(`/ai/trials/${encodeURIComponent(loteId)}/readings/${minuto}`);
+    return res.data;
+  },
+
+  /**
+   * Elimina un lote completo de SQLite
+   * @param {string} loteId 
+   */
+  eliminarEnsayo: async (loteId) => {
+    const res = await api.delete(`/ai/trials/${encodeURIComponent(loteId)}`);
+    return res.data;
+  },
+
+  /**
+   * Exporta las lecturas de un lote en CSV o JSON
+   * @param {string} loteId 
+   * @param {'csv'|'json'} [formato='csv']
+   */
+  exportarEnsayo: async (loteId, formato = 'csv') => {
+    const res = await api.get(`/ai/trials/${encodeURIComponent(loteId)}/export`, {
+      params: { formato },
+      responseType: formato === 'csv' ? 'text' : 'json',
     });
-    return response.data;
+    return res.data;
+  },
+
+  /**
+   * Recalibra en vivo el tiempo de corte estimado a pH 4.50
+   * @param {Object} datos
+   */
+  recalibrar: async (datos) => {
+    const res = await api.post('/ai/recalibrate', datos);
+    return res.data?.data || res.data;
+  },
+
+  /**
+   * Envía un lote experimental al Feedback Loop para aprendizaje continuo
+   * @param {Object} datosLote
+   */
+  enviarFeedbackBatch: async (datosLote) => {
+    const res = await api.post('/ai/feedback', datosLote);
+    return res.data;
+  },
+
+  /**
+   * Obtiene las métricas científicas globales del modelo Hill (R² = 0.9774)
+   */
+  getMetricasModelo: async () => {
+    const res = await api.get('/ai/metrics');
+    return res.data?.data || res.data;
   },
 };
 

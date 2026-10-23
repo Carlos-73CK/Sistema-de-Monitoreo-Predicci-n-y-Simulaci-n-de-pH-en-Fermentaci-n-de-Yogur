@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import HeaderBar from '../components/common/HeaderBar';
 import CustomInput from '../components/common/CustomInput';
 import MetricCard from '../components/common/MetricCard';
 import StatusBadge from '../components/common/StatusBadge';
@@ -25,7 +26,7 @@ const activeBatch = {
 };
 
 export default function DashboardScreen({ navigation }) {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, openAuthModal } = useContext(AuthContext);
   const [phValue, setPhValue] = useState(String(activeBatch.currentPh));
   const [temperatureValue, setTemperatureValue] = useState(
     String(activeBatch.currentTemperature),
@@ -46,132 +47,246 @@ export default function DashboardScreen({ navigation }) {
     return 'inProgress';
   }, [ph, temperature]);
 
+  const getRolLabel = (rol) => {
+    switch (rol) {
+      case 'docente':
+        return 'Docente Investigador';
+      case 'estudiante':
+        return 'Estudiante Tesista';
+      case 'investigador':
+      default:
+        return 'Investigador de Laboratorio';
+    }
+  };
+
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerCopy}>
-            <Text style={styles.eyebrow}>PrediYogur</Text>
-            <Text style={styles.title}>Dashboard de Fermentacion</Text>
-            <Text style={styles.subtitle}>
-              Bienvenido, {user?.nombre || 'Investigador'}
-            </Text>
+    <View style={styles.screen}>
+      {/* Barra Superior Universal con Métricas y Perfil */}
+      <HeaderBar />
+
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Banner de Perfil y Muestras del Usuario */}
+        <View style={styles.profileBanner}>
+          <View style={styles.profileBannerContent}>
+            <View style={styles.profileAvatar}>
+              <Text style={styles.profileAvatarText}>
+                {user?.rol === 'estudiante' ? '🎓' : user?.rol === 'docente' ? '📚' : '🔬'}
+              </Text>
+            </View>
+            <View style={styles.profileInfoBlock}>
+              <View style={styles.profileNameRow}>
+                <Text style={styles.profileName}>{user?.nombre || 'Investigador ULEAM'}</Text>
+                <View style={styles.profileBadge}>
+                  <Text style={styles.profileBadgeText}>
+                    {getRolLabel(user?.rol)}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.profileEmail}>
+                ✉️ {user?.email || 'carlos.delgado@uleam.edu.ec'}
+              </Text>
+              <Text style={styles.profileHint}>
+                📁 Tus ensayos, lecturas y cinéticas se aíslan y guardan bajo tu perfil en SQLite.
+              </Text>
+            </View>
           </View>
-          <StatusBadge status={batchStatus} />
+          <View style={styles.profileActions}>
+            <Pressable
+              style={styles.profileArchiveBtn}
+              onPress={() => navigation.navigate('EnsayosArchivados')}
+            >
+              <Text style={styles.profileArchiveBtnText}>📁 Mis Muestras</Text>
+            </Pressable>
+            <Pressable
+              style={styles.profileSwitchBtn}
+              onPress={() => openAuthModal('login')}
+            >
+              <Text style={styles.profileSwitchBtnText}>🔄 Cambiar</Text>
+            </Pressable>
+          </View>
         </View>
 
-        <View style={styles.batchPanel}>
-          <View>
-            <Text style={styles.batchLabel}>Lote activo</Text>
-            <Text style={styles.batchCode}>{activeBatch.code}</Text>
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerCopy}>
+              <Text style={styles.eyebrow}>Monitoreo Cinético</Text>
+              <Text style={styles.title}>Dashboard de Fermentación</Text>
+              <Text style={styles.subtitle}>
+                Control cinético en tiempo real con inóculo Chivería
+              </Text>
+            </View>
+            <StatusBadge status={batchStatus} />
           </View>
-          <View style={styles.batchMetaGrid}>
-            <InfoPill label="Medio" value={activeBatch.medium} />
-            <InfoPill label="Azucar" value={activeBatch.sugar} />
-            <InfoPill label="Inoculo" value={activeBatch.inoculum} />
-            <InfoPill label="Inicio" value={activeBatch.startedAt} />
+
+          <View style={styles.batchPanel}>
+            <View>
+              <Text style={styles.batchLabel}>Lote activo</Text>
+              <Text style={styles.batchCode}>{activeBatch.code}</Text>
+            </View>
+            <View style={styles.batchMetaGrid}>
+              <InfoPill label="Medio" value={activeBatch.medium} />
+              <InfoPill label="Azucar" value={activeBatch.sugar} />
+              <InfoPill label="Inoculo" value={activeBatch.inoculum} />
+              <InfoPill label="Inicio" value={activeBatch.startedAt} />
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.metricsGrid}>
-        <MetricCard
-          label="pH actual"
-          value={Number.isNaN(ph) ? '--' : ph.toFixed(2)}
-          helperText={`Corte objetivo: pH ${activeBatch.targetPh}`}
-          status={ph <= activeBatch.targetPh ? 'success' : 'normal'}
-        />
-        <MetricCard
-          label="Temperatura"
-          value={Number.isNaN(temperature) ? '--' : temperature.toFixed(1)}
-          unit="°C"
-          helperText="Rango optimo: 41 °C - 43 °C"
-          accentColor={getTemperatureColor(temperature)}
-        />
-        <MetricCard
-          label="Tiempo"
-          value={activeBatch.elapsedTime}
-          helperText="Tiempo transcurrido"
-          status="info"
-        />
-      </View>
-
-      <View style={styles.inputPanel}>
-        <Text style={styles.sectionTitle}>Lecturas manuales de referencia</Text>
-        <View style={styles.inputGrid}>
-          <CustomInput
-            label="pH medido"
-            metricType="ph"
-            value={phValue}
-            onChangeText={setPhValue}
-            placeholder="0.0"
+        <View style={styles.metricsGrid}>
+          <MetricCard
+            label="pH actual"
+            value={Number.isNaN(ph) ? '--' : ph.toFixed(2)}
+            helperText={`Corte objetivo: pH ${activeBatch.targetPh}`}
+            status={ph <= activeBatch.targetPh ? 'success' : 'normal'}
           />
-          <CustomInput
-            label="Temperatura del bano"
-            metricType="temperature"
-            value={temperatureValue}
-            onChangeText={setTemperatureValue}
-            placeholder="42.0"
+          <MetricCard
+            label="Temperatura"
+            value={Number.isNaN(temperature) ? '--' : temperature.toFixed(1)}
             unit="°C"
+            helperText="Rango optimo: 41 °C - 43 °C"
+            accentColor={getTemperatureColor(temperature)}
+          />
+          <MetricCard
+            label="Tiempo"
+            value={activeBatch.elapsedTime}
+            helperText="Tiempo transcurrido"
+            status="info"
           />
         </View>
-      </View>
 
-      <View style={styles.chartPanel}>
-        <View style={styles.chartHeader}>
-          <View style={styles.chartTitleBlock}>
-            <Text style={styles.sectionTitle}>Curvas cineticas</Text>
-            <Text style={styles.sectionSubtitle}>
-              Aqui se superpondran pH, temperatura y simulaciones What-If.
-            </Text>
-          </View>
-          <Text style={styles.chartTag}>Placeholder</Text>
-        </View>
-
-        <View style={styles.chartCanvas}>
-          <View style={styles.yAxis}>
-            <Text style={styles.axisText}>pH 7.0</Text>
-            <Text style={styles.axisText}>pH 4.5</Text>
-          </View>
-          <View style={styles.chartArea}>
-            <View style={[styles.gridLine, styles.gridLineTop]} />
-            <View style={[styles.gridLine, styles.gridLineMiddle]} />
-            <View style={[styles.gridLine, styles.gridLineBottom]} />
-            <View style={styles.curveSegmentOne} />
-            <View style={styles.curveSegmentTwo} />
-            <View style={styles.targetLine} />
+        <View style={styles.inputPanel}>
+          <Text style={styles.sectionTitle}>Lecturas manuales de referencia</Text>
+          <View style={styles.inputGrid}>
+            <CustomInput
+              label="pH medido"
+              metricType="ph"
+              value={phValue}
+              onChangeText={setPhValue}
+              placeholder="0.0"
+            />
+            <CustomInput
+              label="Temperatura del bano"
+              metricType="temperature"
+              value={temperatureValue}
+              onChangeText={setTemperatureValue}
+              placeholder="42.0"
+              unit="°C"
+            />
           </View>
         </View>
-      </View>
 
-      <View style={styles.actions}>
-        <Pressable
-          style={[styles.button, styles.primaryButton]}
-          onPress={() => navigation.navigate('NuevoEnsayo')}
-        >
-          <Text style={styles.primaryButtonText}>Nuevo Ensayo</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.button, styles.infoButton]}
-          onPress={() => navigation.navigate('Monitoreo')}
-        >
-          <Text style={styles.infoButtonText}>Monitoreo en Vivo (Ensayo Activo)</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.button, styles.simulateButton]}
-          onPress={() => navigation.navigate('Simulacion')}
-        >
-          <Text style={styles.simulateButtonText}>Simulador Cinético ("What-If")</Text>
-        </Pressable>
-        <Pressable style={[styles.button, styles.secondaryButton]} onPress={logout}>
-          <Text style={styles.secondaryButtonText}>Cerrar Sesion</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+        <View style={styles.chartPanel}>
+          <View style={styles.chartHeader}>
+            <View style={styles.chartTitleBlock}>
+              <Text style={styles.sectionTitle}>Curvas cineticas</Text>
+              <Text style={styles.sectionSubtitle}>
+                Aqui se superpondran pH, temperatura y simulaciones What-If.
+              </Text>
+            </View>
+            <Text style={styles.chartTag}>Placeholder</Text>
+          </View>
+
+          <View style={styles.chartCanvas}>
+            <View style={styles.yAxis}>
+              <Text style={styles.axisText}>pH 7.0</Text>
+              <Text style={styles.axisText}>pH 4.5</Text>
+            </View>
+            <View style={styles.chartArea}>
+              <View style={[styles.gridLine, styles.gridLineTop]} />
+              <View style={[styles.gridLine, styles.gridLineMiddle]} />
+              <View style={[styles.gridLine, styles.gridLineBottom]} />
+              <View style={styles.curveSegmentOne} />
+              <View style={styles.curveSegmentTwo} />
+              <View style={styles.targetLine} />
+            </View>
+          </View>
+        </View>
+
+        {/* MÓDULOS CIENTÍFICOS Y PEDAGÓGICOS ULEAM */}
+        <View style={styles.pedagogicalPanel}>
+          <Text style={styles.sectionTitle}>📚 Cátedra & Módulos Científicos (Dr. Stalin Santacruz)</Text>
+          <Text style={styles.sectionSubtitle}>
+            Herramientas formativas, bioquímica del gel, aprendizaje continuo y certificación bioestadística:
+          </Text>
+
+          <View style={styles.pedagogicalGrid}>
+            <Pressable
+              style={styles.pedagogicalCard}
+              onPress={() => navigation.navigate('Bioquimica')}
+            >
+              <Text style={styles.pedCardIcon}>🧬</Text>
+              <Text style={styles.pedCardTitle}>Bioquímica & Escala pH</Text>
+              <Text style={styles.pedCardSub}>3 etapas, micelas de caseína y escala interactiva de pH</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.pedagogicalCard}
+              onPress={() => navigation.navigate('DemostradorVivo')}
+            >
+              <Text style={styles.pedCardIcon}>⏱️</Text>
+              <Text style={styles.pedCardTitle}>Demostrador en Vivo</Text>
+              <Text style={styles.pedCardSub}>Exposiciones y simulación pedagógica para evaluación</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.pedagogicalCard}
+              onPress={() => navigation.navigate('FeedbackLoop')}
+            >
+              <Text style={styles.pedCardIcon}>🧠</Text>
+              <Text style={styles.pedCardTitle}>Feedback Loop</Text>
+              <Text style={styles.pedCardSub}>Aprendizaje continuo con nuevos lotes concluidos</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.pedagogicalCard}
+              onPress={() => navigation.navigate('MetricasModelo')}
+            >
+              <Text style={styles.pedCardIcon}>📊</Text>
+              <Text style={styles.pedCardTitle}>Métricas Científicas</Text>
+              <Text style={styles.pedCardSub}>Validación R² = 0.9774 y matriz de los 6 lotes</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* ACCIONES Y NAVEGACIÓN PRINCIPAL */}
+        <View style={styles.actions}>
+          <Pressable
+            style={[styles.button, styles.primaryButton]}
+            onPress={() => navigation.navigate('NuevoEnsayo')}
+          >
+            <Text style={styles.primaryButtonText}>➕ Nuevo Ensayo de Fermentación</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.button, styles.archiveMainButton]}
+            onPress={() => navigation.navigate('EnsayosArchivados')}
+          >
+            <Text style={styles.archiveMainButtonText}>📁 Ensayos & Lotes Archivados ("Mis Muestras")</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.button, styles.infoButton]}
+            onPress={() => navigation.navigate('Monitoreo')}
+          >
+            <Text style={styles.infoButtonText}>⏱️ Monitoreo en Vivo (Ensayo Activo)</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.button, styles.simulateButton]}
+            onPress={() => navigation.navigate('Simulacion')}
+          >
+            <Text style={styles.simulateButtonText}>⚡ Simulador Cinético ("What-If")</Text>
+          </Pressable>
+
+          <Pressable style={[styles.button, styles.secondaryButton]} onPress={logout}>
+            <Text style={styles.secondaryButtonText}>🚪 Cerrar Sesión</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -192,6 +307,105 @@ const styles = StyleSheet.create({
   content: {
     padding: theme.spacing.lg,
     paddingBottom: theme.spacing.xxl,
+    maxWidth: 1080,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  profileBanner: {
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
+    borderWidth: 1,
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    ...theme.shadows.card,
+  },
+  profileBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    flex: 1,
+    minWidth: 260,
+  },
+  profileAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E0F2FE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileAvatarText: {
+    fontSize: 22,
+  },
+  profileInfoBlock: {
+    flex: 1,
+  },
+  profileNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  profileName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  profileBadge: {
+    backgroundColor: '#E0E7FF',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  profileBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#3730A3',
+    textTransform: 'uppercase',
+  },
+  profileEmail: {
+    fontSize: 12,
+    color: '#475569',
+    marginTop: 2,
+  },
+  profileHint: {
+    fontSize: 11,
+    color: '#0284C7',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  profileActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  profileArchiveBtn: {
+    backgroundColor: '#059669',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: theme.radii.sm,
+  },
+  profileArchiveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  profileSwitchBtn: {
+    backgroundColor: '#0284C7',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: theme.radii.sm,
+  },
+  profileSwitchBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   header: {
     marginBottom: theme.spacing.xl,
@@ -384,6 +598,46 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: theme.colors.warning,
   },
+  pedagogicalPanel: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+    ...theme.shadows.card,
+  },
+  pedagogicalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: theme.spacing.md,
+  },
+  pedagogicalCard: {
+    flex: 1,
+    minWidth: 220,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: theme.radii.md,
+    padding: theme.spacing.md,
+    ...theme.shadows.card,
+  },
+  pedCardIcon: {
+    fontSize: 26,
+    marginBottom: 6,
+  },
+  pedCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 3,
+  },
+  pedCardSub: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 15,
+  },
   actions: {
     gap: theme.spacing.md,
   },
@@ -398,6 +652,14 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   primaryButtonText: {
+    ...theme.typography.body,
+    color: theme.colors.surface,
+    fontWeight: '700',
+  },
+  archiveMainButton: {
+    backgroundColor: '#059669',
+  },
+  archiveMainButtonText: {
     ...theme.typography.body,
     color: theme.colors.surface,
     fontWeight: '700',
