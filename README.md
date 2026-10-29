@@ -208,7 +208,7 @@ Desde la carpeta principal del proyecto puedes utilizar los atajos directos:
 * **Alex Patiño:** Base de Datos (PostgreSQL & SQLite)
 * **Juan Murillo:** Backend (Node.js + Express)
 * **Jordan Meza:** API REST e Integraciones
-* **Jinger Pérez:** Frontend y Visualización de Datos
+* **Ginger Pérez:** Frontend y Visualización de Datos
 
 ---
 

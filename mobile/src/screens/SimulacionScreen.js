@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import FooterBar from '../components/common/FooterBar';
 import simulationService from '../services/simulationService';
 import ensayosService from '../services/ensayosService';
 import theme from '../styles/theme';
@@ -520,6 +521,7 @@ export default function SimulacionScreen({ navigation }) {
           </View>
         </View>
       </View>
+      <FooterBar />
     </ScrollView>
   );
 }

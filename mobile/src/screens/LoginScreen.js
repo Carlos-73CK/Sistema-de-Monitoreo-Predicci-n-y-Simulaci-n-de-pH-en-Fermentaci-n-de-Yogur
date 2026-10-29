@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import authService from '../services/authService';
+import FooterBar from '../components/common/FooterBar';
 import theme from '../styles/theme';
 
 export default function LoginScreen({ navigation }) {
@@ -183,6 +184,7 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.registerLink}>Crear cuenta nueva</Text>
           </Pressable>
         </View>
+        <FooterBar />
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -7,6 +7,7 @@ import {
   Pressable,
 } from 'react-native';
 import theme from '../styles/theme';
+import FooterBar from '../components/common/FooterBar';
 
 export default function BioquimicaScreen() {
   const [selectedItem, setSelectedItem] = useState(3); // Por defecto: Yogur (Corte 4.50)
@@ -226,6 +227,7 @@ export default function BioquimicaScreen() {
           <Text style={styles.detailDesc}>{itemActivo.desc}</Text>
         </View>
       </View>
+      <FooterBar />
     </ScrollView>
   );
 }

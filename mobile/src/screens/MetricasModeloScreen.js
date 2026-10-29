@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import ensayosService from '../services/ensayosService';
 import theme from '../styles/theme';
+import FooterBar from '../components/common/FooterBar';
 
 export default function MetricasModeloScreen() {
   const [metricas, setMetricas] = useState({
@@ -172,6 +173,7 @@ export default function MetricasModeloScreen() {
           </View>
         ))}
       </View>
+      <FooterBar />
     </ScrollView>
   );
 }

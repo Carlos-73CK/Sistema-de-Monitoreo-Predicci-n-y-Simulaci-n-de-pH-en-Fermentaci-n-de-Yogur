@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import authService from '../services/authService';
+import FooterBar from '../components/common/FooterBar';
 import theme from '../styles/theme';
 
 export default function RegistroScreen({ navigation }) {
@@ -237,6 +238,7 @@ export default function RegistroScreen({ navigation }) {
             <Text style={styles.loginLink}>Iniciar Sesión</Text>
           </Pressable>
         </View>
+        <FooterBar />
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import FooterBar from '../components/common/FooterBar';
 import ensayosService from '../services/ensayosService';
 import theme from '../styles/theme';
 
@@ -528,6 +529,7 @@ export default function MonitoreoScreen({ route, navigation }) {
           );
         })}
       </View>
+      <FooterBar />
     </ScrollView>
   );
 }

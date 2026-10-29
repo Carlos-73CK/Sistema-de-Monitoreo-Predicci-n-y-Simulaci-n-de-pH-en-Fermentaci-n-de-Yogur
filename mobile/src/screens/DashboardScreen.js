@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import HeaderBar from '../components/common/HeaderBar';
+import FooterBar from '../components/common/FooterBar';
 import CustomInput from '../components/common/CustomInput';
 import MetricCard from '../components/common/MetricCard';
 import StatusBadge from '../components/common/StatusBadge';
@@ -285,6 +286,8 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.secondaryButtonText}>🚪 Cerrar Sesión</Text>
           </Pressable>
         </View>
+
+        <FooterBar />
       </ScrollView>
     </View>
   );

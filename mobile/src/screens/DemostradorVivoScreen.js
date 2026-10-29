@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import theme from '../styles/theme';
+import FooterBar from '../components/common/FooterBar';
 
 export default function DemostradorVivoScreen() {
   const [escenarioActivo, setEscenarioActivo] = useState('nominal');
@@ -240,6 +241,7 @@ export default function DemostradorVivoScreen() {
           </View>
         ))}
       </View>
+      <FooterBar />
     </ScrollView>
   );
 }

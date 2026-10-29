@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import ensayosService from '../services/ensayosService';
 import theme from '../styles/theme';
+import FooterBar from '../components/common/FooterBar';
 
 export default function FeedbackLoopScreen() {
   const [loteId, setLoteId] = useState('LOTE-EXP-2026-001');
@@ -357,6 +358,7 @@ export default function FeedbackLoopScreen() {
           )}
         </Pressable>
       </View>
+      <FooterBar />
     </ScrollView>
   );
 }
