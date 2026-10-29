@@ -33,85 +33,55 @@ export default function AppNavigator() {
   return (
     <View style={styles.appContainer}>
       <Stack.Navigator
+        initialRouteName="Dashboard"
         screenOptions={{
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: '#1E3A8A',
-          },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: {
-            fontWeight: '700',
-            fontSize: 16,
-          },
+          headerShown: false,
         }}
       >
-        {userToken === null ? (
-          // Flujo de autenticación (Público)
-          <>
-            <Stack.Screen
-              name="Login"
-              component={LoginScreen}
-              options={{ title: 'PrediYogur - Iniciar Sesión', headerShown: false }}
-            />
-            <Stack.Screen
-              name="Registro"
-              component={RegistroScreen}
-              options={{ title: 'PrediYogur - Crear Cuenta', headerShown: false }}
-            />
-          </>
-        ) : (
-          // Flujo principal de la aplicación (Privado)
-          <>
-            <Stack.Screen
-              name="Dashboard"
-              component={DashboardScreen}
-              options={{
-                title: 'PrediYogur - Panel Científico',
-                headerShown: false, // DashboardScreen usa HeaderBar integrado
-              }}
-            />
-            <Stack.Screen
-              name="EnsayosArchivados"
-              component={EnsayosArchivadosScreen}
-              options={{ title: '📁 Ensayos & Lotes Archivados' }}
-            />
-            <Stack.Screen
-              name="NuevoEnsayo"
-              component={NuevoEnsayoScreen}
-              options={{ title: '➕ Nuevo Ensayo de Fermentación' }}
-            />
-            <Stack.Screen
-              name="Monitoreo"
-              component={MonitoreoScreen}
-              options={{ title: '⏱️ Monitoreo de pH y Temperatura' }}
-            />
-            <Stack.Screen
-              name="Simulacion"
-              component={SimulacionScreen}
-              options={{ title: '⚡ Simulación Cinética (What-If)' }}
-            />
-            <Stack.Screen
-              name="Bioquimica"
-              component={BioquimicaScreen}
-              options={{ title: '🧬 Bioquímica & Escala pH' }}
-            />
-            <Stack.Screen
-              name="DemostradorVivo"
-              component={DemostradorVivoScreen}
-              options={{ title: '⏱️ Demostrador en Vivo (Dr. Santacruz)' }}
-            />
-            <Stack.Screen
-              name="FeedbackLoop"
-              component={FeedbackLoopScreen}
-              options={{ title: '🧠 Feedback Loop (Aprendizaje Continuo)' }}
-            />
-            <Stack.Screen
-              name="MetricasModelo"
-              component={MetricasModeloScreen}
-              options={{ title: '📊 Métricas Científicas (R² = 0.9774)' }}
-            />
-          </>
-        )}
+        <Stack.Screen
+          name="Dashboard"
+          component={DashboardScreen}
+        />
+        <Stack.Screen
+          name="Simulacion"
+          component={SimulacionScreen}
+        />
+        <Stack.Screen
+          name="Monitoreo"
+          component={MonitoreoScreen}
+        />
+        <Stack.Screen
+          name="NuevoEnsayo"
+          component={NuevoEnsayoScreen}
+        />
+        <Stack.Screen
+          name="EnsayosArchivados"
+          component={EnsayosArchivadosScreen}
+        />
+        <Stack.Screen
+          name="Bioquimica"
+          component={BioquimicaScreen}
+        />
+        <Stack.Screen
+          name="DemostradorVivo"
+          component={DemostradorVivoScreen}
+        />
+        <Stack.Screen
+          name="FeedbackLoop"
+          component={FeedbackLoopScreen}
+        />
+        <Stack.Screen
+          name="MetricasModelo"
+          component={MetricasModeloScreen}
+        />
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+        />
+        <Stack.Screen
+          name="Registro"
+          component={RegistroScreen}
+        />
       </Stack.Navigator>
 
       {/* Modal Universal de Autenticación / Cambio de Usuario */}

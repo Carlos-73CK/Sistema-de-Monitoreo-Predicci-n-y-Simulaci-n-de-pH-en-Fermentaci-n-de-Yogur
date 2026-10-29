@@ -37,6 +37,19 @@ export const AuthProvider = ({ children }) => {
           if (storedUser) {
             setUser(JSON.parse(storedUser));
           }
+        } else {
+          // Sesión activa predeterminada (Carlos Delgado - Investigador Titular ULEAM)
+          const defaultUser = {
+            id: 2,
+            nombre: 'Carlos Delgado',
+            email: 'e1312274663@live.uleam.edu.ec',
+            rol: 'investigador',
+          };
+          const defaultToken = 'dev_token_uleam_2026';
+          await storage.setItem(TOKEN_KEY, defaultToken);
+          await storage.setItem(USER_KEY, JSON.stringify(defaultUser));
+          setUserToken(defaultToken);
+          setUser(defaultUser);
         }
       } catch (error) {
         console.error('[AuthContext] Error al restaurar sesión:', error);

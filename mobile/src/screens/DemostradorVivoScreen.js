@@ -9,9 +9,13 @@ import {
   Alert,
 } from 'react-native';
 import theme from '../styles/theme';
+import HeaderBar from '../components/common/HeaderBar';
 import FooterBar from '../components/common/FooterBar';
+import ScreenHeader from '../components/common/ScreenHeader';
+import KineticCurveChart from '../components/common/KineticCurveChart';
+import ScientificIcon from '../components/common/ScientificIcons';
 
-export default function DemostradorVivoScreen() {
+export default function DemostradorVivoScreen({ navigation }) {
   const [escenarioActivo, setEscenarioActivo] = useState('nominal');
   const [lecturas, setLecturas] = useState([
     { min: 0, ph: 6.25, temp: 42.0 },
@@ -118,25 +122,37 @@ export default function DemostradorVivoScreen() {
   const rec = calcularRecalibracion();
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Demostrador Académico en Tiempo Real</Text>
-        <Text style={styles.title}>Demostrador en Vivo (Dr. Santacruz)</Text>
-        <Text style={styles.subtitle}>
-          Diseñado para exposiciones y validación pedagógica frente a docentes: comprueba cómo la IA recalibra dinámicamente el tiempo de corte.
-        </Text>
-      </View>
+    <View style={styles.screen}>
+      <HeaderBar navigation={navigation} activeTab="DemostradorVivo" />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.desktopContainer}>
+          {/* Encabezado Institucional con Retorno */}
+          <ScreenHeader
+            title="Demostrador en Vivo (Dr. Santacruz)"
+            subtitle="Diseñado para exposiciones y validación pedagógica frente a docentes: comprueba cómo la IA recalibra dinámicamente el tiempo de corte."
+            icon="clock"
+            navigation={navigation}
+          />
 
       {/* Escenarios en 1 Clic */}
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>⚡ Escenarios de Prueba en 1 Clic:</Text>
+        <View style={styles.sectionTitleRow}>
+          <ScientificIcon name="spark" size={16} color="#0284C7" style={{ marginRight: 6 }} />
+          <Text style={styles.sectionTitle}>Escenarios de Prueba en 1 Clic:</Text>
+        </View>
         <View style={styles.presetsGrid}>
           <Pressable
             style={[styles.presetBtn, escenarioActivo === 'acelerado' && styles.presetBtnActive]}
             onPress={() => cargarEscenario('acelerado')}
           >
-            <Text style={styles.presetTitle}>⚡ Acidificación Acelerada</Text>
+            <View style={styles.presetTitleRow}>
+              <ScientificIcon name="spark" size={14} color="#059669" style={{ marginRight: 6 }} />
+              <Text style={styles.presetTitle}>Acidificación Acelerada</Text>
+            </View>
             <Text style={[styles.presetSub, { color: '#059669' }]}>-35 min antes de tiempo</Text>
           </Pressable>
 
@@ -144,7 +160,10 @@ export default function DemostradorVivoScreen() {
             style={[styles.presetBtn, escenarioActivo === 'retrasado' && styles.presetBtnActive]}
             onPress={() => cargarEscenario('retrasado')}
           >
-            <Text style={styles.presetTitle}>❄️ Enfriamiento / Retraso</Text>
+            <View style={styles.presetTitleRow}>
+              <ScientificIcon name="alert" size={14} color="#D97706" style={{ marginRight: 6 }} />
+              <Text style={styles.presetTitle}>Enfriamiento / Retraso</Text>
+            </View>
             <Text style={[styles.presetSub, { color: '#D97706' }]}>+40 min por baja temperatura</Text>
           </Pressable>
 
@@ -152,12 +171,18 @@ export default function DemostradorVivoScreen() {
             style={[styles.presetBtn, escenarioActivo === 'nominal' && styles.presetBtnActive]}
             onPress={() => cargarEscenario('nominal')}
           >
-            <Text style={styles.presetTitle}>⭐ Nominal Hill</Text>
+            <View style={styles.presetTitleRow}>
+              <ScientificIcon name="check" size={14} color="#0284C7" style={{ marginRight: 6 }} />
+              <Text style={styles.presetTitle}>Nominal Hill</Text>
+            </View>
             <Text style={[styles.presetSub, { color: '#0284C7' }]}>4.25 h exactas (42 °C / 7.5%)</Text>
           </Pressable>
 
           <Pressable style={styles.presetBtnReset} onPress={reiniciar}>
-            <Text style={styles.presetTitleReset}>🔄 Reiniciar Demostración</Text>
+            <View style={styles.presetTitleRow}>
+              <ScientificIcon name="clock" size={14} color="#B91C1C" style={{ marginRight: 6 }} />
+              <Text style={styles.presetTitleReset}>Reiniciar Demostración</Text>
+            </View>
             <Text style={styles.presetSubReset}>Volver a minuto 0 (T0)</Text>
           </Pressable>
         </View>
@@ -194,6 +219,21 @@ export default function DemostradorVivoScreen() {
 
         <Text style={styles.diagBannerText}>{rec.diag}</Text>
       </View>
+
+      {/* Gráfico Dinámico de Demostración en Vivo */}
+      <KineticCurveChart
+        titulo={`Curva Dinámica en Vivo: Escenario ${escenarioActivo.toUpperCase()}`}
+        subtitulo={`Puntos observados en el demostrador con recálculo dinámico hacia corte 4.50 (~${rec.horas} h)`}
+        tiempoCorteMinutos={rec.minutos}
+        lecturasReales={lecturas.map((l) => ({ minutos: l.min, ph: l.ph }))}
+        puntos={[
+          { minutos: 0, ph: 6.25 },
+          { minutos: 60, ph: 5.95 },
+          { minutos: 120, ph: 5.40 },
+          { minutos: 180, ph: 4.85 },
+          { minutos: rec.minutos || 255, ph: 4.50 },
+        ]}
+      />
 
       {/* Inyectar Lectura Manual en Vivo */}
       <View style={styles.card}>
@@ -240,23 +280,35 @@ export default function DemostradorVivoScreen() {
             <Text style={styles.td}>{l.temp.toFixed(1)} °C</Text>
           </View>
         ))}
+        </View>
       </View>
       <FooterBar />
     </ScrollView>
-  );
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F8FAFC',
   },
-  content: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-    maxWidth: 960,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  desktopContainer: {
+    maxWidth: 1360,
     width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   header: {
     marginBottom: theme.spacing.lg,
@@ -289,11 +341,15 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     ...theme.shadows.card,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: '#0F172A',
-    marginBottom: 8,
   },
   presetsGrid: {
     gap: 8,
@@ -304,6 +360,10 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     borderRadius: theme.radii.md,
     padding: 10,
+  },
+  presetTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   presetBtnActive: {
     backgroundColor: '#E0F2FE',

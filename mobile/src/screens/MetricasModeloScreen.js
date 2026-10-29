@@ -9,9 +9,13 @@ import {
 } from 'react-native';
 import ensayosService from '../services/ensayosService';
 import theme from '../styles/theme';
+import HeaderBar from '../components/common/HeaderBar';
 import FooterBar from '../components/common/FooterBar';
+import ScreenHeader from '../components/common/ScreenHeader';
+import KineticCurveChart from '../components/common/KineticCurveChart';
+import ScientificIcon from '../components/common/ScientificIcons';
 
-export default function MetricasModeloScreen() {
+export default function MetricasModeloScreen({ navigation }) {
   const [metricas, setMetricas] = useState({
     r2: 0.9774,
     rmse: 0.0961,
@@ -55,15 +59,21 @@ export default function MetricasModeloScreen() {
   ];
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Validación Bioestadística & Certificación</Text>
-        <Text style={styles.title}>Métricas Científicas del Modelo</Text>
-        <Text style={styles.subtitle}>
-          Calibración matemática y bondad de ajuste del modelo de Hill validado en la Facultad de Ciencias de la Vida (ULEAM).
-        </Text>
-      </View>
+    <View style={styles.screen}>
+      <HeaderBar navigation={navigation} activeTab="MetricasModelo" />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.desktopContainer}>
+          {/* Encabezado Institucional con Retorno */}
+          <ScreenHeader
+            title="Métricas Científicas del Modelo (Hill ULEAM)"
+            subtitle="Calibración matemática y bondad de ajuste del modelo de Hill validado en la Facultad de Ciencias de la Vida (R² = 0.9774)."
+            icon="metrics"
+            navigation={navigation}
+          />
 
       {/* Tarjeta de KPIs de Rendimiento */}
       <View style={styles.kpiRow}>
@@ -95,9 +105,13 @@ export default function MetricasModeloScreen() {
       {/* Ficha Técnica Científica */}
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>🔬 Ficha Técnica de la Calibración Científica</Text>
+          <View style={styles.headerTitleRow}>
+            <ScientificIcon name="microscope" size={18} color="#0284C7" style={{ marginRight: 6 }} />
+            <Text style={styles.cardTitle}>Ficha Técnica de la Calibración Científica</Text>
+          </View>
           <Pressable style={styles.refreshBtn} onPress={cargarMetricas}>
-            <Text style={styles.refreshBtnText}>{cargando ? '⏳' : '🔄 Actualizar'}</Text>
+            <ScientificIcon name="spark" size={13} color="#0284C7" style={{ marginRight: 4 }} />
+            <Text style={styles.refreshBtnText}>{cargando ? 'Cargando...' : 'Actualizar'}</Text>
           </Pressable>
         </View>
 
@@ -131,6 +145,28 @@ export default function MetricasModeloScreen() {
           </View>
         </View>
       </View>
+
+      {/* Gráfico Cinético de Validación R² = 0.9774 */}
+      <KineticCurveChart
+        titulo="Cinética de Validación Biofísica (Hill R² = 0.9774)"
+        subtitulo="Ajuste no lineal frente a puntos experimentales de laboratorio (RMSE = 0.0961, MAE = 0.0773)"
+        tiempoCorteMinutos={255}
+        puntos={[
+          { minutos: 0, ph: 6.68 },
+          { minutos: 60, ph: 6.22 },
+          { minutos: 120, ph: 5.48 },
+          { minutos: 180, ph: 4.88 },
+          { minutos: 240, ph: 4.54 },
+          { minutos: 255, ph: 4.50 },
+        ]}
+        lecturasReales={[
+          { minutos: 0, ph: 6.68 },
+          { minutos: 60, ph: 6.20 },
+          { minutos: 120, ph: 5.45 },
+          { minutos: 180, ph: 4.85 },
+          { minutos: 255, ph: 4.50 },
+        ]}
+      />
 
       {/* Matriz Experimental de los 6 Lotes del Dr. Santacruz */}
       <View style={styles.card}>
@@ -172,23 +208,35 @@ export default function MetricasModeloScreen() {
             <Text style={styles.td}>{item.brix}°Bx</Text>
           </View>
         ))}
+        </View>
       </View>
       <FooterBar />
     </ScrollView>
-  );
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F8FAFC',
   },
-  content: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-    maxWidth: 960,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  desktopContainer: {
+    maxWidth: 1360,
     width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   header: {
     marginBottom: theme.spacing.lg,

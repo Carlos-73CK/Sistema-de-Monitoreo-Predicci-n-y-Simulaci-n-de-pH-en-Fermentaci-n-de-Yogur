@@ -11,8 +11,13 @@ import {
   Platform,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import HeaderBar from '../components/common/HeaderBar';
 import FooterBar from '../components/common/FooterBar';
+import ScreenHeader from '../components/common/ScreenHeader';
+import KineticCurveChart from '../components/common/KineticCurveChart';
+import RheologyMeter from '../components/common/RheologyMeter';
 import ensayosService from '../services/ensayosService';
+import ScientificIcon from '../components/common/ScientificIcons';
 import theme from '../styles/theme';
 
 export default function MonitoreoScreen({ route, navigation }) {
@@ -288,26 +293,47 @@ export default function MonitoreoScreen({ route, navigation }) {
   const fueraDeRangoTermico = tempActual < 41.0 || tempActual > 43.0;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <View style={styles.screen}>
+      <HeaderBar navigation={navigation} activeTab="Monitoreo" />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.desktopContainer}>
+          {/* Encabezado Institucional con Retorno */}
+          <ScreenHeader
+            title={`Monitoreo de pH y Temperatura: ${ensayoInfo.lote_id}`}
+            subtitle="Registro periódico de lecturas con recálculo cinético dinámico en tiempo real (Hill)."
+            icon="clock"
+            navigation={navigation}
+          />
+
       {/* Encabezado del Ensayo Activo */}
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderTop}>
           <View>
-            <Text style={styles.eyebrow}>Monitoreo Cinético en Vivo</Text>
+            <View style={styles.eyebrowRow}>
+              <ScientificIcon name="clock" size={13} color="#0284C7" style={{ marginRight: 5 }} />
+              <Text style={styles.eyebrow}>Monitoreo Cinético en Vivo</Text>
+            </View>
             <Text style={styles.loteTitle}>{ensayoInfo.lote_id}</Text>
           </View>
           <View style={styles.exportBadges}>
             <Pressable style={styles.exportPill} onPress={() => handleExportar('csv')}>
-              <Text style={styles.exportPillText}>📥 CSV</Text>
+              <ScientificIcon name="download" size={12} color="#0369A1" style={{ marginRight: 4 }} />
+              <Text style={styles.exportPillText}>CSV</Text>
             </Pressable>
             <Pressable style={styles.exportPill} onPress={() => handleExportar('json')}>
-              <Text style={styles.exportPillText}>📄 JSON</Text>
+              <ScientificIcon name="archive" size={12} color="#0369A1" style={{ marginRight: 4 }} />
+              <Text style={styles.exportPillText}>JSON</Text>
             </Pressable>
           </View>
         </View>
 
         <Text style={styles.subMeta}>
-          👤 Responsable: {ensayoInfo.investigador} • Matriz: {String(ensayoInfo.tipo_sustrato).toUpperCase()} ({String(ensayoInfo.tipo_azucar).toUpperCase()})
+          Responsable: {ensayoInfo.investigador} • Matriz: {String(ensayoInfo.tipo_sustrato).toUpperCase()} ({String(ensayoInfo.tipo_azucar).toUpperCase()})
           • Temp: {ensayoInfo.temperatura_c} °C • Inóculo: {ensayoInfo.masa_inoculo_g} g
         </Text>
       </View>
@@ -358,7 +384,10 @@ export default function MonitoreoScreen({ route, navigation }) {
       {/* Tarjeta de Recalibración IA en Vuelo */}
       <View style={styles.recalibCard}>
         <View style={styles.recalibHeader}>
-          <Text style={styles.recalibTitle}>🎯 Recalibración IA en Vuelo (Hill)</Text>
+          <View style={styles.recalibTitleRow}>
+            <ScientificIcon name="brain" size={17} color="#0284C7" style={{ marginRight: 6 }} />
+            <Text style={styles.recalibTitle}>Recalibración IA en Vuelo (Hill)</Text>
+          </View>
           <View style={styles.recalibBadge}>
             <Text style={styles.recalibBadgeText}>{estimacion.confianza}</Text>
           </View>
@@ -391,6 +420,26 @@ export default function MonitoreoScreen({ route, navigation }) {
 
         <Text style={styles.recalibDiagText}>{estimacion.diagnostico}</Text>
       </View>
+
+      {/* Gráfico Cinético en Tiempo Real con Lecturas Reales Superpuestas */}
+      <KineticCurveChart
+        titulo={`Curva Cinética Recalibrada por IA: ${ensayoInfo.lote_id}`}
+        subtitulo={`Puntos reales de matraz contrastados con la asíntota proyectada hacia corte 4.50 (~${estimacion.tiempoCorteHoras} h)`}
+        tiempoCorteMinutos={estimacion.tiempoCorteMinutos}
+        lecturasReales={lecturas}
+        puntos={[
+          { minutos: 0, ph: 6.68 },
+          { minutos: 60, ph: 6.20 },
+          { minutos: 120, ph: 5.45 },
+          { minutos: 180, ph: 4.85 },
+          { minutos: estimacion.tiempoCorteMinutos || 255, ph: 4.50 },
+        ]}
+      />
+
+      {/* Escala Reológica de Firmeza del Gel */}
+      <RheologyMeter
+        viscosidadMpaS={ensayoFinalizado ? Number(viscosidadFinalInput) || 2639 : 2639}
+      />
 
       {/* Formulario de Nueva Lectura Periódica */}
       {!ensayoFinalizado && (
@@ -451,7 +500,10 @@ export default function MonitoreoScreen({ route, navigation }) {
             {guardandoLectura ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={styles.btnGuardarLecturaText}>➕ Guardar Lectura en SQLite</Text>
+              <View style={styles.btnRowFlex}>
+                <ScientificIcon name="plus" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.btnGuardarLecturaText}>Guardar Lectura en SQLite</Text>
+              </View>
             )}
           </Pressable>
         </View>
@@ -474,7 +526,8 @@ export default function MonitoreoScreen({ route, navigation }) {
               placeholder="Viscosidad (mPa·s / cP)"
             />
             <Pressable style={styles.btnFinalizar} onPress={handleFinalizarEnsayo}>
-              <Text style={styles.btnFinalizarText}>🏁 Concluir Ensayo</Text>
+              <ScientificIcon name="check" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.btnFinalizarText}>Concluir Ensayo</Text>
             </Pressable>
           </View>
         </View>
@@ -529,22 +582,36 @@ export default function MonitoreoScreen({ route, navigation }) {
           );
         })}
       </View>
-      <FooterBar />
-    </ScrollView>
+    </View>
+
+    {/* Footer estirado de izquierda a derecha al 100% */}
+    <FooterBar />
+  </ScrollView>
+</View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F8FAFC',
   },
-  content: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-    maxWidth: 960,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  desktopContainer: {
+    maxWidth: 1360,
     width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
   cardHeader: {
     backgroundColor: '#FFFFFF',
@@ -572,6 +639,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#0F172A',
   },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
   exportBadges: {
     flexDirection: 'row',
     gap: 6,
@@ -583,6 +655,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   exportPillText: {
     fontSize: 11,
@@ -676,6 +750,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  recalibTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   recalibTitle: {
     fontSize: 13,
@@ -804,11 +882,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  btnRowFlex: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   btnFinalizar: {
     backgroundColor: '#D97706',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: theme.radii.md,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   btnFinalizarText: {
     color: '#FFFFFF',

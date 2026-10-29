@@ -5,29 +5,25 @@ import {
   StyleSheet,
   Pressable,
   Linking,
-  useWindowDimensions,
 } from 'react-native';
 
 /**
  * Componente Institucional de Pie de Página (Footer ULEAM)
  * Diseñado conforme a la identidad visual de la Universidad Laica Eloy Alfaro de Manabí (ULEAM)
- * Incluye créditos del Equipo de Desarrollo, Dirección Metodológica y Contacto.
+ * Ancho completo (100% estirado de izquierda a derecha), diseño horizontal en 3 columnas.
  */
 export default function FooterBar() {
-  const { width } = useWindowDimensions();
-  const isDesktop = width >= 860;
-
   const handleOpenLink = (url) => {
     Linking.openURL(url).catch(() => {});
   };
 
   return (
     <View style={styles.footerContainer}>
-      {/* CUERPO PRINCIPAL DEL FOOTER (COLOR CARBÓN OSCURO) */}
-      <View style={[styles.mainSection, isDesktop ? styles.rowLayout : styles.columnLayout]}>
+      {/* CUERPO PRINCIPAL DEL FOOTER (COLOR CARBÓN OSCURO - 3 COLUMNAS HORIZONTALES) */}
+      <View style={styles.mainSection}>
         
         {/* COLUMNA 1: IDENTIDAD INSTITUCIONAL ULEAM */}
-        <View style={[styles.column, isDesktop && styles.columnLeft]}>
+        <View style={styles.columnLeft}>
           <View style={styles.brandRow}>
             <View style={styles.sealBadge}>
               <Text style={styles.sealText}>U</Text>
@@ -50,7 +46,7 @@ export default function FooterBar() {
         </View>
 
         {/* COLUMNA 2: EQUIPO DE DESARROLLO (ESTUDIANTES & DIRECCIÓN) */}
-        <View style={[styles.column, isDesktop && styles.columnCenter]}>
+        <View style={styles.columnCenter}>
           <Text style={styles.columnHeaderRed}>Equipo de Desarrollo</Text>
           <Text style={styles.teamDescription}>
             Plataforma desarrollada como proyecto de titulación e investigación tecnológica:
@@ -106,7 +102,7 @@ export default function FooterBar() {
         </View>
 
         {/* COLUMNA 3: CONTACTA Y SÍGUENOS */}
-        <View style={[styles.column, isDesktop && styles.columnRight]}>
+        <View style={styles.columnRight}>
           <Text style={styles.columnHeaderRed}>Contacta</Text>
           <Text style={styles.contactItemText}>📍 Av. Circunvalación Vía a San Mateo</Text>
           <Text style={styles.contactItemText}>🏢 Campus Matriz Manta - Manabí - Ecuador</Text>
@@ -149,11 +145,13 @@ export default function FooterBar() {
 
       {/* BARRA INFERIOR DE COPYRIGHT (NEGRO COMPLETO) */}
       <View style={styles.copyrightBar}>
-        <Text style={styles.copyrightText}>
-          Copyright © 2026, Todos los derechos reservados <Text style={styles.copyrightHighlight}>Uleam</Text> | Plataforma implementada por el Equipo de Titulación & Cátedra de Alimentos
-        </Text>
-        <View style={styles.helpButton}>
-          <Text style={styles.helpButtonText}>?</Text>
+        <View style={styles.copyrightContent}>
+          <Text style={styles.copyrightText}>
+            Copyright © 2026, Todos los derechos reservados <Text style={styles.copyrightHighlight}>Uleam</Text> | Plataforma implementada por el Equipo de Titulación & Cátedra de Alimentos
+          </Text>
+          <View style={styles.helpButton}>
+            <Text style={styles.helpButtonText}>?</Text>
+          </View>
         </View>
       </View>
     </View>
@@ -164,40 +162,36 @@ const styles = StyleSheet.create({
   footerContainer: {
     backgroundColor: '#1E232A',
     width: '100%',
-    marginTop: 40,
-    borderTopWidth: 3,
+    marginTop: 48,
+    borderTopWidth: 4,
     borderTopColor: '#DC2626', // Rojo institucional ULEAM
   },
   mainSection: {
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    maxWidth: 1200,
+    paddingVertical: 36,
+    paddingHorizontal: 32,
+    maxWidth: 1320,
     alignSelf: 'center',
     width: '100%',
-  },
-  rowLayout: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-  },
-  columnLayout: {
-    flexDirection: 'column',
-    gap: 28,
-  },
-  column: {
-    flex: 1,
+    gap: 32,
   },
   columnLeft: {
-    paddingRight: 20,
-    maxWidth: 340,
+    flex: 1,
+    minWidth: 260,
+    maxWidth: 380,
   },
   columnCenter: {
-    paddingHorizontal: 16,
-    maxWidth: 460,
+    flex: 1.4,
+    minWidth: 290,
+    maxWidth: 480,
   },
   columnRight: {
-    paddingLeft: 20,
-    maxWidth: 320,
+    flex: 1,
+    minWidth: 250,
+    maxWidth: 340,
   },
   brandRow: {
     flexDirection: 'row',
@@ -375,12 +369,18 @@ const styles = StyleSheet.create({
   copyrightBar: {
     backgroundColor: '#0F1115',
     paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#262C36',
+    width: '100%',
+  },
+  copyrightContent: {
+    maxWidth: 1320,
+    alignSelf: 'center',
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#262C36',
   },
   copyrightText: {
     fontSize: 11,

@@ -13,6 +13,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import authService from '../services/authService';
 import FooterBar from '../components/common/FooterBar';
+import ScientificIcon from '../components/common/ScientificIcons';
 import theme from '../styles/theme';
 
 export default function RegistroScreen({ navigation }) {
@@ -92,14 +93,37 @@ export default function RegistroScreen({ navigation }) {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>Facultad de Ciencias de la Vida - ULEAM</Text>
-          <Text style={styles.title}>Crear Cuenta</Text>
-          <Text style={styles.subtitle}>
-            Regístrate para aislar tus lotes, simular curvas cinéticas y registrar ensayos de fermentación.
-          </Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Barra Superior con Retorno al Panel Principal */}
+        <View style={styles.topNavRow}>
+          <Pressable
+            style={styles.backHomeBtn}
+            onPress={() => navigation.navigate('Dashboard')}
+          >
+            <ScientificIcon name="home" size={14} color="#1D4ED8" style={{ marginRight: 6 }} />
+            <Text style={styles.backHomeText}>Volver al Panel Principal</Text>
+          </Pressable>
         </View>
+
+        <View style={styles.formWrapper}>
+          <View style={styles.header}>
+            <View style={styles.brandRow}>
+              <View style={styles.flaskBadge}>
+                <ScientificIcon name="dna" size={24} color="#059669" />
+              </View>
+              <View>
+                <Text style={styles.eyebrow}>Facultad de Ciencias de la Vida - ULEAM</Text>
+                <Text style={styles.title}>Crear Cuenta</Text>
+              </View>
+            </View>
+            <Text style={styles.subtitle}>
+              Regístrate para aislar tus lotes, simular curvas cinéticas y registrar ensayos de fermentación.
+            </Text>
+          </View>
 
         <View style={styles.formCard}>
           {/* Mensajes de Estado */}
@@ -227,7 +251,10 @@ export default function RegistroScreen({ navigation }) {
             {cargando ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Text style={styles.primaryButtonText}>✨ Registrar Cuenta y Comenzar</Text>
+              <View style={styles.btnRowFlex}>
+                <ScientificIcon name="check" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.primaryButtonText}>Registrar Cuenta y Comenzar</Text>
+              </View>
             )}
           </Pressable>
         </View>
@@ -238,21 +265,60 @@ export default function RegistroScreen({ navigation }) {
             <Text style={styles.loginLink}>Iniciar Sesión</Text>
           </Pressable>
         </View>
-        <FooterBar />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+
+      <FooterBar />
+    </ScrollView>
+  </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    width: '100%',
     backgroundColor: theme.colors.background,
   },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+  },
   content: {
+    flexGrow: 1,
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    paddingBottom: 0,
+  },
+  topNavRow: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    maxWidth: 540,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  backHomeBtn: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1.5,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backHomeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1D4ED8',
+  },
+  formWrapper: {
     padding: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing.xxl,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
     maxWidth: 540,
     width: '100%',
     alignSelf: 'center',
@@ -260,19 +326,35 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: theme.spacing.lg,
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  flaskBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   eyebrow: {
     ...theme.typography.caption,
-    color: theme.colors.primary,
+    color: '#059669',
     textTransform: 'uppercase',
     fontWeight: '800',
     letterSpacing: 0.5,
-    marginBottom: theme.spacing.xs,
   },
   title: {
     ...theme.typography.title,
     color: theme.colors.text,
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
   subtitle: {
     ...theme.typography.body,
@@ -388,6 +470,11 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     color: theme.colors.surface,
     fontWeight: '800',
+  },
+  btnRowFlex: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   footer: {
     flexDirection: 'row',

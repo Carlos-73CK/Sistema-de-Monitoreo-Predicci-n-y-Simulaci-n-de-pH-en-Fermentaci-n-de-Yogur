@@ -11,8 +11,11 @@ import {
   Platform,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import HeaderBar from '../components/common/HeaderBar';
 import FooterBar from '../components/common/FooterBar';
+import ScreenHeader from '../components/common/ScreenHeader';
 import ensayosService from '../services/ensayosService';
+import ScientificIcon from '../components/common/ScientificIcons';
 import theme from '../styles/theme';
 
 export default function EnsayosArchivadosScreen({ navigation }) {
@@ -141,15 +144,22 @@ export default function EnsayosArchivadosScreen({ navigation }) {
   const enCurso = totalEnsayos - completados;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {/* Encabezado */}
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Banco de Ensayos Experimentales</Text>
-        <Text style={styles.title}>Ensayos & Lotes Archivados</Text>
-        <Text style={styles.subtitle}>
-          Persistencia garantizada en SQLite con trazabilidad y aislamiento de muestras por investigador.
-        </Text>
-      </View>
+    <View style={styles.screen}>
+      <HeaderBar navigation={navigation} activeTab="EnsayosArchivados" />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.desktopContainer}>
+          {/* Encabezado Institucional con Retorno */}
+          <ScreenHeader
+            title="Ensayos & Lotes Archivados"
+            subtitle="Persistencia garantizada en SQLite con trazabilidad y aislamiento de muestras por investigador."
+            icon="archive"
+            navigation={navigation}
+          />
 
       {/* Selector de Modo: Mis Muestras vs Todos los Lotes */}
       <View style={styles.tabSwitcher}>
@@ -160,13 +170,19 @@ export default function EnsayosArchivadosScreen({ navigation }) {
           ]}
           onPress={() => setFiltroModo('mis_muestras')}
         >
+          <ScientificIcon
+            name="user"
+            size={14}
+            color={filtroModo === 'mis_muestras' ? '#FFFFFF' : '#64748B'}
+            style={{ marginRight: 6 }}
+          />
           <Text
             style={[
               styles.switchBtnText,
               filtroModo === 'mis_muestras' && styles.switchBtnTextActive,
             ]}
           >
-            👤 Mis Muestras ({user?.nombre ? user.nombre.split(' ')[0] : 'Mi Perfil'})
+            Mis Muestras ({user?.nombre ? user.nombre.split(' ')[0] : 'Mi Perfil'})
           </Text>
         </Pressable>
 
@@ -177,13 +193,19 @@ export default function EnsayosArchivadosScreen({ navigation }) {
           ]}
           onPress={() => setFiltroModo('todos')}
         >
+          <ScientificIcon
+            name="archive"
+            size={14}
+            color={filtroModo === 'todos' ? '#FFFFFF' : '#64748B'}
+            style={{ marginRight: 6 }}
+          />
           <Text
             style={[
               styles.switchBtnText,
               filtroModo === 'todos' && styles.switchBtnTextActive,
             ]}
           >
-            🌐 Todos los Lotes del Laboratorio
+            Todos los Lotes del Laboratorio
           </Text>
         </Pressable>
       </View>
@@ -192,13 +214,13 @@ export default function EnsayosArchivadosScreen({ navigation }) {
       <View style={styles.searchRow}>
         <TextInput
           style={styles.searchInput}
-          placeholder="🔍 Buscar por código de lote, sustrato o responsable..."
+          placeholder="Buscar por código de lote, sustrato o responsable..."
           placeholderTextColor="#94A3B8"
           value={busqueda}
           onChangeText={setBusqueda}
         />
-        <Pressable style={styles.refreshBtn} onPress={cargarEnsayos}>
-          <Text style={styles.refreshBtnText}>🔄</Text>
+        <Pressable style={styles.refreshBtn} onPress={cargarEnsayos} accessibilityLabel="Actualizar lista">
+          <ScientificIcon name="spark" size={14} color="#0284C7" />
         </Pressable>
       </View>
 
@@ -226,7 +248,7 @@ export default function EnsayosArchivadosScreen({ navigation }) {
         </View>
       ) : ensayosFiltrados.length === 0 ? (
         <View style={styles.emptyBox}>
-          <Text style={styles.emptyIcon}>🧪</Text>
+          <ScientificIcon name="flask" size={44} color="#94A3B8" style={{ marginBottom: 8 }} />
           <Text style={styles.emptyTitle}>
             {filtroModo === 'mis_muestras'
               ? 'No tienes muestras archivadas aún'
@@ -239,7 +261,8 @@ export default function EnsayosArchivadosScreen({ navigation }) {
             style={styles.btnCrearEmpty}
             onPress={() => navigation.navigate('NuevoEnsayo')}
           >
-            <Text style={styles.btnCrearEmptyText}>➕ Iniciar Nuevo Ensayo</Text>
+            <ScientificIcon name="plus" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.btnCrearEmptyText}>Iniciar Nuevo Ensayo</Text>
           </Pressable>
         </View>
       ) : (
@@ -387,22 +410,36 @@ export default function EnsayosArchivadosScreen({ navigation }) {
           </View>
         </View>
       )}
-      <FooterBar />
-    </ScrollView>
+    </View>
+
+    {/* Footer a ancho completo de izquierda a derecha */}
+    <FooterBar />
+  </ScrollView>
+</View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F8FAFC',
   },
-  content: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-    maxWidth: 960,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  desktopContainer: {
+    maxWidth: 1360,
     width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
   header: {
     marginBottom: theme.spacing.md,

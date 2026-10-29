@@ -13,6 +13,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import authService from '../services/authService';
 import FooterBar from '../components/common/FooterBar';
+import ScientificIcon from '../components/common/ScientificIcons';
 import theme from '../styles/theme';
 
 export default function LoginScreen({ navigation }) {
@@ -68,122 +69,155 @@ export default function LoginScreen({ navigation }) {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header Institucional */}
-        <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <Text style={styles.milkEmoji}>🥛</Text>
-            <Text style={styles.eyebrow}>Plataforma Científica ULEAM</Text>
-          </View>
-          <Text style={styles.title}>PrediYogur</Text>
-          <Text style={styles.subtitle}>
-            Modelado Biofísico No Lineal (Hill) y Monitoreo de Fermentación Láctea con Inóculo Chivería.
-          </Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Barra Superior con Retorno al Panel Principal */}
+        <View style={styles.topNavRow}>
+          <Pressable
+            style={styles.backHomeBtn}
+            onPress={() => navigation.navigate('Dashboard')}
+          >
+            <ScientificIcon name="home" size={14} color="#1D4ED8" style={{ marginRight: 6 }} />
+            <Text style={styles.backHomeText}>Volver al Panel Principal</Text>
+          </Pressable>
         </View>
 
-        {/* Tarjeta de Cuentas Rápidas de Laboratorio */}
-        <View style={styles.quickAccessCard}>
-          <Text style={styles.quickAccessTitle}>⚡ Acceso Rápido de Laboratorio (1-Clic):</Text>
-          <View style={styles.quickButtonsCol}>
-            <Pressable
-              style={styles.quickButton}
-              onPress={() => quickFillAndLogin('dr.santacruz@uleam.edu.ec', 'santacruz2026')}
-              disabled={cargando}
-            >
-              <Text style={styles.quickButtonText}>
-                👨‍🔬 Dr. Stalin Santacruz (Docente / Inv. Principal)
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.quickButton}
-              onPress={() => quickFillAndLogin('carlos.delgado@uleam.edu.ec', 'carlos2026')}
-              disabled={cargando}
-            >
-              <Text style={styles.quickButtonText}>
-                🔬 Carlos Delgado (Investigador Titular)
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.quickButton}
-              onPress={() => quickFillAndLogin('estudiante@uleam.edu.ec', 'estudiante2026')}
-              disabled={cargando}
-            >
-              <Text style={styles.quickButtonText}>
-                🎓 Estudiante ULEAM (Tesista / Prácticas)
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Tarjeta del Formulario */}
-        <View style={styles.formCard}>
-          <Text style={styles.cardTitle}>Iniciar Sesión</Text>
-
-          {/* Mensaje de Error */}
-          {errorMsg ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{errorMsg}</Text>
+        <View style={styles.formWrapper}>
+          {/* Header Institucional */}
+          <View style={styles.header}>
+            <View style={styles.brandRow}>
+              <View style={styles.flaskBadge}>
+                <ScientificIcon name="flask" size={26} color="#0284C7" />
+              </View>
+              <View>
+                <Text style={styles.eyebrow}>Plataforma Científica ULEAM</Text>
+                <Text style={styles.title}>PrediYogur</Text>
+              </View>
             </View>
-          ) : null}
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Correo institucional</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="usuario@uleam.edu.ec"
-              placeholderTextColor={theme.colors.textMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={(t) => {
-                setEmail(t);
-                setErrorMsg('');
-              }}
-            />
+            <Text style={styles.subtitle}>
+              Modelado Biofísico No Lineal (Hill) y Monitoreo de Fermentación Láctea con Inóculo Chivería.
+            </Text>
           </View>
 
-          <View style={styles.inputGroup}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Contraseña</Text>
-              <Pressable onPress={() => setShowPassword(!showPassword)}>
-                <Text style={styles.toggleEye}>{showPassword ? '🙈 Ocultar' : '👁️ Mostrar'}</Text>
+          {/* Tarjeta de Cuentas Rápidas de Laboratorio */}
+          <View style={styles.quickAccessCard}>
+            <View style={styles.qaHeaderRow}>
+              <ScientificIcon name="spark" size={14} color="#0369A1" style={{ marginRight: 6 }} />
+              <Text style={styles.quickAccessTitle}>Acceso Rápido de Laboratorio (1-Clic):</Text>
+            </View>
+            <View style={styles.quickButtonsCol}>
+              <Pressable
+                style={styles.quickButton}
+                onPress={() => quickFillAndLogin('dr.santacruz@uleam.edu.ec', 'santacruz2026')}
+                disabled={cargando}
+              >
+                <ScientificIcon name="microscope" size={15} color="#0369A1" style={{ marginRight: 8 }} />
+                <Text style={styles.quickButtonText}>
+                  Dr. Stalin Santacruz (Docente / Inv. Principal)
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.quickButton}
+                onPress={() => quickFillAndLogin('carlos.delgado@uleam.edu.ec', 'carlos2026')}
+                disabled={cargando}
+              >
+                <ScientificIcon name="user" size={15} color="#0369A1" style={{ marginRight: 8 }} />
+                <Text style={styles.quickButtonText}>
+                  Carlos Delgado (Investigador Titular)
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.quickButton}
+                onPress={() => quickFillAndLogin('estudiante@uleam.edu.ec', 'estudiante2026')}
+                disabled={cargando}
+              >
+                <ScientificIcon name="dna" size={15} color="#0369A1" style={{ marginRight: 8 }} />
+                <Text style={styles.quickButtonText}>
+                  Estudiante ULEAM (Tesista / Prácticas)
+                </Text>
               </Pressable>
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={theme.colors.textMuted}
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={(t) => {
-                setPassword(t);
-                setErrorMsg('');
-              }}
-            />
           </View>
 
-          <Pressable
-            style={[styles.button, styles.primaryButton, cargando && styles.buttonDisabled]}
-            onPress={() => doLogin()}
-            disabled={cargando}
-          >
-            {cargando ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.primaryButtonText}>🚀 Iniciar Sesión en PrediYogur</Text>
-            )}
-          </Pressable>
+          {/* Tarjeta del Formulario */}
+          <View style={styles.formCard}>
+            <Text style={styles.cardTitle}>Iniciar Sesión</Text>
+
+            {/* Mensaje de Error */}
+            {errorMsg ? (
+              <View style={styles.errorBox}>
+                <ScientificIcon name="alert" size={14} color="#B91C1C" style={{ marginRight: 6 }} />
+                <Text style={styles.errorText}>{errorMsg}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Correo institucional</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="usuario@uleam.edu.ec"
+                placeholderTextColor={theme.colors.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={(t) => {
+                  setEmail(t);
+                  setErrorMsg('');
+                }}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Contraseña</Text>
+                <Pressable onPress={() => setShowPassword(!showPassword)}>
+                  <Text style={styles.toggleEye}>{showPassword ? 'Ocultar' : 'Mostrar'}</Text>
+                </Pressable>
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="••••••••"
+                placeholderTextColor={theme.colors.textMuted}
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={(t) => {
+                  setPassword(t);
+                  setErrorMsg('');
+                }}
+              />
+            </View>
+
+            <Pressable
+              style={[styles.button, styles.primaryButton, cargando && styles.buttonDisabled]}
+              onPress={() => doLogin()}
+              disabled={cargando}
+            >
+              {cargando ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <View style={styles.btnRowFlex}>
+                  <ScientificIcon name="check" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.primaryButtonText}>Iniciar Sesión en PrediYogur</Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+
+          {/* Pie de pantalla */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>¿No tienes una cuenta institucional?</Text>
+            <Pressable onPress={() => navigation.navigate('Registro')}>
+              <Text style={styles.registerLink}>Crear cuenta nueva</Text>
+            </Pressable>
+          </View>
         </View>
 
-        {/* Pie de pantalla */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>¿No tienes una cuenta institucional?</Text>
-          <Pressable onPress={() => navigation.navigate('Registro')}>
-            <Text style={styles.registerLink}>Crear cuenta nueva</Text>
-          </Pressable>
-        </View>
+        {/* Footer a ancho completo */}
         <FooterBar />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -193,12 +227,49 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    width: '100%',
     backgroundColor: theme.colors.background,
   },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+  },
   content: {
+    flexGrow: 1,
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    paddingBottom: 0,
+  },
+  topNavRow: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    maxWidth: 540,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  backHomeBtn: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1.5,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backHomeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1D4ED8',
+  },
+  formWrapper: {
     padding: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing.xxl,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
     maxWidth: 540,
     width: '100%',
     alignSelf: 'center',
@@ -209,11 +280,18 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    gap: 12,
+    marginBottom: 8,
   },
-  milkEmoji: {
-    fontSize: 22,
+  flaskBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.5,
+    borderColor: '#BFDBFE',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   eyebrow: {
     ...theme.typography.caption,
@@ -226,7 +304,8 @@ const styles = StyleSheet.create({
     ...theme.typography.title,
     color: theme.colors.text,
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
   subtitle: {
     ...theme.typography.body,
@@ -242,11 +321,15 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginBottom: theme.spacing.lg,
   },
+  qaHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
   quickAccessTitle: {
     fontSize: 12,
     fontWeight: '800',
     color: '#0369A1',
-    marginBottom: theme.spacing.sm,
   },
   quickButtonsCol: {
     gap: 6,
@@ -258,6 +341,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.sm,
     paddingVertical: 8,
     paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
     ...theme.shadows.card,
   },
   quickButtonText: {
@@ -341,6 +426,11 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     color: theme.colors.surface,
     fontWeight: '800',
+  },
+  btnRowFlex: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   footer: {
     flexDirection: 'row',

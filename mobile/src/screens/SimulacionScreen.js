@@ -8,18 +8,20 @@ import {
   View,
   ActivityIndicator,
   Alert,
-  useWindowDimensions,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import HeaderBar from '../components/common/HeaderBar';
 import FooterBar from '../components/common/FooterBar';
+import ScreenHeader from '../components/common/ScreenHeader';
+import RheologyMeter from '../components/common/RheologyMeter';
+import KineticCurveChart from '../components/common/KineticCurveChart';
+import ScientificIcon from '../components/common/ScientificIcons';
 import simulationService from '../services/simulationService';
 import ensayosService from '../services/ensayosService';
 import theme from '../styles/theme';
 
 export default function SimulacionScreen({ navigation }) {
   const { user } = useContext(AuthContext);
-  const { width } = useWindowDimensions();
-  const isCompact = width < 768;
 
   // Parámetros de Simulación What-If
   const [loteNombre, setLoteNombre] = useState('LOTE-SIM-' + Math.floor(100 + Math.random() * 900));
@@ -168,17 +170,24 @@ export default function SimulacionScreen({ navigation }) {
   const pctInoculo = ((parseFloat(masaInoculo) || 0) / (parseFloat(volumen) || 250) * 100).toFixed(2);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {/* Header Científico */}
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Laboratorio de Alimentos - ULEAM</Text>
-        <Text style={styles.title}>Simulador Cinético Hill ("What-If")</Text>
-        <Text style={styles.subtitle}>
-          Ajusta variables en tiempo real y calcula la acidificación y viscosidad calibradas con datos del Dr. Stalin Santacruz.
-        </Text>
-      </View>
+    <View style={styles.screen}>
+      <HeaderBar navigation={navigation} activeTab="Simulacion" />
 
-      <View style={[styles.mainLayout, isCompact && styles.mainLayoutCompact]}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.desktopContainer}>
+          {/* Encabezado Institucional con Navegación y Retorno */}
+          <ScreenHeader
+            title="Simulador Cinético Hill ('What-If')"
+            subtitle="Ajusta variables en tiempo real y calcula la acidificación y viscosidad calibradas con datos del Dr. Stalin Santacruz."
+            icon="⚡"
+            navigation={navigation}
+          />
+
+          <View style={styles.mainLayout}>
         {/* COLUMNA 1: FORMULARIO Y CONTROLES */}
         <View style={styles.controlsCol}>
           {/* Tarjeta de Código de Lote para Persistencia */}
@@ -250,7 +259,10 @@ export default function SimulacionScreen({ navigation }) {
                 ]}
                 onPress={() => aplicarPresets(18.75, 42)}
               >
-                <Text style={styles.presetTitle}>⭐ 42 °C / 7.5% Inóculo (Óptimo ULEAM)</Text>
+                <View style={styles.presetTitleRow}>
+                  <ScientificIcon name="check" size={14} color="#059669" style={{ marginRight: 6 }} />
+                  <Text style={styles.presetTitle}>42 °C / 7.5% Inóculo (Óptimo ULEAM)</Text>
+                </View>
                 <Text style={styles.presetSub}>Corte 4.25 h • Viscosidad alta 2639 mPa·s</Text>
               </Pressable>
 
@@ -261,7 +273,10 @@ export default function SimulacionScreen({ navigation }) {
                 ]}
                 onPress={() => aplicarPresets(6.25, 42)}
               >
-                <Text style={styles.presetTitle}>🧪 42 °C / 2.5% Inóculo (Acidificación Lenta)</Text>
+                <View style={styles.presetTitleRow}>
+                  <ScientificIcon name="flask" size={14} color="#0284C7" style={{ marginRight: 6 }} />
+                  <Text style={styles.presetTitle}>42 °C / 2.5% Inóculo (Acidificación Lenta)</Text>
+                </View>
                 <Text style={styles.presetSub}>Corte 6.75 h • Viscosidad 1454 mPa·s</Text>
               </Pressable>
 
@@ -272,7 +287,10 @@ export default function SimulacionScreen({ navigation }) {
                 ]}
                 onPress={() => aplicarPresets(18.75, 40)}
               >
-                <Text style={styles.presetTitle}>⚠️ 40 °C / 7.5% Inóculo (Subóptimo)</Text>
+                <View style={styles.presetTitleRow}>
+                  <ScientificIcon name="alert" size={14} color="#D97706" style={{ marginRight: 6 }} />
+                  <Text style={styles.presetTitle}>40 °C / 7.5% Inóculo (Subóptimo)</Text>
+                </View>
                 <Text style={styles.presetSub}>Baja temperatura • Viscosidad 786.6 mPa·s</Text>
               </Pressable>
 
@@ -283,7 +301,10 @@ export default function SimulacionScreen({ navigation }) {
                 ]}
                 onPress={() => aplicarPresets(18.75, 44)}
               >
-                <Text style={styles.presetTitle}>🔥 44 °C / 7.5% Inóculo (Estrés Térmico)</Text>
+                <View style={styles.presetTitleRow}>
+                  <ScientificIcon name="thermometer" size={14} color="#DC2626" style={{ marginRight: 6 }} />
+                  <Text style={styles.presetTitle}>44 °C / 7.5% Inóculo (Estrés Térmico)</Text>
+                </View>
                 <Text style={styles.presetSub}>Corte tardío 6.50 h • Desnaturalización</Text>
               </Pressable>
             </View>
@@ -297,7 +318,10 @@ export default function SimulacionScreen({ navigation }) {
               {/* Inóculo */}
               <View style={styles.inputCol}>
                 <View style={styles.stepperHeader}>
-                  <Text style={styles.stepperLabel}>Inóculo (g)</Text>
+                  <View style={styles.labelWithIcon}>
+                    <ScientificIcon name="flask" size={13} color="#0284C7" style={{ marginRight: 4 }} />
+                    <Text style={styles.stepperLabel}>Inóculo (g)</Text>
+                  </View>
                   <Text style={styles.stepperBadge}>{pctInoculo}%</Text>
                 </View>
                 <View style={styles.stepperBox}>
@@ -323,7 +347,10 @@ export default function SimulacionScreen({ navigation }) {
               {/* Temperatura */}
               <View style={styles.inputCol}>
                 <View style={styles.stepperHeader}>
-                  <Text style={styles.stepperLabel}>Temperatura (°C)</Text>
+                  <View style={styles.labelWithIcon}>
+                    <ScientificIcon name="thermometer" size={13} color="#D97706" style={{ marginRight: 4 }} />
+                    <Text style={styles.stepperLabel}>Temperatura (°C)</Text>
+                  </View>
                   <Text
                     style={[
                       styles.stepperBadge,
@@ -358,7 +385,8 @@ export default function SimulacionScreen({ navigation }) {
 
             {errorValidacion && (
               <View style={styles.errorBanner}>
-                <Text style={styles.errorBannerText}>⚠️ {errorValidacion}</Text>
+                <ScientificIcon name="alert" size={14} color="#991B1B" style={{ marginRight: 6 }} />
+                <Text style={styles.errorBannerText}>{errorValidacion}</Text>
               </View>
             )}
 
@@ -371,9 +399,12 @@ export default function SimulacionScreen({ navigation }) {
               {guardandoLote ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.btnGuardarEnsayoText}>
-                  🚀 Iniciar Lote y Guardar en SQLite
-                </Text>
+                <View style={styles.btnRowFlex}>
+                  <ScientificIcon name="flask" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.btnGuardarEnsayoText}>
+                    Iniciar Lote y Guardar en SQLite
+                  </Text>
+                </View>
               )}
             </Pressable>
           </View>
@@ -415,75 +446,20 @@ export default function SimulacionScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Diagnóstico Reológico */}
-          <View style={styles.diagnosticoCard}>
-            <Text style={styles.diagnosticoTitle}>📋 Diagnóstico Biofísico del Gel:</Text>
-            <Text style={styles.diagnosticoText}>{resultado.diagnosticoReologico}</Text>
-            <Text style={styles.reglaText}>
-              💡 Protocolo Dr. Santacruz: La viscosidad final se mide exactamente al alcanzar el pH de corte 4.50 en frío.
-            </Text>
-          </View>
+          {/* Escala Reológica Estimada Visual (Firmeza del Gel) */}
+          <RheologyMeter
+            viscosidadMpaS={resultado.viscosidadEstimadaMpaS}
+            targetMpaS={2639}
+          />
 
-          {/* Visualizador de Curva Cinética Hill */}
-          <View style={styles.chartVisualizerCard}>
-            <View style={styles.chartHeaderRow}>
-              <View>
-                <Text style={styles.sectionTitle}>Curva Cinética de Acidificación</Text>
-                <Text style={styles.chartSubtitle}>
-                  Caída del pH vs tiempo hasta corte en pH 4.50
-                </Text>
-              </View>
-              <Pressable
-                style={[styles.superponerToggle, superponerOptimo && styles.superponerToggleActive]}
-                onPress={() => setSuperponerOptimo(!superponerOptimo)}
-              >
-                <Text
-                  style={[
-                    styles.superponerToggleText,
-                    superponerOptimo && styles.superponerToggleTextActive,
-                  ]}
-                >
-                  {superponerOptimo ? '⭐ Superpuesto con Óptimo' : 'Modo Simple'}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Representación visual de barras cinéticas de la trayectoria */}
-            <View style={styles.kineticBarsContainer}>
-              {resultado.puntos.map((pt, idx) => {
-                const phNum = pt.ph;
-                const porcentajeAltura = Math.max(10, Math.min(100, ((phNum - 4.0) / (6.8 - 4.0)) * 100));
-                const esCorte = phNum <= 4.52;
-
-                return (
-                  <View key={idx} style={styles.kineticBarCol}>
-                    <Text style={styles.barPhText}>{phNum.toFixed(2)}</Text>
-                    <View style={styles.barTrack}>
-                      <View
-                        style={[
-                          styles.barFill,
-                          { height: `${porcentajeAltura}%` },
-                          esCorte ? styles.barCorte : styles.barNormal,
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.barTimeText}>{pt.minutos}m</Text>
-                  </View>
-                );
-              })}
-            </View>
-
-            <View style={styles.chartLegend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#0284C7' }]} />
-                <Text style={styles.legendText}>pH Proyectado</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#DC2626' }]} />
-                <Text style={styles.legendText}>Corte Crítico (pH 4.50)</Text>
-              </View>
-            </View>
-          </View>
+          {/* Gráfico Cinético Continuo de Acidificación (Modelo Hill) */}
+          <KineticCurveChart
+            puntos={resultado.puntos}
+            tiempoCorteMinutos={resultado.tiempoCorteMinutos}
+            titulo="Curva Cinética de Acidificación (Hill ULEAM)"
+            subtitulo={`Caída continua de pH vs tiempo hasta corte en pH 4.50 (~${resultado.tiempoCorteHoras} h)`}
+            defaultSuperponer={superponerOptimo}
+          />
 
           {/* Tabla de Hitos Cinéticos Paso a Paso */}
           <View style={styles.card}>
@@ -521,22 +497,36 @@ export default function SimulacionScreen({ navigation }) {
           </View>
         </View>
       </View>
-      <FooterBar />
-    </ScrollView>
+    </View>
+
+    {/* Footer estirado de izquierda a derecha al 100% */}
+    <FooterBar />
+  </ScrollView>
+</View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F8FAFC',
   },
-  content: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-    maxWidth: 1140,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  desktopContainer: {
+    maxWidth: 1360,
     width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
   header: {
     marginBottom: theme.spacing.lg,
@@ -562,19 +552,18 @@ const styles = StyleSheet.create({
   },
   mainLayout: {
     flexDirection: 'row',
-    gap: theme.spacing.lg,
+    flexWrap: 'wrap',
+    gap: 20,
     alignItems: 'flex-start',
-  },
-  mainLayoutCompact: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
   },
   controlsCol: {
     flex: 1,
+    minWidth: 340,
     gap: theme.spacing.md,
   },
   resultsCol: {
-    flex: 1.2,
+    flex: 1.3,
+    minWidth: 420,
     gap: theme.spacing.md,
   },
   card: {
@@ -654,6 +643,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0F2FE',
     borderColor: '#0284C7',
   },
+  presetTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   presetTitle: {
     fontSize: 12,
     fontWeight: '700',
@@ -663,6 +656,16 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     color: '#64748B',
     marginTop: 1,
+    paddingLeft: 20,
+  },
+  labelWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  btnRowFlex: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputsGrid: {
     flexDirection: 'row',

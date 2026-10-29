@@ -12,18 +12,22 @@ import FooterBar from '../components/common/FooterBar';
 import CustomInput from '../components/common/CustomInput';
 import MetricCard from '../components/common/MetricCard';
 import StatusBadge from '../components/common/StatusBadge';
+import KineticCurveChart from '../components/common/KineticCurveChart';
+import RheologyMeter from '../components/common/RheologyMeter';
+import ScientificIcon from '../components/common/ScientificIcons';
 import theme, { getTemperatureColor } from '../styles/theme';
 
 const activeBatch = {
   code: 'LOTE-CHV-001',
   medium: 'Leche de vaca + yogur Chiveria',
   sugar: 'Lactosa',
-  inoculum: '18 g',
+  inoculum: '18.75 g (7.5%)',
   startedAt: '08:10',
-  elapsedTime: '02:35',
+  elapsedTime: '02:35 h',
   currentPh: 5.18,
   currentTemperature: 42.4,
   targetPh: 4.5,
+  viscosidadEstimada: 2639,
 };
 
 export default function DashboardScreen({ navigation }) {
@@ -62,231 +66,269 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <View style={styles.screen}>
-      {/* Barra Superior Universal con Métricas y Perfil */}
-      <HeaderBar />
+      {/* Barra Superior Científica con Tabs Integradas */}
+      <HeaderBar navigation={navigation} activeTab="Dashboard" />
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Banner de Perfil y Muestras del Usuario */}
-        <View style={styles.profileBanner}>
-          <View style={styles.profileBannerContent}>
-            <View style={styles.profileAvatar}>
-              <Text style={styles.profileAvatarText}>
-                {user?.rol === 'estudiante' ? '🎓' : user?.rol === 'docente' ? '📚' : '🔬'}
-              </Text>
+        {/* Contenedor Principal de Escritorio Ancho (1320px) */}
+        <View style={styles.desktopContainer}>
+          
+          {/* Banner de Perfil y Aislamiento de Muestras */}
+          <View style={styles.profileBanner}>
+            <View style={styles.profileBannerContent}>
+              <View style={styles.profileAvatar}>
+                <ScientificIcon name="user" size={24} color="#0284C7" />
+              </View>
+              <View style={styles.profileInfoBlock}>
+                <View style={styles.profileNameRow}>
+                  <Text style={styles.profileName}>{user?.nombre || 'Investigador ULEAM'}</Text>
+                  <View style={styles.profileBadge}>
+                    <Text style={styles.profileBadgeText}>
+                      {getRolLabel(user?.rol)}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.profileEmail}>
+                  {user?.email || 'e1312274663@live.uleam.edu.ec'}
+                </Text>
+                <Text style={styles.profileHint}>
+                  Tus ensayos, lecturas y cinéticas se aíslan y guardan bajo tu perfil en SQLite.
+                </Text>
+              </View>
             </View>
-            <View style={styles.profileInfoBlock}>
-              <View style={styles.profileNameRow}>
-                <Text style={styles.profileName}>{user?.nombre || 'Investigador ULEAM'}</Text>
-                <View style={styles.profileBadge}>
-                  <Text style={styles.profileBadgeText}>
-                    {getRolLabel(user?.rol)}
-                  </Text>
+
+            <View style={styles.profileActions}>
+              <Pressable
+                style={styles.profileArchiveBtn}
+                onPress={() => navigation.navigate('EnsayosArchivados')}
+              >
+                <ScientificIcon name="archive" size={13} color="#0369A1" style={{ marginRight: 5 }} />
+                <Text style={styles.profileArchiveBtnText}>Mis Muestras</Text>
+              </Pressable>
+              <Pressable
+                style={styles.profileSwitchBtn}
+                onPress={() => openAuthModal('login')}
+              >
+                <ScientificIcon name="user" size={13} color="#475569" style={{ marginRight: 5 }} />
+                <Text style={styles.profileSwitchBtnText}>Cambiar</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* HERO BANNER: LOTE EXPERIMENTAL ACTIVO */}
+          <View style={styles.batchHeroPanel}>
+            <View style={styles.batchHeroHeader}>
+              <View>
+                <View style={styles.batchEyebrowRow}>
+                  <ScientificIcon name="flask" size={15} color="#38BDF8" style={{ marginRight: 6 }} />
+                  <Text style={styles.batchHeroEyebrow}>Lote de Fermentación Activo</Text>
+                </View>
+                <Text style={styles.batchHeroCode}>{activeBatch.code}</Text>
+                <Text style={styles.batchHeroSub}>
+                  Monitoreo físico-químico continuo en baño termostático calibrado con inóculo Chivería
+                </Text>
+              </View>
+              <StatusBadge status={batchStatus} />
+            </View>
+
+            <View style={styles.batchMetaGrid}>
+              <InfoPill label="Sustrato / Matriz" value={activeBatch.medium} />
+              <InfoPill label="Carbohidrato" value={activeBatch.sugar} />
+              <InfoPill label="Inóculo" value={activeBatch.inoculum} />
+              <InfoPill label="Hora de Inicio" value={activeBatch.startedAt} />
+              <InfoPill label="Tiempo Transcurrido" value={activeBatch.elapsedTime} />
+            </View>
+          </View>
+
+          {/* LAYOUT DE ESCRITORIO EN 2 COLUMNAS (MÉTRICAS A LA IZQUIERDA + CURVA INTERACTIVA A LA DERECHA) */}
+          <View style={styles.dashboardSplitGrid}>
+            
+            {/* COLUMNA IZQUIERDA: CONTROLES, MÉTRICAS Y VISCOSIDAD */}
+            <View style={styles.splitLeftCol}>
+              <View style={styles.metricsGrid}>
+                <MetricCard
+                  label="pH actual"
+                  value={Number.isNaN(ph) ? '--' : ph.toFixed(2)}
+                  helperText={`Corte objetivo: pH ${activeBatch.targetPh}`}
+                  status={ph <= activeBatch.targetPh ? 'success' : 'normal'}
+                />
+                <MetricCard
+                  label="Temperatura"
+                  value={Number.isNaN(temperature) ? '--' : temperature.toFixed(1)}
+                  unit="°C"
+                  helperText="Rango óptimo: 41 °C - 43 °C"
+                  accentColor={getTemperatureColor(temperature)}
+                />
+                <MetricCard
+                  label="Tiempo"
+                  value={activeBatch.elapsedTime}
+                  helperText="Tiempo transcurrido"
+                  status="info"
+                />
+              </View>
+
+              {/* Panel de Lecturas Manuales */}
+              <View style={styles.inputPanel}>
+                <Text style={styles.sectionTitle}>Lecturas manuales de referencia</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Ingresa las lecturas periódicas del pH-metro para verificar contra la predicción IA:
+                </Text>
+                <View style={styles.inputGrid}>
+                  <CustomInput
+                    label="pH medido"
+                    metricType="ph"
+                    value={phValue}
+                    onChangeText={setPhValue}
+                    placeholder="5.18"
+                  />
+                  <CustomInput
+                    label="Temperatura del baño"
+                    metricType="temperature"
+                    value={temperatureValue}
+                    onChangeText={setTemperatureValue}
+                    placeholder="42.0"
+                    unit="°C"
+                  />
                 </View>
               </View>
-              <Text style={styles.profileEmail}>
-                ✉️ {user?.email || 'carlos.delgado@uleam.edu.ec'}
-              </Text>
-              <Text style={styles.profileHint}>
-                📁 Tus ensayos, lecturas y cinéticas se aíslan y guardan bajo tu perfil en SQLite.
-              </Text>
+
+              {/* Escala Reológica de Firmeza del Gel */}
+              <RheologyMeter
+                viscosidadMpaS={activeBatch.viscosidadEstimada}
+                targetMpaS={2639}
+              />
+            </View>
+
+            {/* COLUMNA DERECHA: GRÁFICO CINÉTICO DINÁMICO E INTERACTIVO */}
+            <View style={styles.splitRightCol}>
+              <KineticCurveChart
+                titulo="Curva Cinética del Lote Activo (LOTE-CHV-001)"
+                subtitulo="Interactiva: Pasa el mouse sobre los puntos para ver el avance exacto hacia el corte pH 4.50"
+                tiempoCorteMinutos={255}
+                puntos={[
+                  { minutos: 0, ph: 6.68, brix: 10.5 },
+                  { minutos: 60, ph: 6.20, brix: 9.8 },
+                  { minutos: 120, ph: 5.50, brix: 8.6 },
+                  { minutos: 155, ph: ph || 5.18, brix: 7.8 },
+                  { minutos: 210, ph: 4.75, brix: 6.8 },
+                  { minutos: 255, ph: 4.50, brix: 5.7 },
+                ]}
+                lecturasReales={[
+                  { tiempo_minutos: 0, ph: 6.68 },
+                  { tiempo_minutos: 60, ph: 6.20 },
+                  { tiempo_minutos: 155, ph: ph || 5.18 },
+                ]}
+              />
+
+              {/* Accesos Rápidos de Laboratorio */}
+              <View style={styles.quickActionsCard}>
+                <View style={styles.qaHeaderRow}>
+                  <ScientificIcon name="spark" size={16} color="#0369A1" style={{ marginRight: 6 }} />
+                  <Text style={styles.quickActionsTitle}>Acciones Rápidas del Laboratorio:</Text>
+                </View>
+                <View style={styles.quickActionsRow}>
+                  <Pressable
+                    style={[styles.quickActionBtn, styles.qaPrimary]}
+                    onPress={() => navigation.navigate('NuevoEnsayo')}
+                  >
+                    <ScientificIcon name="plus" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.qaBtnTextWhite}>Nuevo Ensayo</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.quickActionBtn, styles.qaSim]}
+                    onPress={() => navigation.navigate('Simulacion')}
+                  >
+                    <ScientificIcon name="spark" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.qaBtnTextWhite}>Simulación What-If</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.quickActionBtn, styles.qaLive]}
+                    onPress={() => navigation.navigate('Monitoreo')}
+                  >
+                    <ScientificIcon name="clock" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.qaBtnTextWhite}>Monitoreo en Vivo</Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.quickActionBtn, styles.qaArch]}
+                    onPress={() => navigation.navigate('EnsayosArchivados')}
+                  >
+                    <ScientificIcon name="archive" size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.qaBtnTextWhite}>Mis Muestras</Text>
+                  </Pressable>
+                </View>
+              </View>
             </View>
           </View>
-          <View style={styles.profileActions}>
-            <Pressable
-              style={styles.profileArchiveBtn}
-              onPress={() => navigation.navigate('EnsayosArchivados')}
-            >
-              <Text style={styles.profileArchiveBtnText}>📁 Mis Muestras</Text>
-            </Pressable>
-            <Pressable
-              style={styles.profileSwitchBtn}
-              onPress={() => openAuthModal('login')}
-            >
-              <Text style={styles.profileSwitchBtnText}>🔄 Cambiar</Text>
-            </Pressable>
-          </View>
-        </View>
 
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <View style={styles.headerCopy}>
-              <Text style={styles.eyebrow}>Monitoreo Cinético</Text>
-              <Text style={styles.title}>Dashboard de Fermentación</Text>
-              <Text style={styles.subtitle}>
-                Control cinético en tiempo real con inóculo Chivería
-              </Text>
-            </View>
-            <StatusBadge status={batchStatus} />
-          </View>
-
-          <View style={styles.batchPanel}>
-            <View>
-              <Text style={styles.batchLabel}>Lote activo</Text>
-              <Text style={styles.batchCode}>{activeBatch.code}</Text>
-            </View>
-            <View style={styles.batchMetaGrid}>
-              <InfoPill label="Medio" value={activeBatch.medium} />
-              <InfoPill label="Azucar" value={activeBatch.sugar} />
-              <InfoPill label="Inoculo" value={activeBatch.inoculum} />
-              <InfoPill label="Inicio" value={activeBatch.startedAt} />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.metricsGrid}>
-          <MetricCard
-            label="pH actual"
-            value={Number.isNaN(ph) ? '--' : ph.toFixed(2)}
-            helperText={`Corte objetivo: pH ${activeBatch.targetPh}`}
-            status={ph <= activeBatch.targetPh ? 'success' : 'normal'}
-          />
-          <MetricCard
-            label="Temperatura"
-            value={Number.isNaN(temperature) ? '--' : temperature.toFixed(1)}
-            unit="°C"
-            helperText="Rango optimo: 41 °C - 43 °C"
-            accentColor={getTemperatureColor(temperature)}
-          />
-          <MetricCard
-            label="Tiempo"
-            value={activeBatch.elapsedTime}
-            helperText="Tiempo transcurrido"
-            status="info"
-          />
-        </View>
-
-        <View style={styles.inputPanel}>
-          <Text style={styles.sectionTitle}>Lecturas manuales de referencia</Text>
-          <View style={styles.inputGrid}>
-            <CustomInput
-              label="pH medido"
-              metricType="ph"
-              value={phValue}
-              onChangeText={setPhValue}
-              placeholder="0.0"
-            />
-            <CustomInput
-              label="Temperatura del bano"
-              metricType="temperature"
-              value={temperatureValue}
-              onChangeText={setTemperatureValue}
-              placeholder="42.0"
-              unit="°C"
-            />
-          </View>
-        </View>
-
-        <View style={styles.chartPanel}>
-          <View style={styles.chartHeader}>
-            <View style={styles.chartTitleBlock}>
-              <Text style={styles.sectionTitle}>Curvas cineticas</Text>
+          {/* MÓDULOS CIENTÍFICOS Y PEDAGÓGICOS ULEAM */}
+          <View style={styles.pedagogicalPanel}>
+            <View style={styles.pedagogicalHeader}>
+              <View style={styles.pedTitleRow}>
+                <ScientificIcon name="microscope" size={20} color="#0284C7" style={{ marginRight: 8 }} />
+                <Text style={styles.sectionTitle}>Cátedra & Módulos Científicos (Dr. Stalin Santacruz)</Text>
+              </View>
               <Text style={styles.sectionSubtitle}>
-                Aqui se superpondran pH, temperatura y simulaciones What-If.
+                Herramientas formativas, bioquímica del gel, aprendizaje continuo y certificación bioestadística:
               </Text>
             </View>
-            <Text style={styles.chartTag}>Placeholder</Text>
-          </View>
 
-          <View style={styles.chartCanvas}>
-            <View style={styles.yAxis}>
-              <Text style={styles.axisText}>pH 7.0</Text>
-              <Text style={styles.axisText}>pH 4.5</Text>
+            <View style={styles.pedagogicalGrid}>
+              <Pressable
+                style={styles.pedagogicalCard}
+                onPress={() => navigation.navigate('Bioquimica')}
+              >
+                <View style={[styles.pedCardIconBg, { backgroundColor: '#E0F2FE' }]}>
+                  <ScientificIcon name="dna" size={24} color="#0284C7" />
+                </View>
+                <Text style={styles.pedCardTitle}>Bioquímica & Escala pH</Text>
+                <Text style={styles.pedCardSub}>3 etapas, micelas de caseína y escala interactiva de pH</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.pedagogicalCard}
+                onPress={() => navigation.navigate('DemostradorVivo')}
+              >
+                <View style={[styles.pedCardIconBg, { backgroundColor: '#FEF3C7' }]}>
+                  <ScientificIcon name="clock" size={24} color="#D97706" />
+                </View>
+                <Text style={styles.pedCardTitle}>Demostrador en Vivo</Text>
+                <Text style={styles.pedCardSub}>Exposiciones y simulación pedagógica para evaluación</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.pedagogicalCard}
+                onPress={() => navigation.navigate('FeedbackLoop')}
+              >
+                <View style={[styles.pedCardIconBg, { backgroundColor: '#EDE9FE' }]}>
+                  <ScientificIcon name="brain" size={24} color="#7C3AED" />
+                </View>
+                <Text style={styles.pedCardTitle}>Feedback Loop</Text>
+                <Text style={styles.pedCardSub}>Aprendizaje continuo con nuevos lotes concluidos</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.pedagogicalCard}
+                onPress={() => navigation.navigate('MetricasModelo')}
+              >
+                <View style={[styles.pedCardIconBg, { backgroundColor: '#DCFCE7' }]}>
+                  <ScientificIcon name="metrics" size={24} color="#059669" />
+                </View>
+                <Text style={styles.pedCardTitle}>Métricas Científicas</Text>
+                <Text style={styles.pedCardSub}>Validación R² = 0.9774 y matriz de los 6 lotes</Text>
+              </Pressable>
             </View>
-            <View style={styles.chartArea}>
-              <View style={[styles.gridLine, styles.gridLineTop]} />
-              <View style={[styles.gridLine, styles.gridLineMiddle]} />
-              <View style={[styles.gridLine, styles.gridLineBottom]} />
-              <View style={styles.curveSegmentOne} />
-              <View style={styles.curveSegmentTwo} />
-              <View style={styles.targetLine} />
-            </View>
           </View>
+
         </View>
 
-        {/* MÓDULOS CIENTÍFICOS Y PEDAGÓGICOS ULEAM */}
-        <View style={styles.pedagogicalPanel}>
-          <Text style={styles.sectionTitle}>📚 Cátedra & Módulos Científicos (Dr. Stalin Santacruz)</Text>
-          <Text style={styles.sectionSubtitle}>
-            Herramientas formativas, bioquímica del gel, aprendizaje continuo y certificación bioestadística:
-          </Text>
-
-          <View style={styles.pedagogicalGrid}>
-            <Pressable
-              style={styles.pedagogicalCard}
-              onPress={() => navigation.navigate('Bioquimica')}
-            >
-              <Text style={styles.pedCardIcon}>🧬</Text>
-              <Text style={styles.pedCardTitle}>Bioquímica & Escala pH</Text>
-              <Text style={styles.pedCardSub}>3 etapas, micelas de caseína y escala interactiva de pH</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.pedagogicalCard}
-              onPress={() => navigation.navigate('DemostradorVivo')}
-            >
-              <Text style={styles.pedCardIcon}>⏱️</Text>
-              <Text style={styles.pedCardTitle}>Demostrador en Vivo</Text>
-              <Text style={styles.pedCardSub}>Exposiciones y simulación pedagógica para evaluación</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.pedagogicalCard}
-              onPress={() => navigation.navigate('FeedbackLoop')}
-            >
-              <Text style={styles.pedCardIcon}>🧠</Text>
-              <Text style={styles.pedCardTitle}>Feedback Loop</Text>
-              <Text style={styles.pedCardSub}>Aprendizaje continuo con nuevos lotes concluidos</Text>
-            </Pressable>
-
-            <Pressable
-              style={styles.pedagogicalCard}
-              onPress={() => navigation.navigate('MetricasModelo')}
-            >
-              <Text style={styles.pedCardIcon}>📊</Text>
-              <Text style={styles.pedCardTitle}>Métricas Científicas</Text>
-              <Text style={styles.pedCardSub}>Validación R² = 0.9774 y matriz de los 6 lotes</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* ACCIONES Y NAVEGACIÓN PRINCIPAL */}
-        <View style={styles.actions}>
-          <Pressable
-            style={[styles.button, styles.primaryButton]}
-            onPress={() => navigation.navigate('NuevoEnsayo')}
-          >
-            <Text style={styles.primaryButtonText}>➕ Nuevo Ensayo de Fermentación</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.button, styles.archiveMainButton]}
-            onPress={() => navigation.navigate('EnsayosArchivados')}
-          >
-            <Text style={styles.archiveMainButtonText}>📁 Ensayos & Lotes Archivados ("Mis Muestras")</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.button, styles.infoButton]}
-            onPress={() => navigation.navigate('Monitoreo')}
-          >
-            <Text style={styles.infoButtonText}>⏱️ Monitoreo en Vivo (Ensayo Activo)</Text>
-          </Pressable>
-
-          <Pressable
-            style={[styles.button, styles.simulateButton]}
-            onPress={() => navigation.navigate('Simulacion')}
-          >
-            <Text style={styles.simulateButtonText}>⚡ Simulador Cinético ("What-If")</Text>
-          </Pressable>
-
-          <Pressable style={[styles.button, styles.secondaryButton]} onPress={logout}>
-            <Text style={styles.secondaryButtonText}>🚪 Cerrar Sesión</Text>
-          </Pressable>
-        </View>
-
+        {/* PIE DE PÁGINA A ANCHO COMPLETO (100% ESTIRADO DE IZQUIERDA A DERECHA) */}
         <FooterBar />
       </ScrollView>
     </View>
@@ -305,46 +347,59 @@ function InfoPill({ label, value }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F8FAFC',
   },
-  content: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-    maxWidth: 1080,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  desktopContainer: {
+    maxWidth: 1360,
     width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 20,
   },
   profileBanner: {
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#FFFFFF',
     borderColor: '#BAE6FD',
-    borderWidth: 1,
-    borderRadius: theme.radii.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
+    borderWidth: 1.5,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-    ...theme.shadows.card,
+    gap: 12,
+    shadowColor: '#0284C7',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   profileBannerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
+    gap: 14,
     flex: 1,
     minWidth: 260,
   },
   profileAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#E0F2FE',
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileAvatarText: {
-    fontSize: 22,
+    fontSize: 24,
   },
   profileInfoBlock: {
     flex: 1,
@@ -363,11 +418,11 @@ const styles = StyleSheet.create({
   profileBadge: {
     backgroundColor: '#E0E7FF',
     borderRadius: 4,
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 2,
   },
   profileBadgeText: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '800',
     color: '#3730A3',
     textTransform: 'uppercase',
@@ -386,13 +441,15 @@ const styles = StyleSheet.create({
   profileActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   profileArchiveBtn: {
     backgroundColor: '#059669',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: theme.radii.sm,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   profileArchiveBtnText: {
     color: '#FFFFFF',
@@ -401,298 +458,241 @@ const styles = StyleSheet.create({
   },
   profileSwitchBtn: {
     backgroundColor: '#0284C7',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: theme.radii.sm,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   profileSwitchBtnText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
-  header: {
-    marginBottom: theme.spacing.xl,
+  batchHeroPanel: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  headerTop: {
+  batchHeroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: theme.spacing.md,
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 16,
   },
-  headerCopy: {
-    flex: 1,
+  batchEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  eyebrow: {
-    ...theme.typography.caption,
-    color: theme.colors.primary,
+  batchHeroEyebrow: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#38BDF8',
     textTransform: 'uppercase',
-    marginBottom: theme.spacing.xs,
+    letterSpacing: 0.5,
   },
-  title: {
-    ...theme.typography.title,
-    color: theme.colors.text,
+  batchHeroCode: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
-  subtitle: {
-    ...theme.typography.body,
-    color: theme.colors.textMuted,
-    marginTop: theme.spacing.xs,
-  },
-  batchPanel: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.md,
-    borderWidth: 1,
-    marginTop: theme.spacing.lg,
-    padding: theme.spacing.lg,
-    ...theme.shadows.card,
-  },
-  batchLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.textMuted,
-    textTransform: 'uppercase',
-  },
-  batchCode: {
-    ...theme.typography.subtitle,
-    color: theme.colors.text,
-    marginTop: theme.spacing.xs,
+  batchHeroSub: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 4,
+    maxWidth: 620,
   },
   batchMetaGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.lg,
+    gap: 10,
+    marginTop: 8,
   },
   infoPill: {
-    minWidth: '45%',
-    flexGrow: 1,
-    backgroundColor: theme.colors.surfaceMuted,
-    borderRadius: theme.radii.sm,
-    padding: theme.spacing.md,
+    flex: 1,
+    minWidth: 140,
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   infoLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.textMuted,
-    marginBottom: theme.spacing.xs,
+    fontSize: 10,
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    fontWeight: '700',
+    marginBottom: 2,
   },
   infoValue: {
-    ...theme.typography.body,
-    color: theme.colors.text,
-    fontWeight: '600',
+    fontSize: 13,
+    color: '#F8FAFC',
+    fontWeight: '700',
+  },
+  dashboardSplitGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 20,
+    marginBottom: 24,
+  },
+  splitLeftCol: {
+    flex: 1,
+    minWidth: 320,
+  },
+  splitRightCol: {
+    flex: 1.4,
+    minWidth: 420,
   },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
+    gap: 12,
+    marginBottom: 16,
   },
   inputPanel: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.md,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
     borderWidth: 1,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-  },
-  inputGrid: {
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.md,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
   sectionTitle: {
-    ...theme.typography.subtitle,
-    color: theme.colors.text,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
   },
   sectionSubtitle: {
-    ...theme.typography.caption,
-    color: theme.colors.textMuted,
-    marginTop: theme.spacing.xs,
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 2,
+    marginBottom: 12,
   },
-  chartPanel: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.md,
+  inputGrid: {
+    gap: 12,
+  },
+  quickActionsCard: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
     borderWidth: 1,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    ...theme.shadows.card,
+    borderRadius: 14,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
-  chartHeader: {
+  qaHeaderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  chartTitleBlock: {
-    flex: 1,
+  quickActionsTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  chartTag: {
-    ...theme.typography.caption,
-    alignSelf: 'flex-start',
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: theme.radii.sm,
-    color: theme.colors.primary,
-    fontWeight: '700',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-  },
-  chartCanvas: {
-    minHeight: 220,
+  quickActionsRow: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.background,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.md,
-    borderWidth: 1,
-    overflow: 'hidden',
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  yAxis: {
-    width: 58,
-    justifyContent: 'space-between',
-    padding: theme.spacing.md,
-  },
-  axisText: {
-    ...theme.typography.caption,
-    color: theme.colors.textMuted,
-  },
-  chartArea: {
+  quickActionBtn: {
     flex: 1,
-    position: 'relative',
+    minWidth: 150,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  gridLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: theme.colors.border,
+  qaPrimary: {
+    backgroundColor: '#0284C7',
   },
-  gridLineTop: {
-    top: '22%',
+  qaSim: {
+    backgroundColor: '#D97706',
   },
-  gridLineMiddle: {
-    top: '50%',
+  qaLive: {
+    backgroundColor: '#059669',
   },
-  gridLineBottom: {
-    top: '76%',
+  qaArch: {
+    backgroundColor: '#475569',
   },
-  curveSegmentOne: {
-    position: 'absolute',
-    left: '8%',
-    top: '28%',
-    width: '46%',
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.primary,
-    transform: [{ rotate: '12deg' }],
-  },
-  curveSegmentTwo: {
-    position: 'absolute',
-    left: '48%',
-    top: '48%',
-    width: '40%',
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.primary,
-    transform: [{ rotate: '18deg' }],
-  },
-  targetLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: '22%',
-    height: 2,
-    backgroundColor: theme.colors.warning,
+  qaBtnTextWhite: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
   pedagogicalPanel: {
     backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    ...theme.shadows.card,
+    borderRadius: 16,
+    padding: 22,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  pedagogicalHeader: {
+    marginBottom: 16,
+  },
+  pedTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   pedagogicalGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: theme.spacing.md,
+    gap: 14,
   },
   pedagogicalCard: {
     flex: 1,
-    minWidth: 220,
+    minWidth: 240,
     backgroundColor: '#F8FAFC',
-    borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: theme.radii.md,
-    padding: theme.spacing.md,
-    ...theme.shadows.card,
+    borderWidth: 1.2,
+    borderRadius: 12,
+    padding: 16,
+  },
+  pedCardIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   pedCardIcon: {
-    fontSize: 26,
-    marginBottom: 6,
+    fontSize: 20,
   },
   pedCardTitle: {
     fontSize: 14,
     fontWeight: '800',
     color: '#0F172A',
-    marginBottom: 3,
+    marginBottom: 4,
   },
   pedCardSub: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: '#64748B',
-    lineHeight: 15,
-  },
-  actions: {
-    gap: theme.spacing.md,
-  },
-  button: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: theme.radii.md,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
-  },
-  primaryButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.surface,
-    fontWeight: '700',
-  },
-  archiveMainButton: {
-    backgroundColor: '#059669',
-  },
-  archiveMainButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.surface,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.danger,
-    borderWidth: 1,
-  },
-  secondaryButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.danger,
-    fontWeight: '700',
-  },
-  infoButton: {
-    backgroundColor: theme.colors.info,
-  },
-  infoButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.surface,
-    fontWeight: '700',
-  },
-  simulateButton: {
-    backgroundColor: theme.colors.surfaceMuted,
-    borderColor: theme.colors.primary,
-    borderWidth: 1.5,
-  },
-  simulateButtonText: {
-    ...theme.typography.body,
-    color: theme.colors.primary,
-    fontWeight: '700',
+    lineHeight: 16,
   },
 });

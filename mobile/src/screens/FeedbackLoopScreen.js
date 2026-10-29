@@ -11,9 +11,13 @@ import {
 } from 'react-native';
 import ensayosService from '../services/ensayosService';
 import theme from '../styles/theme';
+import HeaderBar from '../components/common/HeaderBar';
 import FooterBar from '../components/common/FooterBar';
+import ScreenHeader from '../components/common/ScreenHeader';
+import RheologyMeter from '../components/common/RheologyMeter';
+import ScientificIcon from '../components/common/ScientificIcons';
 
-export default function FeedbackLoopScreen() {
+export default function FeedbackLoopScreen({ navigation }) {
   const [loteId, setLoteId] = useState('LOTE-EXP-2026-001');
   const [viscosidadFinal, setViscosidadFinal] = useState('2615');
   const [tempReal, setTempReal] = useState('42.0');
@@ -179,15 +183,21 @@ export default function FeedbackLoopScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Aprendizaje Continuo & Reentrenamiento</Text>
-        <Text style={styles.title}>Feedback Loop (IA Adaptativa)</Text>
-        <Text style={styles.subtitle}>
-          Incorpora datos de nuevos lotes concluidos en el laboratorio para que la IA refine continuamente su modelo cinético y su precisión R².
-        </Text>
-      </View>
+    <View style={styles.screen}>
+      <HeaderBar navigation={navigation} activeTab="FeedbackLoop" />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.desktopContainer}>
+          {/* Encabezado Institucional con Retorno */}
+          <ScreenHeader
+            title="Feedback Loop (Aprendizaje Continuo)"
+            subtitle="Incorpora datos de nuevos lotes concluidos en el laboratorio para que la IA refine continuamente su modelo cinético y su precisión R²."
+            icon="brain"
+            navigation={navigation}
+          />
 
       {/* Botones de Acción Rápida */}
       <View style={styles.topActionsRow}>
@@ -195,13 +205,15 @@ export default function FeedbackLoopScreen() {
           style={styles.actionBtnGreen}
           onPress={() => setMostrarPegado(!mostrarPegado)}
         >
+          <ScientificIcon name="archive" size={13} color="#15803D" style={{ marginRight: 6 }} />
           <Text style={styles.actionBtnGreenText}>
-            {mostrarPegado ? '✕ Ocultar Pegado CSV' : '📋 Pegar Tabla CSV / Excel'}
+            {mostrarPegado ? 'Ocultar Pegado CSV' : 'Pegar Tabla CSV / Excel'}
           </Text>
         </Pressable>
 
         <Pressable style={styles.actionBtnBlue} onPress={cargarLoteEjemplo}>
-          <Text style={styles.actionBtnBlueText}>🧪 Cargar Lote de Prueba</Text>
+          <ScientificIcon name="flask" size={13} color="#0369A1" style={{ marginRight: 6 }} />
+          <Text style={styles.actionBtnBlueText}>Cargar Lote de Prueba</Text>
         </Pressable>
       </View>
 
@@ -358,22 +370,34 @@ export default function FeedbackLoopScreen() {
           )}
         </Pressable>
       </View>
+      </View>
       <FooterBar />
     </ScrollView>
-  );
+  </View>
+);
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F8FAFC',
   },
-  content: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-    maxWidth: 960,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  desktopContainer: {
+    maxWidth: 1360,
     width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   header: {
     marginBottom: theme.spacing.lg,

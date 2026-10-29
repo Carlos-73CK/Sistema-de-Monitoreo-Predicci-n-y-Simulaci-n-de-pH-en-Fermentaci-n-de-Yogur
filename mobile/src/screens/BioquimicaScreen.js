@@ -7,9 +7,13 @@ import {
   Pressable,
 } from 'react-native';
 import theme from '../styles/theme';
+import HeaderBar from '../components/common/HeaderBar';
 import FooterBar from '../components/common/FooterBar';
+import ScreenHeader from '../components/common/ScreenHeader';
+import RheologyMeter from '../components/common/RheologyMeter';
+import ScientificIcon from '../components/common/ScientificIcons';
 
-export default function BioquimicaScreen() {
+export default function BioquimicaScreen({ navigation }) {
   const [selectedItem, setSelectedItem] = useState(3); // Por defecto: Yogur (Corte 4.50)
 
   const phScaleItems = [
@@ -100,19 +104,35 @@ export default function BioquimicaScreen() {
   const itemActivo = phScaleItems[selectedItem] || phScaleItems[3];
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Facultad de Ciencias de la Vida — ULEAM</Text>
-        <Text style={styles.title}>Bioquímica & Escala de pH</Text>
-        <Text style={styles.subtitle}>
-          Fundamentos biofísicos y metabólicos de la fermentación láctea explicados por el Dr. Stalin Santacruz Terán en cátedra.
-        </Text>
-      </View>
+    <View style={styles.screen}>
+      <HeaderBar navigation={navigation} activeTab="Bioquimica" />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.desktopContainer}>
+          {/* Encabezado Institucional con Retorno */}
+          <ScreenHeader
+            title="Bioquímica & Escala Universal de pH"
+            subtitle="Fundamentos biofísicos y metabólicos de la fermentación láctea explicados por el Dr. Stalin Santacruz Terán en cátedra."
+            icon="dna"
+            navigation={navigation}
+          />
+
+      {/* Escala Reológica de Firmeza del Gel */}
+      <RheologyMeter
+        viscosidadMpaS={2639}
+        targetMpaS={2639}
+      />
 
       {/* Tarjeta de las 3 Etapas Bioquímicas */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>🔬 Las 3 Etapas Bioquímicas de la Fermentación</Text>
+        <View style={styles.titleWithIconRow}>
+          <ScientificIcon name="microscope" size={20} color="#0284C7" style={{ marginRight: 8 }} />
+          <Text style={styles.cardTitle}>Las 3 Etapas Bioquímicas de la Fermentación</Text>
+        </View>
         <Text style={styles.cardSubtitle}>
           Metabolismo de bacterias de Chivería (<em>Lactobacillus bulgaricus</em> y <em>Streptococcus thermophilus</em>):
         </Text>
@@ -227,22 +247,36 @@ export default function BioquimicaScreen() {
           <Text style={styles.detailDesc}>{itemActivo.desc}</Text>
         </View>
       </View>
-      <FooterBar />
-    </ScrollView>
+    </View>
+
+    {/* Footer a ancho completo de izquierda a derecha */}
+    <FooterBar />
+  </ScrollView>
+</View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F8FAFC',
   },
-  content: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-    maxWidth: 960,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  desktopContainer: {
+    maxWidth: 1360,
     width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
   header: {
     marginBottom: theme.spacing.lg,
@@ -275,11 +309,15 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     ...theme.shadows.card,
   },
+  titleWithIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   cardTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: '#0F172A',
-    marginBottom: 4,
   },
   cardSubtitle: {
     fontSize: 12,

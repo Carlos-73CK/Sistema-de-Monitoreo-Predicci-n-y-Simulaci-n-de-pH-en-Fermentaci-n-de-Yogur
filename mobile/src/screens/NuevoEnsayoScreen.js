@@ -10,7 +10,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import HeaderBar from '../components/common/HeaderBar';
 import FooterBar from '../components/common/FooterBar';
+import ScreenHeader from '../components/common/ScreenHeader';
+import ScientificIcon from '../components/common/ScientificIcons';
 import ensayosService from '../services/ensayosService';
 import theme from '../styles/theme';
 
@@ -124,14 +127,22 @@ export default function NuevoEnsayoScreen({ navigation }) {
   const pct = ((parseFloat(masaInoculo) || 0) / (parseFloat(volumenLeche) || 250) * 100).toFixed(1);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>Laboratorio de Alimentos - ULEAM</Text>
-        <Text style={styles.title}>Nuevo Ensayo de Fermentación</Text>
-        <Text style={styles.subtitle}>
-          Configuración inicial de lote experimental según las normas de la cátedra del Dr. Stalin Santacruz.
-        </Text>
-      </View>
+    <View style={styles.screen}>
+      <HeaderBar navigation={navigation} activeTab="NuevoEnsayo" />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.desktopContainer}>
+          {/* Encabezado Institucional con Retorno */}
+          <ScreenHeader
+            title="Nuevo Ensayo de Fermentación"
+            subtitle="Configuración inicial de lote experimental según las normas de la cátedra del Dr. Stalin Santacruz."
+            icon="plus"
+            navigation={navigation}
+          />
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>1. Identificación del Lote & Perfil</Text>
@@ -144,7 +155,7 @@ export default function NuevoEnsayoScreen({ navigation }) {
             placeholder="Ej: LOTE-CHV-101"
           />
           <Text style={styles.hint}>
-            Asignado a: 👤 {user?.nombre || 'Investigador Titular'} ({user?.email || 'carlos.delgado@uleam.edu.ec'})
+            Asignado a: {user?.nombre || 'Investigador Titular'} ({user?.email || 'carlos.delgado@uleam.edu.ec'})
           </Text>
         </View>
 
@@ -304,18 +315,32 @@ export default function NuevoEnsayoScreen({ navigation }) {
           {cargando ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
-            <Text style={styles.btnCrearText}>🚀 Iniciar Ensayo y Guardar en SQLite</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <ScientificIcon name="flask" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={styles.btnCrearText}>Iniciar Ensayo y Guardar en SQLite</Text>
+            </View>
           )}
         </Pressable>
       </View>
-      <FooterBar />
-    </ScrollView>
+    </View>
+
+    {/* Footer a ancho completo de izquierda a derecha */}
+    <FooterBar />
+  </ScrollView>
+</View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
-  content: { padding: 18, paddingBottom: 40, maxWidth: 680, width: '100%', alignSelf: 'center' },
+  scrollView: { flex: 1 },
+  scrollContent: {
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  desktopContainer: { padding: 18, paddingBottom: 24, maxWidth: 960, width: '100%', alignSelf: 'center' },
   header: { marginBottom: 16 },
   eyebrow: { fontSize: 12, fontWeight: '700', color: '#0284c7', textTransform: 'uppercase', marginBottom: 4 },
   title: { fontSize: 24, fontWeight: '800', color: '#0f172a' },

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
 import authService from '../../services/authService';
+import ScientificIcon from './ScientificIcons';
 import theme from '../../styles/theme';
 
 export default function AuthModal({ visible, initialTab, onClose }) {
@@ -173,15 +174,21 @@ export default function AuthModal({ visible, initialTab, onClose }) {
             </Pressable>
           </View>
 
-          {/* Selector de Pestañas */}
+          {/* Selector de Pestañas con Iconos Vectoriales */}
           <View style={styles.tabsContainer}>
             {userToken && (
               <Pressable
                 style={[styles.tabButton, tab === 'perfil' && styles.tabButtonActive]}
                 onPress={() => setTab('perfil')}
               >
+                <ScientificIcon
+                  name="user"
+                  size={13}
+                  color={tab === 'perfil' ? '#0284C7' : '#64748B'}
+                  style={{ marginRight: 6 }}
+                />
                 <Text style={[styles.tabText, tab === 'perfil' && styles.tabTextActivePrimary]}>
-                  👤 Mi Perfil
+                  Mi Perfil
                 </Text>
               </Pressable>
             )}
@@ -193,8 +200,14 @@ export default function AuthModal({ visible, initialTab, onClose }) {
                 setLoginError('');
               }}
             >
+              <ScientificIcon
+                name={userToken ? 'spark' : 'user'}
+                size={13}
+                color={tab === 'login' ? '#0284C7' : '#64748B'}
+                style={{ marginRight: 6 }}
+              />
               <Text style={[styles.tabText, tab === 'login' && styles.tabTextActivePrimary]}>
-                {userToken ? '🔄 Cambiar Cuenta' : '🔐 Iniciar Sesión'}
+                {userToken ? 'Cambiar Cuenta' : 'Iniciar Sesión'}
               </Text>
             </Pressable>
 
@@ -206,8 +219,14 @@ export default function AuthModal({ visible, initialTab, onClose }) {
                 setRegSuccess('');
               }}
             >
+              <ScientificIcon
+                name="plus"
+                size={13}
+                color={tab === 'register' ? '#059669' : '#64748B'}
+                style={{ marginRight: 6 }}
+              />
               <Text style={[styles.tabText, tab === 'register' && styles.tabTextActiveSuccess]}>
-                ✨ Crear Cuenta
+                Crear Cuenta
               </Text>
             </Pressable>
           </View>
@@ -219,9 +238,7 @@ export default function AuthModal({ visible, initialTab, onClose }) {
                 <View style={styles.profileCard}>
                   <View style={styles.profileCardHeader}>
                     <View style={styles.profileAvatarLarge}>
-                      <Text style={styles.avatarEmoji}>
-                        {user.rol === 'estudiante' ? '🎓' : user.rol === 'docente' ? '📚' : '🔬'}
-                      </Text>
+                      <ScientificIcon name="user" size={32} color="#0284C7" />
                     </View>
                     <View style={styles.profileDetails}>
                       <Text style={styles.profileFullName}>{user.nombre}</Text>
@@ -246,7 +263,7 @@ export default function AuthModal({ visible, initialTab, onClose }) {
 
                   <View style={styles.isolationNotice}>
                     <Text style={styles.isolationNoticeTitle}>
-                      🔒 Aislamiento de Ensayos & Muestras:
+                      Aislamiento de Ensayos & Muestras:
                     </Text>
                     <Text style={styles.isolationNoticeText}>
                       Tus cinéticas de fermentación, lecturas de pH y simulaciones "What-If" se
@@ -259,7 +276,8 @@ export default function AuthModal({ visible, initialTab, onClose }) {
                       style={styles.switchAccountBtn}
                       onPress={() => setTab('login')}
                     >
-                      <Text style={styles.switchAccountBtnText}>🔄 Cambiar a Otra Cuenta</Text>
+                      <ScientificIcon name="user" size={13} color="#0284C7" style={{ marginRight: 6 }} />
+                      <Text style={styles.switchAccountBtnText}>Cambiar a Otra Cuenta</Text>
                     </Pressable>
 
                     <Pressable
@@ -269,7 +287,7 @@ export default function AuthModal({ visible, initialTab, onClose }) {
                         if (onClose) onClose();
                       }}
                     >
-                      <Text style={styles.logoutCardBtnText}>🚪 Cerrar Sesión</Text>
+                      <Text style={styles.logoutCardBtnText}>Cerrar Sesión</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -281,9 +299,12 @@ export default function AuthModal({ visible, initialTab, onClose }) {
               <View style={styles.tabContent}>
                 {/* Cuentas de Acceso Rápido para Pruebas del Laboratorio */}
                 <View style={styles.quickAccountsCard}>
-                  <Text style={styles.quickAccountsTitle}>
-                    ⚡ Cuentas Rápidas de Laboratorio (1-Clic):
-                  </Text>
+                  <View style={styles.qaHeaderRow}>
+                    <ScientificIcon name="spark" size={14} color="#0369A1" style={{ marginRight: 6 }} />
+                    <Text style={styles.quickAccountsTitle}>
+                      Cuentas Rápidas de Laboratorio (1-Clic):
+                    </Text>
+                  </View>
                   <View style={styles.quickChipsRow}>
                     <Pressable
                       style={styles.quickChip}
@@ -291,8 +312,9 @@ export default function AuthModal({ visible, initialTab, onClose }) {
                         handleQuickLogin('dr.santacruz@uleam.edu.ec', 'santacruz2026')
                       }
                     >
+                      <ScientificIcon name="microscope" size={14} color="#0369A1" style={{ marginRight: 6 }} />
                       <Text style={styles.quickChipText}>
-                        👨‍🔬 Dr. Stalin Santacruz (Docente / Inv.)
+                        Dr. Stalin Santacruz (Docente / Inv.)
                       </Text>
                     </Pressable>
 
@@ -302,8 +324,9 @@ export default function AuthModal({ visible, initialTab, onClose }) {
                         handleQuickLogin('carlos.delgado@uleam.edu.ec', 'carlos2026')
                       }
                     >
+                      <ScientificIcon name="user" size={14} color="#0369A1" style={{ marginRight: 6 }} />
                       <Text style={styles.quickChipText}>
-                        🔬 Carlos Delgado (Investigador Titular)
+                        Carlos Delgado (Investigador Titular)
                       </Text>
                     </Pressable>
 
@@ -313,8 +336,9 @@ export default function AuthModal({ visible, initialTab, onClose }) {
                         handleQuickLogin('estudiante@uleam.edu.ec', 'estudiante2026')
                       }
                     >
+                      <ScientificIcon name="dna" size={14} color="#0369A1" style={{ marginRight: 6 }} />
                       <Text style={styles.quickChipText}>
-                        🎓 Estudiante ULEAM (Tesista)
+                        Estudiante ULEAM (Tesista)
                       </Text>
                     </Pressable>
                   </View>
@@ -551,6 +575,8 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
     borderRadius: theme.radii.sm,
   },
   tabButtonActive: {
@@ -650,7 +676,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0284C7',
     paddingVertical: 9,
     borderRadius: theme.radii.sm,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   switchAccountBtnText: {
     color: '#FFFFFF',
@@ -665,6 +693,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: theme.radii.sm,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   logoutCardBtnText: {
     color: '#991B1B',
@@ -679,11 +708,15 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginBottom: theme.spacing.lg,
   },
+  qaHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
   quickAccountsTitle: {
     fontSize: 12,
     fontWeight: '800',
     color: '#0369A1',
-    marginBottom: theme.spacing.sm,
   },
   quickChipsRow: {
     gap: 6,
@@ -695,6 +728,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingVertical: 6,
     paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   quickChipText: {
     fontSize: 11,
