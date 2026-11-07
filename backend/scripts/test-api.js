@@ -217,6 +217,100 @@ async function runTests() {
       assert.ok(Array.isArray(body.data.lecturas), 'El ensayo en JSON debe contener el array de lecturas');
     });
 
+
+    // --- TEST 9: Inóculo porcentual y masa dinámica ---
+    await testCase('POST /api/ai/simulate con porcentaje_inoculo: 5.0 calcula masaInoculoG dinámicamente', async () => {
+      const res = await fetch(`${baseUrl}/api/ai/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          porcentaje_inoculo: 5.0,
+          volumen_ml: 250,
+          temperatura_c: 42,
+          tipo_sustrato: 'vaca',
+          tipo_azucar: 'lactosa',
+        }),
+      });
+      assert.strictEqual(res.status, 200, `Se esperaba 200 pero se recibió ${res.status}`);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      const conf = body.data.configuracion;
+      assert.strictEqual(conf.porcentajeInoculo, 5.0, 'El porcentaje de inóculo debe ser 5.0%');
+      assert.strictEqual(conf.masaInoculoG, 12.5, 'La masa dinámica debe ser (5/100) * 250 = 12.5g');
+    });
+
+    // --- TEST 10: Modelado de mezclas de carbohidratos ('mezcla_sacarosa_glucosa') ---
+    await testCase('POST /api/ai/simulate con mezcla_sacarosa_glucosa pondera Vmax y latencia homoláctica', async () => {
+      const res = await fetch(`${baseUrl}/api/ai/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          temperatura_c: 42,
+          porcentaje_inoculo: 7.5,
+          volumen_ml: 250,
+          tipo_sustrato: 'vaca',
+          tipo_azucar: 'mezcla_sacarosa_glucosa',
+          ratio_glucosa: 0.5,
+        }),
+      });
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      assert.strictEqual(body.data.configuracion.tipoAzucar, 'mezcla_sacarosa_glucosa');
+      assert.ok(body.data.curva.length > 0, 'La simulación debe contener la trayectoria');
+    });
+
+    // --- TEST 11: Efecto buffer en bebida de almendra (Nature\'s Heart) ---
+    await testCase('POST /api/ai/simulate con almendra modela buffer químico (meseta 5.0-5.3, sin corte 4.50)', async () => {
+      const res = await fetch(`${baseUrl}/api/ai/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          temperatura_c: 42,
+          porcentaje_inoculo: 7.5,
+          volumen_ml: 250,
+          tipo_sustrato: 'almendra',
+          tipo_azucar: 'sacarosa',
+        }),
+      });
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      const data = body.data;
+      assert.strictEqual(data.prediccionCorte.efectoBuffer, true, 'Debe activar efectoBuffer');
+      assert.strictEqual(data.prediccionCorte.tiempoCorteHoras, null, 'No debe alcanzar corte a 4.50');
+      // Validar meseta entre pH 5.0 y 5.3 a las 6-7 horas (360-420 min)
+      const pt6h = data.curva.find((p) => p.minutos === 360 || p.minutos === 390 || p.minutos === 420);
+      assert.ok(pt6h, 'Debe existir punto en la curva a 6-7h');
+      assert.ok(pt6h.phPredicho >= 5.0 && pt6h.phPredicho <= 5.3, `El pH (${pt6h.phPredicho}) debe estar en la meseta [5.0 - 5.3]`);
+    });
+
+    // --- TEST 12: Predicción de viscosidad Brookfield final (rotor 4, 60 rpm) ---
+    await testCase('Validar viscosidad Brookfield en vaca (42°C/7.5%, 40°C/2.5%, 44°C) y matrices vegetales', async () => {
+      const aiSimulator = require('../src/services/aiSimulator');
+
+      // Vaca a 42 °C / 7.5% -> ~2639 mPa·s
+      const v42_75 = aiSimulator.estimarViscosidadBrookfield({ tipoSustrato: 'vaca', temperaturaC: 42, porcentajeInoculo: 7.5 });
+      assert.strictEqual(v42_75.viscosidadPredichaMpaS, 2639, 'Vaca 42 °C / 7.5% debe ser 2639 mPa·s');
+
+      // Vaca a 40 °C / 2.5% -> ~2579 mPa·s
+      const v40_25 = aiSimulator.estimarViscosidadBrookfield({ tipoSustrato: 'vaca', temperaturaC: 40, porcentajeInoculo: 2.5 });
+      assert.strictEqual(v40_25.viscosidadPredichaMpaS, 2579, 'Vaca 40 °C / 2.5% debe ser 2579 mPa·s');
+
+      // Vaca a 44 °C -> ~796 - 1185 mPa·s
+      const v44_75 = aiSimulator.estimarViscosidadBrookfield({ tipoSustrato: 'vaca', temperaturaC: 44, porcentajeInoculo: 7.5 });
+      const v44_25 = aiSimulator.estimarViscosidadBrookfield({ tipoSustrato: 'vaca', temperaturaC: 44, porcentajeInoculo: 2.5 });
+      assert.ok(v44_75.viscosidadPredichaMpaS >= 790 && v44_75.viscosidadPredichaMpaS <= 1200, `Vaca 44 °C debe estar entre 796 y 1185 mPa·s (obtenido: ${v44_75.viscosidadPredichaMpaS})`);
+      assert.ok(v44_25.viscosidadPredichaMpaS >= 790 && v44_25.viscosidadPredichaMpaS <= 1200, `Vaca 44 °C debe estar entre 796 y 1185 mPa·s (obtenido: ${v44_25.viscosidadPredichaMpaS})`);
+
+      // Avena y Almendra -> geles débiles / fluidos viscosos (~50 - 300 mPa·s)
+      const vAlm = aiSimulator.estimarViscosidadBrookfield({ tipoSustrato: 'almendra', temperaturaC: 42, porcentajeInoculo: 7.5 });
+      assert.ok(vAlm.viscosidadPredichaMpaS >= 50 && vAlm.viscosidadPredichaMpaS <= 300, `Almendra debe estar entre 50 y 300 mPa·s (obtenido: ${vAlm.viscosidadPredichaMpaS})`);
+
+      const vAve = aiSimulator.estimarViscosidadBrookfield({ tipoSustrato: 'avena', temperaturaC: 42, porcentajeInoculo: 7.5 });
+      assert.ok(vAve.viscosidadPredichaMpaS >= 50 && vAve.viscosidadPredichaMpaS <= 300, `Avena debe estar entre 50 y 300 mPa·s (obtenido: ${vAve.viscosidadPredichaMpaS})`);
+    });
+
     // --- TEST 8: GET /api/docs.json (Documentación OpenAPI / Swagger) ---
     await testCase('GET /api/docs.json responde 200 con especificación OpenAPI 3.0', async () => {
       const res = await fetch(`${baseUrl}/api/docs.json`);
