@@ -211,7 +211,7 @@ export default function SimulacionScreen({ navigation }) {
             <Text style={styles.sectionTitle}>2. Matriz Láctea & Carbohidrato</Text>
             <Text style={styles.paramSubLabel}>Tipo de leche:</Text>
             <View style={styles.pillsRow}>
-              {['vaca', 'chocho', 'coco'].map((tipo) => (
+              {['vaca', 'chocho', 'coco', 'almendra', 'avena'].map((tipo) => (
                 <Pressable
                   key={tipo}
                   style={[styles.pill, sustrato === tipo && styles.pillActive]}
@@ -226,7 +226,7 @@ export default function SimulacionScreen({ navigation }) {
 
             <Text style={[styles.paramSubLabel, { marginTop: 10 }]}>Fuente de azúcar añadida:</Text>
             <View style={styles.pillsRow}>
-              {['lactosa', 'sacarosa', 'glucosa'].map((az) => {
+              {['lactosa', 'sacarosa', 'glucosa', 'mezcla_sacarosa_glucosa'].map((az) => {
                 const deshabilitado = sustrato !== 'vaca' && az === 'lactosa';
                 return (
                   <Pressable
@@ -240,7 +240,7 @@ export default function SimulacionScreen({ navigation }) {
                     onPress={() => cambiarAzucar(az)}
                   >
                     <Text style={[styles.pillText, tipoAzucar === az && styles.pillTextActive]}>
-                      {az.toUpperCase()}
+                      {az === 'mezcla_sacarosa_glucosa' ? 'MEZCLA SAC/GLU' : az.toUpperCase()}
                     </Text>
                   </Pressable>
                 );
@@ -412,6 +412,16 @@ export default function SimulacionScreen({ navigation }) {
 
         {/* COLUMNA 2: RESULTADOS DE PREDICCIÓN CINÉTICA Y GRÁFICO */}
         <View style={styles.resultsCol}>
+          {/* Alerta de Efecto Buffer en Almendra */}
+          {resultado.efectoBuffer && (
+            <View style={[styles.alertaCard, { backgroundColor: '#EFF6FF', borderColor: '#3B82F6', marginBottom: 12 }]}>
+              <Text style={[styles.alertaTitulo, { color: '#1D4ED8' }]}>🛡️ EFECTO BUFFER QUÍMICO ACTIVO</Text>
+              <Text style={[styles.alertaTexto, { color: '#1E40AF' }]}>
+                {resultado.alertaBuffer || "Amortiguación química por sales de calcio en Nature's Heart: el pH se estabiliza en meseta entre 5.0 y 5.3 tras 6-7 horas."}
+              </Text>
+            </View>
+          )}
+
           {/* Alerta de Desviación Térmica */}
           {resultado.fueraDeRangoTermico && (
             <View style={styles.alertaCard}>
@@ -424,8 +434,8 @@ export default function SimulacionScreen({ navigation }) {
           <View style={styles.kpiGrid}>
             <View style={styles.kpiCard}>
               <Text style={styles.kpiLabel}>Tiempo hasta pH 4.50</Text>
-              <Text style={styles.kpiVal}>{resultado.tiempoEstimadoHoras} h</Text>
-              <Text style={styles.kpiSub}>~{resultado.tiempoEstimadoCorteMinutos} minutos</Text>
+              <Text style={styles.kpiVal}>{resultado.efectoBuffer ? 'Meseta pH 5.0-5.3' : `${resultado.tiempoEstimadoHoras} h`}</Text>
+              <Text style={styles.kpiSub}>{resultado.efectoBuffer ? 'Amortiguado (CaCO3/Fosfato)' : `~${resultado.tiempoEstimadoCorteMinutos} minutos`}</Text>
             </View>
 
             <View style={styles.kpiCard}>
@@ -606,6 +616,7 @@ const styles = StyleSheet.create({
   },
   pillsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
   },
   pill: {
