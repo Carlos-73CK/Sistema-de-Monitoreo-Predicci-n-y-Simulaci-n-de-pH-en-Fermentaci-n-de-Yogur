@@ -2,10 +2,11 @@
  * Validador Fisicoquímico y de Seguridad para Fermentación de Yogur — PrediYogur
  * Cátedra de Química de Alimentos (ULEAM)
  * Patrocinador Científico: Dr. Stalin Gustavo Santacruz Terán
+ * Especialista Bioestadístico: Jordan Meza
  * 
  * Previene el envenenamiento de datos (Data Poisoning) y fallos numéricos en el modelo
  * de Inteligencia Artificial asegurando que las variables ingresadas respeten los rangos
- * bioquímicos y físicos de la fermentación láctica de leche de vaca con inóculo Chivería.
+ * bioquímicos y físicos de la fermentación láctica (leche de vaca y matrices vegetales).
  */
 
 // Límites fisicoquímicos calibrados con datos de laboratorio ULEAM
@@ -16,7 +17,7 @@ const LIMITES = {
   VOLUMEN_ML: { MIN: 50.0, MAX: 5000.0, ESTANDAR: 250.0 },
   MASA_INOCULO_G: { MIN: 0.5, MAX: 500.0, ESTANDAR: 18.75 },
   TIEMPO_MINUTOS: { MIN: 0, MAX: 720 }, // Hasta 12 horas máximo de monitoreo
-  VISCOSIDAD_MPAS: { MIN: 150.0, MAX: 5500.0 },
+  VISCOSIDAD_MPAS: { MIN: 50.0, MAX: 5500.0 },
   INDICE_REFRACCION_BRIX: { MIN: 3.0, MAX: 18.0 },
 };
 
@@ -85,6 +86,7 @@ function validarLecturaFisicoquimica(lectura = {}) {
 
 /**
  * Valida los parámetros de entrada para simulaciones cinéticas ("What-If")
+ * Acepta porcentajeInoculo como parámetro principal y masaInoculoG dinámicamente.
  * @param {Object} params
  * @returns {{ esValido: boolean, errores: string[], advertencias: string[], parametrosSaneados: Object }}
  */
@@ -93,13 +95,14 @@ function validarParametrosSimulacion(params = {}) {
   const advertencias = [];
 
   const tempRaw = params.temperatura_c !== undefined ? params.temperatura_c : params.temperatura;
+  const pctRaw = params.porcentaje_inoculo !== undefined ? params.porcentaje_inoculo : params.porcentajeInoculo;
   const masaRaw = params.masa_inoculo_g !== undefined ? params.masa_inoculo_g : params.masa_inoculo;
-  const volRaw = params.volumen_ml !== undefined ? params.volumen_ml : params.masa_leche;
-  const sustratoRaw = params.tipo_sustrato || params.tipo_leche || 'vaca';
+  const volRaw = params.volumen_ml !== undefined ? params.volumen_ml : (params.masa_leche !== undefined ? params.masa_leche : params.masaSolucionG);
+  const sustratoRaw = params.tipo_sustrato || params.tipo_leche || params.tipoSustrato || 'vaca';
   const azucarRaw = params.tipo_azucar || params.tipoAzucar;
+  const ratioRaw = params.ratio_glucosa !== undefined ? params.ratio_glucosa : params.ratioGlucosa;
 
   const temp = Number(tempRaw !== undefined ? tempRaw : 42);
-  const masa = Number(masaRaw !== undefined ? masaRaw : LIMITES.MASA_INOCULO_G.ESTANDAR);
   const vol = Number(volRaw !== undefined ? volRaw : LIMITES.VOLUMEN_ML.ESTANDAR);
 
   // 1. Temperatura
@@ -109,49 +112,75 @@ function validarParametrosSimulacion(params = {}) {
     advertencias.push(`Temperatura (${temp} °C) fuera del rango térmico óptimo de laboratorio (${LIMITES.TEMPERATURA_C.OPTIMA_MIN} °C – ${LIMITES.TEMPERATURA_C.OPTIMA_MAX} °C).`);
   }
 
-  // 2. Masa y Volumen
+  // 2. Volumen / Masa de Solución
   if (Number.isNaN(vol) || vol < LIMITES.VOLUMEN_ML.MIN || vol > LIMITES.VOLUMEN_ML.MAX) {
-    errores.push(`El volumen de leche (${vol} mL) debe estar entre ${LIMITES.VOLUMEN_ML.MIN} mL y ${LIMITES.VOLUMEN_ML.MAX} mL.`);
+    errores.push(`El volumen de leche o solución (${vol} mL) debe estar entre ${LIMITES.VOLUMEN_ML.MIN} mL y ${LIMITES.VOLUMEN_ML.MAX} mL.`);
   }
 
-  if (Number.isNaN(masa) || masa < LIMITES.MASA_INOCULO_G.MIN || masa > LIMITES.MASA_INOCULO_G.MAX) {
-    errores.push(`La masa de inóculo (${masa} g) debe estar entre ${LIMITES.MASA_INOCULO_G.MIN} g y ${LIMITES.MASA_INOCULO_G.MAX} g.`);
-  }
-
-  // 3. Porcentaje de inóculo resultante
+  // 3. Inóculo Porcentual y Masa Dinámica (masaInoculoG = (porcentajeInoculo / 100) * masaSolucionG)
   let porcentajeInoculo = 7.5;
-  if (vol > 0 && masa > 0) {
-    porcentajeInoculo = Number(((masa / vol) * 100).toFixed(2));
-    if (porcentajeInoculo < LIMITES.INOCULO_PCT.MIN || porcentajeInoculo > LIMITES.INOCULO_PCT.MAX) {
-      errores.push(`El porcentaje de inóculo resultante (${porcentajeInoculo}%) excede los límites fisiológicos permitidos [${LIMITES.INOCULO_PCT.MIN}% - ${LIMITES.INOCULO_PCT.MAX}%].`);
-    }
-  }
+  let masa = LIMITES.MASA_INOCULO_G.ESTANDAR;
 
-  // 4. Tipo de sustrato
-  const sustrato = String(sustratoRaw).trim().toLowerCase();
-  const sustratosPermitidos = ['vaca', 'chocho', 'vegetal_chocho', 'coco', 'vegetal_coco'];
-  const sustratoFinal = sustratosPermitidos.some((s) => sustrato.includes(s) || s.includes(sustrato))
-    ? (sustrato.includes('chocho') ? 'chocho' : sustrato.includes('coco') ? 'coco' : 'vaca')
-    : 'vaca';
-
-  // 5. Tipo de azúcar (Química de carbohidratos - Audio 2 Dr. Santacruz)
-  let tipoAzucarFinal = 'lactosa';
-  const azucarNormalizado = azucarRaw ? String(azucarRaw).trim().toLowerCase() : null;
-
-  if (sustratoFinal === 'chocho' || sustratoFinal === 'coco') {
-    if (azucarNormalizado === 'lactosa') {
-      advertencias.push(`Nota Bioquímica (Dr. Santacruz): La leche de ${sustratoFinal} no contiene lactosa naturalmente. Se ajusta la fuente de carbohidratos a sacarosa.`);
-      tipoAzucarFinal = 'sacarosa';
-    } else if (azucarNormalizado === 'glucosa') {
-      tipoAzucarFinal = 'glucosa';
+  if (pctRaw !== undefined && pctRaw !== null && pctRaw !== '') {
+    const pct = Number(pctRaw);
+    if (Number.isNaN(pct) || pct < LIMITES.INOCULO_PCT.MIN || pct > LIMITES.INOCULO_PCT.MAX) {
+      errores.push(`El porcentaje de inóculo (${pct}%) debe estar entre ${LIMITES.INOCULO_PCT.MIN}% y ${LIMITES.INOCULO_PCT.MAX}%.`);
     } else {
-      tipoAzucarFinal = 'sacarosa'; // Sacarosa por defecto para leches vegetales
+      porcentajeInoculo = Number(pct.toFixed(2));
+      masa = Number(((porcentajeInoculo / 100) * vol).toFixed(2));
+    }
+  } else if (masaRaw !== undefined && masaRaw !== null && masaRaw !== '') {
+    const m = Number(masaRaw);
+    if (Number.isNaN(m) || m < LIMITES.MASA_INOCULO_G.MIN || m > LIMITES.MASA_INOCULO_G.MAX) {
+      errores.push(`La masa de inóculo (${m} g) debe estar entre ${LIMITES.MASA_INOCULO_G.MIN} g y ${LIMITES.MASA_INOCULO_G.MAX} g.`);
+    } else {
+      masa = Number(m.toFixed(2));
+      if (vol > 0) {
+        porcentajeInoculo = Number(((masa / vol) * 100).toFixed(2));
+        if (porcentajeInoculo < LIMITES.INOCULO_PCT.MIN || porcentajeInoculo > LIMITES.INOCULO_PCT.MAX) {
+          errores.push(`El porcentaje de inóculo resultante (${porcentajeInoculo}%) excede los límites fisiológicos permitidos [${LIMITES.INOCULO_PCT.MIN}% - ${LIMITES.INOCULO_PCT.MAX}%].`);
+        }
+      }
     }
   } else {
-    // Leche de vaca
-    if (azucarNormalizado === 'glucosa') {
-      tipoAzucarFinal = 'glucosa';
-    } else if (azucarNormalizado === 'sacarosa') {
+    // Valor por defecto ULEAM: 7.5%
+    porcentajeInoculo = 7.5;
+    masa = Number(((7.5 / 100) * vol).toFixed(2));
+  }
+
+  // 4. Tipo de sustrato (Vaca, Almendra, Avena, Chocho, Coco)
+  const sustrato = String(sustratoRaw).trim().toLowerCase();
+  let sustratoFinal = 'vaca';
+  if (sustrato.includes('almendra')) {
+    sustratoFinal = 'almendra';
+  } else if (sustrato.includes('avena')) {
+    sustratoFinal = 'avena';
+  } else if (sustrato.includes('chocho')) {
+    sustratoFinal = 'chocho';
+  } else if (sustrato.includes('coco')) {
+    sustratoFinal = 'coco';
+  } else {
+    sustratoFinal = 'vaca';
+  }
+
+  // 5. Tipo de azúcar y mezclas (Química de carbohidratos - Audio 2 Dr. Santacruz)
+  let tipoAzucarFinal = 'lactosa';
+  const azucarNormalizado = azucarRaw ? String(azucarRaw).trim().toLowerCase() : null;
+  let ratioGlucosaFinal = 0.5;
+
+  if (ratioRaw !== undefined && !Number.isNaN(Number(ratioRaw))) {
+    ratioGlucosaFinal = Math.max(0, Math.min(1, Number(ratioRaw)));
+  }
+
+  if (azucarNormalizado === 'mezcla_sacarosa_glucosa' || azucarNormalizado === 'mezcla') {
+    tipoAzucarFinal = 'mezcla_sacarosa_glucosa';
+  } else if (azucarNormalizado === 'glucosa') {
+    tipoAzucarFinal = 'glucosa';
+  } else if (azucarNormalizado === 'sacarosa') {
+    tipoAzucarFinal = 'sacarosa';
+  } else {
+    if (sustratoFinal !== 'vaca') {
+      advertencias.push(`Nota Bioquímica (Dr. Santacruz): La matriz vegetal de ${sustratoFinal} no contiene lactosa naturalmente. Se ajusta la fuente de carbohidratos a sacarosa.`);
       tipoAzucarFinal = 'sacarosa';
     } else {
       tipoAzucarFinal = 'lactosa'; // Lactosa nativa por defecto en vaca
@@ -164,11 +193,19 @@ function validarParametrosSimulacion(params = {}) {
     advertencias,
     parametrosSaneados: errores.length === 0 ? {
       temperaturaC: Number(temp.toFixed(1)),
+      temperatura_c: Number(temp.toFixed(1)),
       masaInoculoG: Number(masa.toFixed(2)),
+      masa_inoculo_g: Number(masa.toFixed(2)),
       volumenMl: Number(vol.toFixed(1)),
+      volumen_ml: Number(vol.toFixed(1)),
+      masaSolucionG: Number(vol.toFixed(1)),
       porcentajeInoculo,
+      porcentaje_inoculo: porcentajeInoculo,
       tipoSustrato: sustratoFinal,
+      tipo_sustrato: sustratoFinal,
       tipoAzucar: tipoAzucarFinal,
+      tipo_azucar: tipoAzucarFinal,
+      ratioGlucosa: ratioGlucosaFinal,
     } : null,
   };
 }

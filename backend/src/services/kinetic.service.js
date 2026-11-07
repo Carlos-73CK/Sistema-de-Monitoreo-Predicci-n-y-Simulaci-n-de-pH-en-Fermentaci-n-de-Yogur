@@ -1,6 +1,7 @@
 /**
  * Servicio Cinético y Biofísico de Hill — PrediYogur
  * Cátedra de Química de Alimentos (ULEAM)
+ * Especialista Bioestadístico: Jordan Meza
  * 
  * Implementa la lógica de cálculo bioestadístico y cinético:
  * - Solución del modelo no lineal sigmoidal de Hill
@@ -30,6 +31,7 @@ const {
   validarLoteFeedback,
   validarRecalibracionDinamica,
 } = require('../validators/fermentationValidator');
+const aiSimulator = require('./aiSimulator');
 
 /**
  * Obtiene las métricas bioestadísticas de validación del modelo
@@ -77,12 +79,15 @@ function predecirPuntoCinético(body) {
 
   const params = validacion.parametrosSaneados;
   const punto = predecirPunto({
-    temperatura_c: params.temperatura_c,
-    masa_inoculo_g: params.masa_inoculo_g,
-    volumen_ml: params.volumen_ml,
-    tipo_sustrato: params.tipo_sustrato,
-    tipo_azucar: params.tipo_azucar,
-    t_minutos: minutosNum,
+    temperaturaC: params.temperaturaC,
+    porcentajeInoculo: params.porcentajeInoculo,
+    masaInoculoG: params.masaInoculoG,
+    volumenMl: params.volumenMl,
+    masaSolucionG: params.masaSolucionG,
+    tipoSustrato: params.tipoSustrato,
+    tipoAzucar: params.tipoAzucar,
+    ratioGlucosa: params.ratioGlucosa,
+    minutos: minutosNum,
   });
 
   const tiempoCorte = predecirTiempoCorte(params);
@@ -116,23 +121,28 @@ function simularTrayectoriaCompleta(body) {
   // Generar curva cinética discreta mediante el modelo Hill
   const trayectoria = generarTrayectoria({
     temperaturaC: params.temperaturaC,
+    porcentajeInoculo: params.porcentajeInoculo,
     masaInoculoG: params.masaInoculoG,
     volumenMl: params.volumenMl,
+    masaSolucionG: params.masaSolucionG,
     tipoSustrato: params.tipoSustrato,
     tipoAzucar: params.tipoAzucar,
+    ratioGlucosa: params.ratioGlucosa,
     intervaloMinutos,
   });
 
   const tiempoCorte = trayectoria.prediccionCorte || predecirTiempoCorte(params);
   const viscosidad = trayectoria.prediccionViscosidad || predecirViscosidad(params);
 
-  // Determinar calidad reológica del gel de caseína
-  let calidadGel = 'ÓPTIMA';
+  // Determinar calidad reológica del gel
+  let calidadGel = viscosidad.calidadGel || 'ÓPTIMA';
   const viscoVal = viscosidad.viscosidadPredichaMpaS || viscosidad.viscosidad_mpas || 2000;
-  if (viscoVal < 1200) {
-    calidadGel = 'DÉBIL (Riesgo de sinéresis o bajo inóculo)';
-  } else if (viscoVal > 2800) {
-    calidadGel = 'ALTA FIRMEZA (Excelente textura para yogur batido)';
+  if (!viscosidad.calidadGel) {
+    if (viscoVal < 1200) {
+      calidadGel = 'DÉBIL (Riesgo de sinéresis o bajo inóculo)';
+    } else if (viscoVal > 2800) {
+      calidadGel = 'ALTA FIRMEZA (Excelente textura para yogur batido)';
+    }
   }
 
   const resultado = {
@@ -156,16 +166,16 @@ function simularTrayectoriaCompleta(body) {
     guardarPrediccion({
       lote_id: body.lote_id || `LOTE-SIM-${Date.now().toString(36).toUpperCase()}`,
       investigador: body.investigador || 'Laboratorio ULEAM',
-      tipo_sustrato: params.tipo_sustrato,
-      temperatura_c: params.temperatura_c,
-      masa_inoculo_g: params.masa_inoculo_g,
-      volumen_ml: params.volumen_ml,
-      porcentaje_inoculo: params.porcentaje_inoculo,
-      tiempo_corte_horas: tiempoCorte.tiempo_horas,
-      tiempo_corte_minutos: tiempoCorte.tiempo_minutos,
-      viscosidad_predicha_mpas: viscosidad.viscosidad_mpas,
+      tipo_sustrato: params.tipoSustrato,
+      temperatura_c: params.temperaturaC,
+      masa_inoculo_g: params.masaInoculoG,
+      volumen_ml: params.volumenMl,
+      porcentaje_inoculo: params.porcentajeInoculo,
+      tiempo_corte_horas: tiempoCorte.tiempoCorteHoras,
+      tiempo_corte_minutos: tiempoCorte.tiempoCorteMinutos,
+      viscosidad_predicha_mpas: viscosidad.viscosidadPredichaMpaS || viscosidad.viscosidad_mpas,
       calidad_gel: calidadGel,
-      diagnostico: tiempoCorte.diagnostico_cinetico,
+      diagnostico: tiempoCorte.diagnostico_cinetico || tiempoCorte.diagnosticoCinético,
     });
   } catch (err) {
     console.warn('[KineticService] Aviso al registrar historial de predicción:', err.message);
@@ -188,16 +198,14 @@ function recalibrarDinamica(body) {
     throw error;
   }
 
-  const { parametros_base, lecturas_observadas } = validacion.datosSaneados;
+  const { configuracionSaneada, lecturasSaneadas } = validacion;
   const pasoMinutos = Math.max(5, Math.min(30, Number(body.paso_minutos) || 15));
-  const maxHoras = Math.max(4, Math.min(12, Number(body.max_horas) || 8));
 
-  return recalibrarTrayectoriaDinamica(
-    parametros_base,
-    lecturas_observadas,
-    pasoMinutos,
-    maxHoras
-  );
+  return recalibrarTrayectoriaDinamica({
+    configuracion: configuracionSaneada,
+    lecturas: lecturasSaneadas,
+    intervaloMinutos: pasoMinutos,
+  });
 }
 
 /**
@@ -214,18 +222,18 @@ function registrarLoteFeedback(body) {
     throw error;
   }
 
-  const loteSaneado = validacion.loteSaneado;
-  const guardados = insertarMuestrasFeedback(loteSaneado);
+  const loteSaneado = validacion.loteSaneado || validacion.metadata;
+  const guardados = insertarMuestrasFeedback(validacion.lecturasSaneadas || loteSaneado);
   const metricasActualizadas = evaluarMetricasModelo();
   const conteoActual = contarFeedback();
 
   return {
-    lote_id: loteSaneado.lote_id,
+    lote_id: loteSaneado?.loteId || body.lote_id,
     muestras_incorporadas: guardados,
     total_lotes_aprendidos: conteoActual.lotes_incorporados,
     total_muestras_dataset: conteoActual.muestras_totales,
     metricas_modelo_actualizadas: metricasActualizadas,
-    mensaje: `Lote ${loteSaneado.lote_id} incorporado exitosamente al dataset continuo.`,
+    mensaje: `Lote ${body.lote_id} incorporado exitosamente al dataset continuo.`,
   };
 }
 
@@ -245,4 +253,5 @@ module.exports = {
   recalibrarDinamica,
   registrarLoteFeedback,
   listarHistorialPredicciones,
+  aiSimulator,
 };
