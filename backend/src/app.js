@@ -1,10 +1,12 @@
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./docs/swagger');
 const pool = require('./config/db');
 const { db } = require('./ai/sqliteStore');
-const errorHandler = require('./middlewares/errorHandler');
-const { logger } = require('./middlewares/logger.middleware');
+const { errorHandler, logger } = require('./middlewares');
 const { registerRoutes } = require('./routes');
 
 const app = express();
@@ -15,8 +17,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(logger);
 
-// Servir interfaz gráfica web estática para el prototipo
-app.use(express.static(path.join(__dirname, 'public')));
+// Directorio de la aplicación Web Universal (React Native Web)
+const publicDir = fs.existsSync(path.resolve(__dirname, 'public', 'index.html'))
+  ? path.resolve(__dirname, 'public')
+  : path.resolve(__dirname, '../../mobile/dist');
+
+app.use(express.static(publicDir));
 
 /**
  * Controlador de verificación de salud del sistema.
@@ -43,6 +49,8 @@ const healthCheckHandler = async (req, res) => {
     status: 'ok',
     service: 'PrediYogur Platform',
     mode: 'local_prototype_autonomous',
+    frontend: 'React Native Universal Web (modular)',
+    documentation: 'GET /api/docs (Swagger UI)',
     databases: {
       sqlite_local: sqliteStatus,
       postgresql: pgStatus,
@@ -56,18 +64,29 @@ const healthCheckHandler = async (req, res) => {
 app.get('/api/health', healthCheckHandler);
 app.get('/health', healthCheckHandler);
 
-// Rutas directas para la interfaz gráfica web
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Documentación interactiva de la API con Swagger UI
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.get('/api/docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerDocument);
 });
 
-// Registro de rutas API de la aplicación (/api/auth, /api/ensayos, etc.)
+// Registro de rutas API de la aplicación (/api/auth, /api/ensayos, /api/ai)
 registerRoutes(app);
 
-// Manejo de rutas inexistentes (404)
+// Enrutamiento SPA para React Native Web (cualquier ruta que no empiece con /api o /health)
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/health')) {
+    return next();
+  }
+  const indexPath = path.join(publicDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  return next();
+});
+
+// Manejo de rutas inexistentes de API (404)
 app.use((req, res) => {
   res.status(404).json({
     status: 'error',

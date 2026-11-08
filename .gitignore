@@ -8,11 +8,17 @@ package-lock.json
 .env.*.local
 *.env
 
-# React Native & Expo builds / cache
+# React Native & Android builds / cache
 .expo/
 .expo-shared/
-android/
-ios/
+.gradle/
+build/
+dist/
+mobile/dist/
+**/build/
+**/.gradle/
+**/.cxx/
+**/local.properties
 *.apk
 *.aab
 *.ipa
@@ -35,4 +41,3 @@ Thumbs.db
 *.db
 backend/data/*.sqlite
 !backend/data/.gitkeep
-

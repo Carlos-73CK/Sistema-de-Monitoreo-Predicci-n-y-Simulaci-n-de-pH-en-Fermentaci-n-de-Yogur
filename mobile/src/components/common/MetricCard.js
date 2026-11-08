@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import theme, { getPhColor, getTemperatureColor } from '../../styles/theme';
+import ScientificIcon from './ScientificIcons';
 
 export default function MetricCard({
   titulo,
@@ -25,6 +26,18 @@ export default function MetricCard({
     accentColor || getMetricAccent(tipo, estado || status, resolvedValue);
   const isWarning = (estado || status) === 'warning';
 
+  // Obtener icono correspondiente
+  const getCardIcon = () => {
+    const t = (resolvedTitle || tipo || '').toLowerCase();
+    if (t.includes('ph')) return 'ph';
+    if (t.includes('temp') || t.includes('baño')) return 'thermometer';
+    if (t.includes('tiempo') || t.includes('corte')) return 'clock';
+    if (t.includes('viscos') || t.includes('reolog')) return 'droplet';
+    return null;
+  };
+
+  const cardIcon = getCardIcon();
+
   return (
     <View
       style={[
@@ -34,7 +47,12 @@ export default function MetricCard({
         style,
       ]}
     >
-      {resolvedTitle ? <Text style={styles.title}>{resolvedTitle}</Text> : null}
+      <View style={styles.cardHeaderRow}>
+        {resolvedTitle ? <Text style={styles.title}>{resolvedTitle}</Text> : null}
+        {cardIcon ? (
+          <ScientificIcon name={cardIcon} size={15} color={resolvedAccent} />
+        ) : null}
+      </View>
       <View style={styles.valueRow}>
         <Text style={[styles.value, { color: resolvedAccent }]}>
           {resolvedValue ?? '--'}
@@ -85,39 +103,54 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     minWidth: 148,
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.borderSoft,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
     borderLeftWidth: 5,
-    borderRadius: theme.radius.md,
-    borderWidth: theme.borders.thin,
-    padding: theme.spacing.lg,
-    ...theme.shadows.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   warningCard: {
-    backgroundColor: theme.colors.warningSoft,
+    backgroundColor: '#FEF2F2',
   },
   title: {
-    ...theme.typography.caption,
-    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   valueRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginTop: theme.spacing.sm,
+    marginTop: 4,
   },
   value: {
-    ...theme.typography.metric,
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -0.5,
   },
   unit: {
-    ...theme.typography.subtitle,
-    color: theme.colors.textMuted,
-    marginBottom: 3,
-    marginLeft: theme.spacing.xs,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 4,
+    marginLeft: 4,
   },
   subtitle: {
-    ...theme.typography.caption,
-    color: theme.colors.textMuted,
-    marginTop: theme.spacing.sm,
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 6,
+    fontWeight: '500',
   },
 });

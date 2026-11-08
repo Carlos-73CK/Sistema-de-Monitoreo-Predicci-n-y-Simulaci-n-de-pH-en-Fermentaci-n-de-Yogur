@@ -38,6 +38,15 @@ export const authService = {
     const response = await api.get('/auth/perfil');
     return response.data;
   },
+
+  /**
+   * Obtiene la lista de usuarios preconfigurados en SQLite para selector de perfil
+   * @returns {Promise<Object>}
+   */
+  getUsuariosDisponibles: async () => {
+    const response = await api.get('/auth/usuarios');
+    return response.data;
+  },
 };
 
 export default authService;
