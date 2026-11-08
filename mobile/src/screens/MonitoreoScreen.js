@@ -245,15 +245,11 @@ export default function MonitoreoScreen({ route, navigation }) {
 
   const handleFinalizarEnsayo = () => {
     const visc = parseFloat(viscosidadFinalInput);
-    if (isNaN(visc) || visc <= 0) {
-      Alert.alert('Viscosidad requerida', 'El registro de viscosidad final es obligatorio según el protocolo del Dr. Stalin Santacruz.');
-      return;
-    }
 
     setEnsayoFinalizado(true);
     Alert.alert(
       '✅ Ensayo Concluido',
-      `Fermentación culminada exitosamente. Viscosidad final registrada: ${visc} mPa·s (rotor 4, 60 rpm).`,
+      `Fermentación culminada exitosamente.${Number.isFinite(visc) && visc > 0 ? ` Viscosidad final registrada: ${visc} mPa·s (rotor 4, 60 rpm).` : ' La viscosidad queda pendiente de medición final.'}`,
       [
         {
           text: 'Ver en Ensayos Archivados',
@@ -509,12 +505,15 @@ export default function MonitoreoScreen({ route, navigation }) {
         </View>
       )}
 
-      {/* Cierre y Viscosidad Final Obligatoria */}
+      {/* Cierre y Viscosidad Final Opcional */}
       {!ensayoFinalizado && (
         <View style={styles.cierreCard}>
-          <Text style={styles.sectionTitle}>Corte & Viscosidad Final (Dr. Stalin Santacruz)</Text>
+          <Text style={styles.sectionTitle}>Corte & Viscosidad Final (opcional / al finalizar)</Text>
           <Text style={styles.cierreDesc}>
-            Al alcanzar el corte en pH 4.50, registre obligatoriamente la viscosidad final (Brookfield rotor 4, 60 rpm):
+            Al alcanzar el corte en pH 4.50, puede registrar la viscosidad Brookfield (rotor 4, 60 rpm):
+          </Text>
+          <Text style={styles.cienciaNota}>
+            Fluido tixotrópico: trasvasar la muestra desestabiliza temporalmente el coágulo; medir viscosidad preferentemente al final o tras reposo.
           </Text>
 
           <View style={styles.cierreRow}>
@@ -876,6 +875,13 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: '#92400E',
     marginBottom: 8,
+    lineHeight: 16,
+  },
+  cienciaNota: {
+    fontSize: 11.5,
+    color: '#78350F',
+    fontStyle: 'italic',
+    marginBottom: 10,
     lineHeight: 16,
   },
   cierreRow: {

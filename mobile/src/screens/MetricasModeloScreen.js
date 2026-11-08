@@ -56,6 +56,8 @@ export default function MetricasModeloScreen({ navigation }) {
     { id: 'E4', temp: 42, inocPct: 7.5, inocG: 18.75, corteH: 4.25, visc: 2639, brix: 5.7, desc: '⭐ ÓPTIMO LABORATORIO', optimo: true },
     { id: 'E5', temp: 44, inocPct: 2.5, inocG: 6.25, corteH: 6.50, visc: 1185, brix: 6.1, desc: 'Estrés térmico' },
     { id: 'E6', temp: 44, inocPct: 7.5, inocG: 18.75, corteH: 6.50, visc: 796.5, brix: 7.4, desc: 'Desnaturalización' },
+    { id: 'A1', temp: 42, inocPct: 7.5, inocG: 18.75, corteH: 5.10, visc: 1180, brix: 6.4, desc: 'Avena: prueba vegetal' },
+    { id: 'M1', temp: 42, inocPct: 7.5, inocG: 18.75, corteH: 6.20, visc: 980, brix: 5.8, desc: 'Almendra Nature\'s Heart: efecto buffer' },
   ];
 
   return (
@@ -170,9 +172,9 @@ export default function MetricasModeloScreen({ navigation }) {
 
       {/* Matriz Experimental de los 6 Lotes del Dr. Santacruz */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>🧪 Matriz Experimental de Referencia (Dr. Stalin Santacruz)</Text>
+        <Text style={styles.cardTitle}>🧪 Matriz Factorial: 6 ensayos de vaca + nuevas pruebas vegetales</Text>
         <Text style={styles.cardSubtitle}>
-          Ensayos empíricos reales utilizados para calibrar la IA con 250 g de leche y fermento lácteo Chivería:
+          Ensayos empíricos de vaca utilizados para calibrar la IA, junto con las pruebas exploratorias de avena y almendra:
         </Text>
 
         <View style={styles.thRow}>

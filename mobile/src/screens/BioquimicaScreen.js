@@ -127,6 +127,13 @@ export default function BioquimicaScreen({ navigation }) {
         targetMpaS={2639}
       />
 
+      <View style={styles.bufferCard}>
+        <Text style={styles.bufferTitle}>Efecto Buffer en Bebidas Comerciales (Almendra Nature's Heart)</Text>
+        <Text style={styles.bufferText}>
+          El carbonato de calcio y el fosfato tricálcico aportan capacidad amortiguadora: neutralizan parte del H+ producido durante la fermentación y pueden impedir que el pH descienda hasta 4.50. Por eso, una bebida de almendra puede mostrar una meseta de pH y requerir más tiempo o una formulación distinta para alcanzar el corte.
+        </Text>
+      </View>
+
       {/* Tarjeta de las 3 Etapas Bioquímicas */}
       <View style={styles.card}>
         <View style={styles.titleWithIconRow}>
@@ -324,6 +331,28 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     marginBottom: 14,
     lineHeight: 16,
+  },
+  bufferCard: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#C4B5FD',
+    borderLeftColor: '#7C3AED',
+    borderLeftWidth: 5,
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.card,
+  },
+  bufferTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#5B21B6',
+    marginBottom: theme.spacing.sm,
+  },
+  bufferText: {
+    ...theme.typography.body,
+    color: '#37306B',
+    lineHeight: 20,
   },
   etapasList: {
     gap: 12,

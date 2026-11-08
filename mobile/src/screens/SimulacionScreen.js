@@ -28,6 +28,9 @@ export default function SimulacionScreen({ navigation }) {
   const [sustrato, setSustrato] = useState('vaca');
   const [tipoAzucar, setTipoAzucar] = useState('lactosa');
   const [masaInoculo, setMasaInoculo] = useState('18.75');
+  const [porcentajeInoculo, setPorcentajeInoculo] = useState('7.5');
+  const [unidadInoculo, setUnidadInoculo] = useState('g');
+  const [proporcionMezcla, setProporcionMezcla] = useState(50);
   const [temperatura, setTemperatura] = useState('42');
   const [volumen, setVolumen] = useState('250');
   const [superponerOptimo, setSuperponerOptimo] = useState(true);
@@ -94,18 +97,24 @@ export default function SimulacionScreen({ navigation }) {
     handleSimular(masaInoculo, temperatura, sustrato, azucar, volumen);
   };
 
+  const actualizarPorcentaje = (valor) => {
+    const pct = Math.max(0.5, Math.min(20, Math.round(Number(valor) * 10) / 10));
+    const masa = Math.round(((pct / 100) * (parseFloat(volumen) || 250)) * 100) / 100;
+    setPorcentajeInoculo(String(pct));
+    setMasaInoculo(String(masa));
+    handleSimular(masa, temperatura, sustrato, tipoAzucar, volumen);
+  };
+
   const aplicarPresets = (masaPreset, tempPreset) => {
     setErrorValidacion(null);
     setMasaInoculo(String(masaPreset));
+    setPorcentajeInoculo(String(((masaPreset / (parseFloat(volumen) || 250)) * 100).toFixed(1)));
     setTemperatura(String(tempPreset));
     handleSimular(masaPreset, tempPreset, sustrato, tipoAzucar, volumen);
   };
 
   const ajustarMasa = (delta) => {
-    const actual = parseFloat(masaInoculo) || 18.75;
-    const nuevo = Math.max(0.5, Math.min(37.5, Math.round((actual + delta) * 100) / 100));
-    setMasaInoculo(String(nuevo));
-    handleSimular(nuevo, temperatura, sustrato, tipoAzucar, volumen);
+    actualizarPorcentaje((parseFloat(porcentajeInoculo) || 7.5) + delta);
   };
 
   const ajustarTemp = (delta) => {
@@ -167,7 +176,8 @@ export default function SimulacionScreen({ navigation }) {
     }
   };
 
-  const pctInoculo = ((parseFloat(masaInoculo) || 0) / (parseFloat(volumen) || 250) * 100).toFixed(2);
+  const pctInoculo = Number(porcentajeInoculo || 0).toFixed(1);
+  const masaCalculada = ((Number(porcentajeInoculo || 0) / 100) * (parseFloat(volumen) || 250)).toFixed(2);
 
   return (
     <View style={styles.screen}>
@@ -211,14 +221,21 @@ export default function SimulacionScreen({ navigation }) {
             <Text style={styles.sectionTitle}>2. Matriz Láctea & Carbohidrato</Text>
             <Text style={styles.paramSubLabel}>Tipo de leche:</Text>
             <View style={styles.pillsRow}>
-              {['vaca', 'chocho', 'coco', 'almendra', 'avena'].map((tipo) => (
+              {[
+                ['vaca', 'Leche de vaca'],
+                ['avena', 'Bebida de avena'],
+                ['almendra', "Bebida de almendra (Nature's Heart)"],
+                ['soya', 'Bebida de soya'],
+                ['coco', 'Leche de coco'],
+                ['otro', '+ Otro sustrato'],
+              ].map(([tipo, label]) => (
                 <Pressable
                   key={tipo}
                   style={[styles.pill, sustrato === tipo && styles.pillActive]}
                   onPress={() => cambiarSustrato(tipo)}
                 >
                   <Text style={[styles.pillText, sustrato === tipo && styles.pillTextActive]}>
-                    {tipo.toUpperCase()}
+                    {label}
                   </Text>
                 </Pressable>
               ))}
@@ -246,6 +263,18 @@ export default function SimulacionScreen({ navigation }) {
                 );
               })}
             </View>
+            {tipoAzucar === 'mezcla_sacarosa_glucosa' && (
+              <View style={styles.mixControl}>
+                <Text style={styles.inputHelper}>Proporción sacarosa / glucosa: {proporcionMezcla}% / {100 - proporcionMezcla}%</Text>
+                <View style={styles.pillsRow}>
+                  {[25, 50, 75].map((ratio) => (
+                    <Pressable key={ratio} style={[styles.pill, proporcionMezcla === ratio && styles.pillActive]} onPress={() => setProporcionMezcla(ratio)}>
+                      <Text style={[styles.pillText, proporcionMezcla === ratio && styles.pillTextActive]}>{ratio}% / {100 - ratio}%</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Escenarios Experimentales Preconfigurados */}
@@ -320,28 +349,42 @@ export default function SimulacionScreen({ navigation }) {
                 <View style={styles.stepperHeader}>
                   <View style={styles.labelWithIcon}>
                     <ScientificIcon name="flask" size={13} color="#0284C7" style={{ marginRight: 4 }} />
-                    <Text style={styles.stepperLabel}>Inóculo (g)</Text>
+                    <Text style={styles.stepperLabel}>Inóculo (%)</Text>
                   </View>
                   <Text style={styles.stepperBadge}>{pctInoculo}%</Text>
                 </View>
                 <View style={styles.stepperBox}>
-                  <Pressable style={styles.stepperBtn} onPress={() => ajustarMasa(-1)}>
+                  <Pressable style={styles.stepperBtn} onPress={() => ajustarMasa(-0.5)}>
                     <Text style={styles.stepperBtnText}>−</Text>
                   </Pressable>
                   <TextInput
                     style={styles.stepperInput}
-                    value={masaInoculo}
+                    value={porcentajeInoculo}
                     onChangeText={(t) => {
-                      setMasaInoculo(t);
-                      handleSimular(t, temperatura);
+                      setPorcentajeInoculo(t);
+                      if (!Number.isNaN(Number(t))) actualizarPorcentaje(Number(t));
                     }}
                     keyboardType="numeric"
                   />
-                  <Pressable style={styles.stepperBtn} onPress={() => ajustarMasa(1)}>
+                  <Pressable style={styles.stepperBtn} onPress={() => ajustarMasa(0.5)}>
                     <Text style={styles.stepperBtnText}>+</Text>
                   </Pressable>
                 </View>
-                <Text style={styles.stepperHint}>Rango: 0.5g – 37.5g (±1g)</Text>
+                <Text style={styles.stepperHint}>{pctInoculo}% = {masaCalculada} {unidadInoculo} en {volumen} {unidadInoculo === 'g' ? 'g' : 'mL'}</Text>
+                <View style={styles.pillsRow}>
+                  {[2.5, 5, 7.5].map((pct) => (
+                    <Pressable key={pct} style={[styles.pill, Number(porcentajeInoculo) === pct && styles.pillActive]} onPress={() => actualizarPorcentaje(pct)}>
+                      <Text style={[styles.pillText, Number(porcentajeInoculo) === pct && styles.pillTextActive]}>{pct}%</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <View style={styles.pillsRow}>
+                  {['g', 'mL'].map((unidad) => (
+                    <Pressable key={unidad} style={[styles.pill, unidadInoculo === unidad && styles.pillActive]} onPress={() => setUnidadInoculo(unidad)}>
+                      <Text style={[styles.pillText, unidadInoculo === unidad && styles.pillTextActive]}>{unidad}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
 
               {/* Temperatura */}
