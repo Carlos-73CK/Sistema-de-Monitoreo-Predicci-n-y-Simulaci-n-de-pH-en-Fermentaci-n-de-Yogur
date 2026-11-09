@@ -51,6 +51,75 @@ export const simulationService = {
   },
 
   /**
+   * 4. PREDICCIÓN DE VISCOSIDAD BROOKFIELD FINAL (rotor 4, 60 rpm)
+   */
+  estimarViscosidadBrookfieldFinal: ({ tipoSustrato = 'vaca', temperaturaC = 42, porcentajeInoculo = 7.5 }) => {
+    const temp = Number(temperaturaC) || 42;
+    const pct = Number(porcentajeInoculo) || 7.5;
+    const sustratoNorm = String(tipoSustrato).toLowerCase();
+
+    if (sustratoNorm.includes('almendra')) {
+      let viscosidad = Math.round(95 + 15 * Math.sin(temp * 0.1) + (pct - 2.5) * 4);
+      viscosidad = Math.max(50, Math.min(300, viscosidad));
+      return {
+        viscosidadEstimada: viscosidad,
+        diagnosticoReologico: 'Bebida de almendra (~95 mPa·s): Fluido viscoso / gel débil (50 - 300 mPa·s) por ausencia de micelas de caseína bovina.',
+      };
+    }
+
+    if (sustratoNorm.includes('avena')) {
+      let viscosidad = Math.round(180 + (temp <= 42 ? 25 : -20) + (pct >= 5 ? 20 : 0));
+      viscosidad = Math.max(50, Math.min(300, viscosidad));
+      return {
+        viscosidadEstimada: viscosidad,
+        diagnosticoReologico: 'Bebida de avena (~180 mPa·s): Gel débil / fluido viscoso (50 - 300 mPa·s) estructurado por beta-glucanos.',
+      };
+    }
+
+    if (sustratoNorm.includes('chocho') || sustratoNorm.includes('coco')) {
+      const viscosidad = Math.round(260 + (pct >= 5 ? 40 : -20));
+      return {
+        viscosidadEstimada: viscosidad,
+        diagnosticoReologico: `Gel vegetal suave de ${tipoSustrato} (~${viscosidad} mPa·s).`,
+      };
+    }
+
+    if (temp >= 41.5 && temp <= 42.5 && pct >= 6.0) {
+      return {
+        viscosidadEstimada: 2639,
+        diagnosticoReologico: '⭐ CONDICIÓN ÓPTIMA (42 °C / 7.5%): Máxima firmeza de gel de caseína registrada (~2639 mPa·s).',
+      };
+    }
+
+    if (temp <= 40.5 && pct <= 3.5) {
+      return {
+        viscosidadEstimada: 2579,
+        diagnosticoReologico: 'Gel lácteo firme (~2579 mPa·s): Logrado tras acidificación lenta y prolongada a 40 °C.',
+      };
+    }
+
+    if (temp >= 43.5) {
+      const viscosidad = pct >= 6.0 ? 796.5 : 1185;
+      return {
+        viscosidadEstimada: viscosidad,
+        diagnosticoReologico: `⚠️ Descenso severo de viscosidad (~${viscosidad} mPa·s [796 - 1185 mPa·s]) por desnaturalización y estrés térmico a >43 °C.`,
+      };
+    }
+
+    if (temp <= 40.5 && pct >= 6.0) {
+      return {
+        viscosidadEstimada: 786.6,
+        diagnosticoReologico: '⚠️ Viscosidad reducida (~786.6 mPa·s): A 40 °C con alto inóculo la acidificación rápida debilita la red de caseína.',
+      };
+    }
+
+    return {
+      viscosidadEstimada: 1454,
+      diagnosticoReologico: 'Consistencia estándar de yogur batido (~1454 mPa·s).',
+    };
+  },
+
+  /**
    * Genera la simulación predictiva de pH, tiempo de corte, refracción y viscosidad esperada
    */
   simularAcidificacion: ({
@@ -123,8 +192,8 @@ export const simulationService = {
       const rSac = 1.0 - rGlu;
       // Fracción de glucosa directamente disponible para glucólisis homoláctica (sin retardo hidrolítico)
       // Fracción de sacarosa requiere hidrólisis enzimática invertasa previa
-      modAzucar = Number((rGlu * 0.95 + rSac * 1.02).toFixed(4));
-      factorVmax = Number((1.0 + 0.08 * rGlu).toFixed(4));
+      modAzucar = Number((1.08 - 0.16 * rGlu).toFixed(4));
+      factorVmax = Number((0.97 + 0.13 * rGlu).toFixed(4));
       diagnosticoAzucar = `Mezcla carbohidratos [${(rGlu * 100).toFixed(0)}% Glucosa / ${(rSac * 100).toFixed(0)}% Sacarosa]: Hexosas libres aceleran el arranque glucolítico homoláctico y elevan Vmax.`;
     } else if (azucarNorm === 'glucosa') {
       modAzucar = 0.95;
@@ -170,42 +239,14 @@ export const simulationService = {
       tiempoCorteMinutos = null;
     }
 
-    // 5. PREDICCIÓN DE VISCOSIDAD BROOKFIELD FINAL (rotor 4, 60 rpm)
-    let viscosidadEstimada = 1800;
-    let diagnosticoReologico = 'Viscosidad dentro de los parámetros esperados.';
-
-    if (sustratoNorm.includes('almendra')) {
-      // Bebida de almendra: ~50 - 220 mPa·s
-      viscosidadEstimada = Math.round(95 + 15 * Math.sin(temp * 0.1) + (pct - 2.5) * 4);
-      viscosidadEstimada = Math.max(50, Math.min(220, viscosidadEstimada));
-      diagnosticoReologico = 'Bebida de almendra (~95 mPa·s): Fluido viscoso / gel débil (50 - 220 mPa·s) por ausencia de micelas de caseína bovina.';
-    } else if (sustratoNorm.includes('avena')) {
-      // Bebida de avena: ~100 - 300 mPa·s
-      viscosidadEstimada = Math.round(180 + (temp <= 42 ? 25 : -20) + (pct >= 5 ? 20 : 0));
-      viscosidadEstimada = Math.max(100, Math.min(300, viscosidadEstimada));
-      diagnosticoReologico = 'Bebida de avena (~180 mPa·s): Gel débil / fluido viscoso (100 - 300 mPa·s) estructurado por beta-glucanos.';
-    } else if (sustratoNorm.includes('chocho') || sustratoNorm.includes('coco')) {
-      viscosidadEstimada = Math.round(260 + (pct >= 5 ? 40 : -20));
-      diagnosticoReologico = `Gel vegetal suave de ${tipoSustrato} (~${viscosidadEstimada} mPa·s).`;
-    } else {
-      // Matriz de Leche de Vaca
-      if (temp >= 41.5 && temp <= 42.5 && pct >= 6.0) {
-        viscosidadEstimada = 2639;
-        diagnosticoReologico = '⭐ CONDICIÓN ÓPTIMA (42 °C / 7.5%): Máxima firmeza de gel de caseína registrada (~2639 mPa·s).';
-      } else if (temp <= 40.5 && pct <= 3.5) {
-        viscosidadEstimada = 2579;
-        diagnosticoReologico = 'Gel lácteo firme (~2579 mPa·s): Logrado tras acidificación lenta y prolongada a 40 °C.';
-      } else if (temp >= 43.5) {
-        viscosidadEstimada = pct >= 6.0 ? 796.5 : 1185;
-        diagnosticoReologico = `⚠️ Descenso severo de viscosidad (~${viscosidadEstimada} mPa·s [796 - 1185 mPa·s]) por desnaturalización y estrés térmico a >43 °C.`;
-      } else if (temp <= 40.5 && pct >= 6.0) {
-        viscosidadEstimada = 786.6;
-        diagnosticoReologico = '⚠️ Viscosidad reducida (~786.6 mPa·s): A 40 °C con alto inóculo la acidificación rápida debilita la red de caseína.';
-      } else {
-        viscosidadEstimada = 1454;
-        diagnosticoReologico = 'Consistencia estándar de yogur batido (~1454 mPa·s).';
-      }
-    }
+    const {
+      viscosidadEstimada,
+      diagnosticoReologico,
+    } = simulationService.estimarViscosidadBrookfieldFinal({
+      tipoSustrato,
+      temperaturaC: temp,
+      porcentajeInoculo: pct,
+    });
 
     // 6. Curva de puntos cinéticos proyectados (cada 30 min)
     const puntos = [];
