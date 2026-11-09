@@ -121,12 +121,13 @@ function modelarCineticaCarbohidrato({ tipoAzucar = 'lactosa', ratioGlucosa = 0.
     const rGlu = Math.max(0.0, Math.min(1.0, Number(ratioGlucosa !== undefined ? ratioGlucosa : 0.5)));
     const rSac = 1.0 - rGlu;
 
-    // Glucosa directa acelera latencia (~5% más rápida que lactosa, ~7% más rápida que sacarosa)
-    // Sacarosa tiene retraso por inducción y secreción de invertasa bacteriana
-    const factorT50 = Number((rGlu * 0.95 + rSac * 1.02).toFixed(4));
-    // Cooperatividad / Vmax: mayor proporción de glucosa disponible incrementa la tasa de acidificación
-    const factorVmax = Number((1.0 + 0.08 * rGlu).toFixed(4));
-    const factorTiempoCorte = Number((rGlu * 0.95 + rSac * 1.02).toFixed(4));
+    // Latencia inversa al ratio de glucosa:
+    // más glucosa => arranque glucolítico inmediato; más sacarosa => mayor retraso por hidrólisis invertasa.
+    const factorLatencia = Number((1.08 - 0.16 * rGlu).toFixed(4));
+    // Vmax ponderada por disponibilidad de glucosa libre para glucólisis homoláctica.
+    const factorVmax = Number((0.97 + 0.13 * rGlu).toFixed(4));
+    const factorT50 = factorLatencia;
+    const factorTiempoCorte = factorLatencia;
 
     return {
       tipoAzucar: 'mezcla_sacarosa_glucosa',
@@ -277,7 +278,7 @@ function getParametrosMatriz(tipoSustrato = 'vaca') {
 function estimarViscosidadBrookfield({
   tipoSustrato = 'vaca',
   temperaturaC = 42,
-  porcentajeInoculo = 7.5,
+  porcentajeInoculo,
   masaInoculoG,
   masaSolucionG = 250,
   volumenMl = 250,
@@ -297,14 +298,14 @@ function estimarViscosidadBrookfield({
   if (sustrato.includes('almendra')) {
     // Almendra: carece de micelas de caseína; forma una suspensión coloidal diluida de baja viscosidad
     const viscoAlmendra = Math.round(95 + 15 * Math.sin(temp * 0.1) + (inocPct - 2.5) * 4);
-    const viscoFinal = Math.max(50, Math.min(220, viscoAlmendra));
+    const viscoFinal = Math.max(50, Math.min(300, viscoAlmendra));
     return {
       viscosidadPredichaMpaS: viscoFinal,
       viscosidad_mpas: viscoFinal,
       unidad: 'mPa·s',
       condicionesMedicion: 'rotor 4, 60 rpm',
       calidadGel: 'FLUIDO VISCOSO / GEL MUY DÉBIL',
-      diagnostico: 'Bebida de almendra: No forma gel de coagulación por ausencia de micelas de caseína bovina. Comportamiento de fluido viscoso (~50 - 220 mPa·s).',
+      diagnostico: 'Bebida de almendra: No forma gel de coagulación por ausencia de micelas de caseína bovina. Comportamiento de fluido viscoso (~50 - 300 mPa·s).',
       esMatrizVegetal: true,
     };
   }
@@ -312,14 +313,14 @@ function estimarViscosidadBrookfield({
   if (sustrato.includes('avena')) {
     // Avena: contiene beta-glucanos y almidones solubles que aportan viscosidad fluida moderada
     const viscoAvena = Math.round(180 + (temp <= 42 ? 25 : -20) + (inocPct >= 5 ? 20 : 0));
-    const viscoFinal = Math.max(100, Math.min(300, viscoAvena));
+    const viscoFinal = Math.max(50, Math.min(300, viscoAvena));
     return {
       viscosidadPredichaMpaS: viscoFinal,
       viscosidad_mpas: viscoFinal,
       unidad: 'mPa·s',
       condicionesMedicion: 'rotor 4, 60 rpm',
       calidadGel: 'GEL DÉBIL / FLUIDO VISCOSO',
-      diagnostico: 'Bebida de avena: Coagulación proteica incipiente mediada por beta-glucanos solubles (~100 - 300 mPa·s), sin red tridimensional de caseína.',
+      diagnostico: 'Bebida de avena: Coagulación proteica incipiente mediada por beta-glucanos solubles (~50 - 300 mPa·s), sin red tridimensional de caseína.',
       esMatrizVegetal: true,
     };
   }
