@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import HeaderBar from '../components/common/HeaderBar';
@@ -94,6 +95,21 @@ export default function EnsayosArchivadosScreen({ navigation }) {
   const handleExportar = async (loteId, formato) => {
     try {
       setExportandoId(loteId);
+
+      if (formato === 'pdf') {
+        const urlDescarga = ensayosService.obtenerUrlDescarga(loteId, 'pdf');
+        if (Platform.OS === 'web') {
+          window.open(urlDescarga, '_blank');
+        } else {
+          try {
+            await Linking.openURL(urlDescarga);
+          } catch (linkErr) {
+            Alert.alert('Descarga de Reporte', `Iniciando descarga de reporte PDF para el lote ${loteId}...`);
+          }
+        }
+        return;
+      }
+
       const data = await ensayosService.exportarEnsayo(loteId, formato);
 
       if (formato === 'csv') {
@@ -109,7 +125,12 @@ export default function EnsayosArchivadosScreen({ navigation }) {
           link.click();
           document.body.removeChild(link);
         } else {
-          setTextoExportadoModal({ titulo: `Exportación CSV (${loteId})`, contenido: csvContent });
+          const urlDescarga = ensayosService.obtenerUrlDescarga(loteId, 'csv');
+          try {
+            await Linking.openURL(urlDescarga);
+          } catch (e) {
+            setTextoExportadoModal({ titulo: `Exportación CSV (${loteId})`, contenido: csvContent });
+          }
         }
       } else {
         const jsonContent = JSON.stringify(data, null, 2);
@@ -123,12 +144,17 @@ export default function EnsayosArchivadosScreen({ navigation }) {
           link.click();
           document.body.removeChild(link);
         } else {
-          setTextoExportadoModal({ titulo: `Exportación JSON (${loteId})`, contenido: jsonContent });
+          const urlDescarga = ensayosService.obtenerUrlDescarga(loteId, 'json');
+          try {
+            await Linking.openURL(urlDescarga);
+          } catch (e) {
+            setTextoExportadoModal({ titulo: `Exportación JSON (${loteId})`, contenido: jsonContent });
+          }
         }
       }
     } catch (err) {
       console.error('Error al exportar lote:', err);
-      Alert.alert('Error al exportar', 'No se pudieron descargar los datos del ensayo.');
+      Alert.alert('Error al exportar', 'No se pudieron descargar los datos del ensayo: ' + (err.message || ''));
     } finally {
       setExportandoId(null);
     }
@@ -377,6 +403,16 @@ export default function EnsayosArchivadosScreen({ navigation }) {
                   >
                     <Text style={styles.actionBtnExportText}>
                       {exportandoId === item.lote_id ? '⏳' : '📄 JSON'}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.actionBtnExport, { backgroundColor: '#DC2626' }]}
+                    onPress={() => handleExportar(item.lote_id, 'pdf')}
+                    disabled={exportandoId === item.lote_id}
+                  >
+                    <Text style={[styles.actionBtnExportText, { color: '#FFFFFF', fontWeight: 'bold' }]}>
+                      {exportandoId === item.lote_id ? '⏳' : '📑 PDF'}
                     </Text>
                   </Pressable>
 

@@ -374,22 +374,31 @@ const deleteTrialReading = (req, res, next) => {
 };
 
 /**
- * Exporta las lecturas y datos de un ensayo en formato CSV o JSON
+ * Exporta las lecturas y datos de un ensayo en formato CSV, JSON o PDF (reporte académico)
  */
-const exportTrialData = (req, res, next) => {
+const exportTrialData = async (req, res, next) => {
   try {
     const { loteId } = req.params;
     const formato = String(req.query.formato || 'csv').trim().toLowerCase();
-    const resultado = ensayosService.exportarDatosEnsayo(loteId, formato);
+    const resultado = await ensayosService.exportarDatosEnsayo(loteId, formato);
 
     if (resultado.tipo === 'json') {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${resultado.filename}"`);
       return res.status(200).json({
         success: true,
         data: resultado.data,
       });
     }
 
-    res.setHeader('Content-Type', 'text/csv');
+    if (resultado.tipo === 'pdf') {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${resultado.filename}"`);
+      res.setHeader('Content-Length', resultado.content.length);
+      return res.status(200).send(resultado.content);
+    }
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${resultado.filename}"`);
     return res.status(200).send(resultado.content);
   } catch (error) {

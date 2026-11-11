@@ -1,7 +1,8 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import authService from '../services/authService';
+import { getSavedBaseUrl, setCustomBaseUrl, DEFAULT_HOST_IP } from '../services/api';
 import FooterBar from '../components/common/FooterBar';
 import ScientificIcon from '../components/common/ScientificIcons';
 import theme from '../styles/theme';
@@ -24,6 +26,32 @@ export default function LoginScreen({ navigation }) {
   const [recordarSesion, setRecordarSesion] = useState(true);
   const [cargando, setCargando] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Estado para modal de configuración de IP del servidor
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [serverUrlInput, setServerUrlInput] = useState('');
+  const [currentServerUrl, setCurrentServerUrl] = useState('');
+  const [serverStatusMsg, setServerStatusMsg] = useState('');
+
+  useEffect(() => {
+    const loadUrl = async () => {
+      const url = await getSavedBaseUrl();
+      setCurrentServerUrl(url);
+      setServerUrlInput(url);
+    };
+    loadUrl();
+  }, []);
+
+  const handleSaveServerUrl = async (urlToSave) => {
+    const saved = await setCustomBaseUrl(urlToSave);
+    setCurrentServerUrl(saved);
+    setServerUrlInput(saved);
+    setServerStatusMsg('✓ Servidor actualizado correctamente.');
+    setTimeout(() => {
+      setShowServerModal(false);
+      setServerStatusMsg('');
+    }, 800);
+  };
 
   const quickFillAndLogin = (userId, userPassword) => {
     setIdentificador(userId);
@@ -102,6 +130,20 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.subtitle}>
               Modelado Biofísico No Lineal (Hill) y Monitoreo de Fermentación Láctea con Inóculo Chivería.
             </Text>
+
+            {/* Pastilla de Conexión y Estado del Servidor */}
+            <Pressable
+              style={styles.serverBadgeRow}
+              onPress={() => setShowServerModal(true)}
+            >
+              <View style={styles.serverBadgeLeft}>
+                <View style={styles.onlineDot} />
+                <Text style={styles.serverBadgeText}>
+                  Servidor: {currentServerUrl ? currentServerUrl.replace('/api', '') : '192.168.0.109:5000'}
+                </Text>
+              </View>
+              <Text style={styles.serverBadgeAction}>[⚙️ Cambiar IP]</Text>
+            </Pressable>
           </View>
 
           {/* Tarjeta de Cuentas Rápidas de Laboratorio */}
@@ -240,6 +282,73 @@ export default function LoginScreen({ navigation }) {
         {/* Footer a ancho completo */}
         <FooterBar />
       </ScrollView>
+
+      {/* Modal de Configuración del Servidor Backend */}
+      <Modal
+        visible={showServerModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowServerModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <ScientificIcon name="spark" size={18} color="#0284C7" style={{ marginRight: 8 }} />
+              <Text style={styles.modalTitle}>Configurar Servidor Backend</Text>
+            </View>
+
+            <Text style={styles.modalDesc}>
+              Si pruebas en un teléfono físico en la misma red Wi-Fi, la IP recomendada es tu PC (192.168.0.109:5000). También puedes operar en modo autónomo local sin servidor activo.
+            </Text>
+
+            {serverStatusMsg ? (
+              <View style={styles.serverStatusBox}>
+                <Text style={styles.serverStatusText}>{serverStatusMsg}</Text>
+              </View>
+            ) : null}
+
+            <Text style={styles.inputLabelModal}>URL del Backend (/api):</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={serverUrlInput}
+              onChangeText={setServerUrlInput}
+              placeholder="http://192.168.0.109:5000/api"
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="none"
+            />
+
+            <View style={styles.quickIpRow}>
+              <Pressable
+                style={styles.quickIpBtn}
+                onPress={() => setServerUrlInput(`http://${DEFAULT_HOST_IP}:5000/api`)}
+              >
+                <Text style={styles.quickIpText}>Wi-Fi ({DEFAULT_HOST_IP})</Text>
+              </Pressable>
+              <Pressable
+                style={styles.quickIpBtn}
+                onPress={() => setServerUrlInput('http://10.0.2.2:5000/api')}
+              >
+                <Text style={styles.quickIpText}>Emulador (10.0.2.2)</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.modalActionsRow}>
+              <Pressable
+                style={styles.modalCancelBtn}
+                onPress={() => setShowServerModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Cerrar</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalSaveBtn}
+                onPress={() => handleSaveServerUrl(serverUrlInput)}
+              >
+                <Text style={styles.modalSaveText}>Guardar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -505,5 +614,147 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: '800',
     textDecorationLine: 'underline',
+  },
+  serverBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginTop: 10,
+  },
+  serverBadgeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  onlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10B981',
+    marginRight: 6,
+  },
+  serverBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0369A1',
+  },
+  serverBadgeAction: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 420,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  modalDesc: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  serverStatusBox: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    padding: 8,
+    borderRadius: 6,
+    marginBottom: 10,
+  },
+  serverStatusText: {
+    fontSize: 12,
+    color: '#065F46',
+    fontWeight: '600',
+  },
+  inputLabelModal: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 4,
+  },
+  modalInput: {
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    color: '#0F172A',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 10,
+  },
+  quickIpRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  quickIpBtn: {
+    flex: 1,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 6,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  quickIpText: {
+    fontSize: 11,
+    color: '#1D4ED8',
+    fontWeight: '600',
+  },
+  modalActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalCancelBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  modalCancelText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  modalSaveBtn: {
+    backgroundColor: '#0284C7',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  modalSaveText: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });

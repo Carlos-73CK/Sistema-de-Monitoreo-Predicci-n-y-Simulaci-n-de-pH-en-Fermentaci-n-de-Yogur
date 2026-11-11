@@ -25,6 +25,7 @@ const {
   recalibrarTrayectoriaDinamica,
 } = require('../ai/fermentationPredictor');
 const { validarParametrosSimulacion } = require('../validators/fermentationValidator');
+const { generarReportePDF } = require('./pdfReport.service');
 
 /**
  * Obtiene el listado de ensayos con soporte para filtrado por correo de usuario
@@ -306,11 +307,11 @@ function eliminarEnsayo(loteId) {
 }
 
 /**
- * Genera el contenido para exportación en CSV o JSON
+ * Genera el contenido para exportación en CSV, JSON o PDF (reporte científico oficial ULEAM)
  * @param {string} loteId
  * @param {string} formato
  */
-function exportarDatosEnsayo(loteId, formato = 'csv') {
+async function exportarDatosEnsayo(loteId, formato = 'csv') {
   const trial = obtenerEnsayoLaboratorio(loteId);
   if (!trial) {
     const error = new Error(`El ensayo con lote '${loteId}' no existe.`);
@@ -323,12 +324,22 @@ function exportarDatosEnsayo(loteId, formato = 'csv') {
   if (formatoNorm === 'json') {
     return {
       tipo: 'json',
+      filename: `${loteId}_ensayo.json`,
       data: trial,
     };
   }
 
+  if (formatoNorm === 'pdf') {
+    const pdfBuffer = await generarReportePDF(trial);
+    return {
+      tipo: 'pdf',
+      filename: `informe_cinetico_${loteId}.pdf`,
+      content: pdfBuffer,
+    };
+  }
+
   if (formatoNorm !== 'csv') {
-    const error = new Error("Formato no soportado. Los formatos permitidos son 'csv' y 'json'.");
+    const error = new Error("Formato no soportado. Los formatos permitidos son 'csv', 'json' y 'pdf'.");
     error.statusCode = 400;
     error.errorCode = 'INVALID_FORMAT';
     throw error;

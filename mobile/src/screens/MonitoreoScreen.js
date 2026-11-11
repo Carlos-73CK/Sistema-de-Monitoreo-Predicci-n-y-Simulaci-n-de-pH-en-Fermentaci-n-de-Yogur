@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Linking,
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import HeaderBar from '../components/common/HeaderBar';
@@ -261,6 +262,20 @@ export default function MonitoreoScreen({ route, navigation }) {
 
   const handleExportar = async (formato) => {
     try {
+      if (formato === 'pdf') {
+        const urlDescarga = ensayosService.obtenerUrlDescarga(loteId, 'pdf');
+        if (Platform.OS === 'web') {
+          window.open(urlDescarga, '_blank');
+        } else {
+          try {
+            await Linking.openURL(urlDescarga);
+          } catch (e) {
+            Alert.alert('Descarga PDF', `Iniciando descarga de reporte para ${loteId}`);
+          }
+        }
+        return;
+      }
+
       const data = await ensayosService.exportarEnsayo(loteId, formato);
       if (Platform.OS === 'web') {
         const mime = formato === 'csv' ? 'text/csv;charset=utf-8;' : 'application/json';
@@ -274,10 +289,15 @@ export default function MonitoreoScreen({ route, navigation }) {
         a.click();
         document.body.removeChild(a);
       } else {
-        Alert.alert(`Exportación ${formato.toUpperCase()}`, `Datos de ${loteId} preparados exitosamente.`);
+        const urlDescarga = ensayosService.obtenerUrlDescarga(loteId, formato);
+        try {
+          await Linking.openURL(urlDescarga);
+        } catch (e) {
+          Alert.alert(`Exportación ${formato.toUpperCase()}`, `Datos de ${loteId} preparados exitosamente.`);
+        }
       }
     } catch (err) {
-      Alert.alert('Error de exportación', 'No se pudo exportar el ensayo.');
+      Alert.alert('Error de exportación', 'No se pudo exportar el ensayo: ' + (err.message || ''));
     }
   };
 
@@ -317,6 +337,10 @@ export default function MonitoreoScreen({ route, navigation }) {
             <Text style={styles.loteTitle}>{ensayoInfo.lote_id}</Text>
           </View>
           <View style={styles.exportBadges}>
+            <Pressable style={[styles.exportPill, { backgroundColor: '#DC2626' }]} onPress={() => handleExportar('pdf')}>
+              <ScientificIcon name="document" size={12} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <Text style={[styles.exportPillText, { color: '#FFFFFF', fontWeight: 'bold' }]}>PDF</Text>
+            </Pressable>
             <Pressable style={styles.exportPill} onPress={() => handleExportar('csv')}>
               <ScientificIcon name="download" size={12} color="#0369A1" style={{ marginRight: 4 }} />
               <Text style={styles.exportPillText}>CSV</Text>

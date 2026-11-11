@@ -13,6 +13,7 @@ import {
 import authService from '../services/authService';
 import FooterBar from '../components/common/FooterBar';
 import ScientificIcon from '../components/common/ScientificIcons';
+import PasswordStrengthBar from '../components/common/PasswordStrengthBar';
 import theme from '../styles/theme';
 
 export default function RecuperarPasswordScreen({ navigation }) {
@@ -250,6 +251,7 @@ export default function RecuperarPasswordScreen({ navigation }) {
                       setErrorMsg('');
                     }}
                   />
+                  <PasswordStrengthBar password={password} />
                 </View>
 
                 <View style={styles.inputGroup}>

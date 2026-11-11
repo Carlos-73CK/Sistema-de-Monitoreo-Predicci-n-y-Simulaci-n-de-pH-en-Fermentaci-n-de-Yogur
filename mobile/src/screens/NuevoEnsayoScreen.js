@@ -63,8 +63,8 @@ export default function NuevoEnsayoScreen({ navigation }) {
       setErrorValidacion('Por favor ingrese un nombre o código de lote.');
       return;
     }
-    if (isNaN(masaNum) || masaNum < 0.5 || masaNum > 50) {
-      setErrorValidacion('La masa de inóculo debe estar entre 0.5 g y 50 g.');
+    if (isNaN(masaNum) || masaNum < 0.5 || masaNum > 100) {
+      setErrorValidacion('La masa de inóculo debe estar entre 0.5 g y 100 g.');
       return;
     }
     if (isNaN(tempNum) || tempNum < 20 || tempNum > 52) {
@@ -73,6 +73,12 @@ export default function NuevoEnsayoScreen({ navigation }) {
     }
     if (isNaN(volNum) || volNum < 50 || volNum > 2000) {
       setErrorValidacion('El volumen debe estar entre 50 mL y 2000 mL.');
+      return;
+    }
+
+    const pctCalculado = (masaNum / volNum) * 100;
+    if (pctCalculado > 15.0) {
+      setErrorValidacion(`El porcentaje de inóculo resultante (${pctCalculado.toFixed(1)}%) supera el límite biológico del 15%. Reduzca la masa de inóculo o incremente el volumen.`);
       return;
     }
 
@@ -93,18 +99,27 @@ export default function NuevoEnsayoScreen({ navigation }) {
         volumen_ml: volNum,
       });
 
+      const trial = nuevoEnsayo?.trial || nuevoEnsayo?.data?.trial || nuevoEnsayo;
+      const trialId = trial.id || Date.now();
+      const loteCod = trial.lote_id || nombreLote.trim();
+
       Alert.alert(
-        '✅ Ensayo Iniciado',
-        `Lote "${nombreLote.trim()}" registrado en SQLite bajo el perfil de ${user?.nombre || 'tu cuenta'}. Pasando a monitoreo en vivo...`,
+        '✅ Ensayo Registrado en SQLite',
+        `Lote "${loteCod}" registrado exitosamente bajo el perfil de ${user?.nombre || 'tu cuenta'}. ¿Deseas pasar a la pantalla de monitoreo en vivo?`,
         [
+          {
+            text: 'Ir a Ensayos Archivados',
+            onPress: () => navigation.navigate('EnsayosArchivados'),
+            style: 'cancel',
+          },
           {
             text: 'Comenzar Monitoreo',
             onPress: () =>
               navigation.navigate('Monitoreo', {
                 ensayo: {
-                  id: nuevoEnsayo.id,
-                  codigo: nombreLote.trim(),
-                  loteId: nombreLote.trim(),
+                  id: trialId,
+                  codigo: loteCod,
+                  loteId: loteCod,
                   tipoSustrato: sustrato,
                   tipoAzucar: tipoAzucar,
                   masaInoculoG: masaNum,
@@ -118,7 +133,11 @@ export default function NuevoEnsayoScreen({ navigation }) {
       );
     } catch (err) {
       console.error('Error al crear ensayo:', err);
-      Alert.alert('Error', 'No fue posible crear el ensayo en la base de datos local SQLite.');
+      const serverMsg = err.response?.data?.message || err.message;
+      Alert.alert(
+        'Error al Registrar Ensayo',
+        `No fue posible registrar el lote en SQLite: ${serverMsg}`
+      );
     } finally {
       setCargando(false);
     }

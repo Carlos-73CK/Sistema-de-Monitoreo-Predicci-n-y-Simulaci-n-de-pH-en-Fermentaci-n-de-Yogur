@@ -51,6 +51,10 @@ router.post('/recalibrate', recalibrateDynamicTrajectory);
 router.get('/trials', listTrials);
 router.post('/trials', createTrial);
 router.get('/trials/:loteId/export', exportTrialData);
+router.get('/trials/:loteId/report.pdf', (req, res, next) => {
+  req.query.formato = 'pdf';
+  return exportTrialData(req, res, next);
+});
 router.get('/trials/:loteId', getTrial);
 router.post('/trials/:loteId/readings', addTrialReading);
 router.delete('/trials/:loteId/readings/:min', deleteTrialReading);

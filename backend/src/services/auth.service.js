@@ -138,8 +138,8 @@ async function registrarUsuario(datos = {}) {
     errores.push('Los nombres son obligatorios (mínimo 2 letras) y deben contener caracteres válidos.');
   }
 
-  // 2. Validar Apellidos (si se envían, o requeridos si formulario completo)
-  if (apellidos !== undefined && !esNombreValido(rawApellidos)) {
+  // 2. Validar Apellidos (si se envían y no están vacíos)
+  if (rawApellidos && !esNombreValido(rawApellidos)) {
     errores.push('Los apellidos deben contener al menos 2 caracteres alfabéticos válidos.');
   }
 

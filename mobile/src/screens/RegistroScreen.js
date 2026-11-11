@@ -14,6 +14,7 @@ import { AuthContext } from '../context/AuthContext';
 import authService from '../services/authService';
 import FooterBar from '../components/common/FooterBar';
 import ScientificIcon from '../components/common/ScientificIcons';
+import PasswordStrengthBar from '../components/common/PasswordStrengthBar';
 import theme from '../styles/theme';
 
 export default function RegistroScreen({ navigation }) {
@@ -279,6 +280,9 @@ export default function RegistroScreen({ navigation }) {
                 setErrorMsg('');
               }}
             />
+
+            {/* Barra de Aceptación y Seguridad de Contraseña */}
+            <PasswordStrengthBar password={password} />
           </View>
 
           {/* Confirmar contraseña */}

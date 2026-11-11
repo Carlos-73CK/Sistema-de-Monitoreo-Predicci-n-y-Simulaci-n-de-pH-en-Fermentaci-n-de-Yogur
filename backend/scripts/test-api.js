@@ -393,6 +393,21 @@ async function runTests() {
       assert.ok(Array.isArray(body.data.lecturas), 'El ensayo en JSON debe contener el array de lecturas');
     });
 
+    // --- TEST 7.1: GET /api/ai/trials/:loteId/export?formato=pdf y /report.pdf ---
+    await testCase('GET /api/ai/trials/:loteId/export?formato=pdf genera informe PDF con márgenes y layout ULEAM', async () => {
+      const res = await fetch(`${baseUrl}/api/ai/trials/${encodeURIComponent(loteParaExportar)}/export?formato=pdf`);
+      assert.strictEqual(res.status, 200, `Se esperaba HTTP 200 pero se recibió ${res.status}`);
+      const contentType = res.headers.get('content-type') || '';
+      assert.ok(contentType.includes('application/pdf'), `Content-Type debe ser 'application/pdf' (obtenido: ${contentType})`);
+      const contentDisposition = res.headers.get('content-disposition') || '';
+      assert.ok(contentDisposition.includes(`informe_cinetico_${loteParaExportar}.pdf`), 'El header Content-Disposition debe indicar el PDF');
+      const arrayBuf = await res.arrayBuffer();
+      assert.ok(arrayBuf.byteLength > 1000, `El PDF debe tener un tamaño válido (>1000 bytes, obtenido: ${arrayBuf.byteLength})`);
+      // Verificar firma mágica de PDF (%PDF-)
+      const pdfHeader = Buffer.from(arrayBuf.slice(0, 5)).toString();
+      assert.strictEqual(pdfHeader, '%PDF-', 'El archivo debe comenzar con el encabezado estándar %PDF-');
+    });
+
 
     // --- TEST 9: Inóculo porcentual y masa dinámica ---
     await testCase('POST /api/ai/simulate con porcentaje_inoculo: 5.0 calcula masaInoculoG dinámicamente', async () => {
