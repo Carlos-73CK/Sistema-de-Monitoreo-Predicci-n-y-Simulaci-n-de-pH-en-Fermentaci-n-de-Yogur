@@ -22,8 +22,8 @@ android {
         applicationId "com.prediyogur.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 3
+        versionName "1.2.0"
     }
     signingConfigs {
         debug {
@@ -47,10 +47,17 @@ android {
         checkReleaseBuilds false
         abortOnError false
     }
+    aaptOptions {
+        noCompress 'bundle'
+    }
+    androidResources {
+        noCompress 'bundle'
+    }
 }
 
 dependencies {
     implementation("com.facebook.react:react-android")
+    implementation("com.facebook.react:hermes-android")
 }
 
 configurations.all {

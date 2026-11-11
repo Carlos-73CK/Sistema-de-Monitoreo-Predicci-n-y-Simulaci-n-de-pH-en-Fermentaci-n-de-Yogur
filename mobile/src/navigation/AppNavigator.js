@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegistroScreen from '../screens/RegistroScreen';
+import RecuperarPasswordScreen from '../screens/RecuperarPasswordScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import NuevoEnsayoScreen from '../screens/NuevoEnsayoScreen';
 import MonitoreoScreen from '../screens/MonitoreoScreen';
@@ -33,55 +34,67 @@ export default function AppNavigator() {
   return (
     <View style={styles.appContainer}>
       <Stack.Navigator
-        initialRouteName="Dashboard"
         screenOptions={{
           headerShown: false,
         }}
       >
-        <Stack.Screen
-          name="Dashboard"
-          component={DashboardScreen}
-        />
-        <Stack.Screen
-          name="Simulacion"
-          component={SimulacionScreen}
-        />
-        <Stack.Screen
-          name="Monitoreo"
-          component={MonitoreoScreen}
-        />
-        <Stack.Screen
-          name="NuevoEnsayo"
-          component={NuevoEnsayoScreen}
-        />
-        <Stack.Screen
-          name="EnsayosArchivados"
-          component={EnsayosArchivadosScreen}
-        />
-        <Stack.Screen
-          name="Bioquimica"
-          component={BioquimicaScreen}
-        />
-        <Stack.Screen
-          name="DemostradorVivo"
-          component={DemostradorVivoScreen}
-        />
-        <Stack.Screen
-          name="FeedbackLoop"
-          component={FeedbackLoopScreen}
-        />
-        <Stack.Screen
-          name="MetricasModelo"
-          component={MetricasModeloScreen}
-        />
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-        />
-        <Stack.Screen
-          name="Registro"
-          component={RegistroScreen}
-        />
+        {!userToken ? (
+          // Rutas de autenticación (públicas)
+          <>
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+            />
+            <Stack.Screen
+              name="Registro"
+              component={RegistroScreen}
+            />
+            <Stack.Screen
+              name="RecuperarPassword"
+              component={RecuperarPasswordScreen}
+            />
+          </>
+        ) : (
+          // Rutas protegidas (usuario autenticado)
+          <>
+            <Stack.Screen
+              name="Dashboard"
+              component={DashboardScreen}
+            />
+            <Stack.Screen
+              name="Simulacion"
+              component={SimulacionScreen}
+            />
+            <Stack.Screen
+              name="Monitoreo"
+              component={MonitoreoScreen}
+            />
+            <Stack.Screen
+              name="NuevoEnsayo"
+              component={NuevoEnsayoScreen}
+            />
+            <Stack.Screen
+              name="EnsayosArchivados"
+              component={EnsayosArchivadosScreen}
+            />
+            <Stack.Screen
+              name="Bioquimica"
+              component={BioquimicaScreen}
+            />
+            <Stack.Screen
+              name="DemostradorVivo"
+              component={DemostradorVivoScreen}
+            />
+            <Stack.Screen
+              name="FeedbackLoop"
+              component={FeedbackLoopScreen}
+            />
+            <Stack.Screen
+              name="MetricasModelo"
+              component={MetricasModeloScreen}
+            />
+          </>
+        )}
       </Stack.Navigator>
 
       {/* Modal Universal de Autenticación / Cambio de Usuario */}

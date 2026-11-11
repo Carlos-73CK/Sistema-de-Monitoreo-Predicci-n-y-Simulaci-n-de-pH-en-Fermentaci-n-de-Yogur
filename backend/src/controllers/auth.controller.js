@@ -46,14 +46,79 @@ const register = async (req, res, next) => {
  */
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body || {};
-    const resultado = await authService.autenticarUsuario({ email, password });
+    const { email, username, identificador, password } = req.body || {};
+    const resultado = await authService.autenticarUsuario({
+      identificador: identificador || email || username,
+      password,
+    });
     return res.status(200).json({
       success: true,
       data: {
         token: resultado.token,
         user: resultado.user,
       },
+      message: resultado.message,
+      error: null,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        data: null,
+        message: error.message,
+        error: error.errorCode || 'ERROR',
+      });
+    }
+    return next(error);
+  }
+};
+
+/**
+ * Solicita enlace o token de recuperación de contraseña
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email, identificador } = req.body || {};
+    const resultado = await authService.solicitarRecuperacionPassword(email || identificador);
+    return res.status(200).json({
+      success: true,
+      data: {
+        dev_token: resultado.dev_token || null,
+      },
+      message: resultado.message,
+      error: null,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        data: null,
+        message: error.message,
+        error: error.errorCode || 'ERROR',
+      });
+    }
+    return next(error);
+  }
+};
+
+/**
+ * Restablece la contraseña mediante token temporal
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ */
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token, password, confirmPassword } = req.body || {};
+    const resultado = await authService.restablecerPasswordConToken({
+      token,
+      password,
+      confirmPassword,
+    });
+    return res.status(200).json({
+      success: true,
+      data: null,
       message: resultado.message,
       error: null,
     });
@@ -118,6 +183,8 @@ const getUsuariosDisponibles = (_req, res, next) => {
 module.exports = {
   register,
   login,
+  forgotPassword,
+  resetPassword,
   getPerfil,
   getUsuariosDisponibles,
 };

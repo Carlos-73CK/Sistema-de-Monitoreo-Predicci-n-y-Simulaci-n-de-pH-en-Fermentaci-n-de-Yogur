@@ -76,6 +76,7 @@ async function runTests() {
     });
 
     // --- TEST 2: POST /api/v1/auth/login ---
+    const timestampTest = Date.now();
     let authToken = null;
     await testCase('POST /api/v1/auth/login con credenciales válidas retorna JWT', async () => {
       const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
@@ -94,6 +95,21 @@ async function runTests() {
       authToken = body.data.token;
     });
 
+    await testCase('POST /api/v1/auth/login con nombre de usuario (identificador) retorna 200', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identificador: 'carlos.delgado',
+          password: 'carlos2026',
+        }),
+      });
+      assert.strictEqual(res.status, 200, `Se esperaba HTTP 200 pero se recibió ${res.status}`);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      assert.ok(body.data.token);
+    });
+
     await testCase('POST /api/v1/auth/login con contraseña errónea retorna 401', async () => {
       const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
         method: 'POST',
@@ -106,6 +122,166 @@ async function runTests() {
       assert.strictEqual(res.status, 401, `Se esperaba HTTP 401 pero se recibió ${res.status}`);
       const body = await res.json();
       assert.strictEqual(body.success, false, 'Se esperaba success: false');
+    });
+
+    await testCase('POST /api/v1/auth/login bloquea cuenta temporalmente tras 5 intentos fallidos (OWASP)', async () => {
+      const targetUser = `bruteforce.${timestampTest}`;
+      // Registrar usuario específico para prueba de fuerza bruta
+      await fetch(`${baseUrl}/api/v1/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombres: 'Prueba',
+          apellidos: 'Fuerza Bruta',
+          username: targetUser,
+          email: `${targetUser}@uleam.edu.ec`,
+          password: 'PasswordSegura2026.Uleam',
+          confirmPassword: 'PasswordSegura2026.Uleam',
+          aceptaTerminos: true,
+        }),
+      });
+
+      // 4 intentos fallidos deben retornar 401
+      for (let i = 0; i < 4; i++) {
+        const failRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identificador: targetUser,
+            password: 'clave_incorrecta_123',
+          }),
+        });
+        assert.strictEqual(failRes.status, 401);
+      }
+
+      // El 5to intento fallido debe disparar el bloqueo (HTTP 429)
+      const lockRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identificador: targetUser,
+          password: 'clave_incorrecta_123',
+        }),
+      });
+      assert.strictEqual(lockRes.status, 429, `Se esperaba HTTP 429 de bloqueo pero se recibió ${lockRes.status}`);
+      const lockBody = await lockRes.json();
+      assert.strictEqual(lockBody.success, false);
+      assert.ok(lockBody.message.includes('bloqueada temporalmente'));
+    });
+
+    // --- TEST 2.1: Registro de Usuarios y Validaciones de Seguridad (LOPDP / OWASP) ---
+    const testNewUserEmail = `investigador.${timestampTest}@uleam.edu.ec`;
+    const testNewUsername = `inv.${timestampTest}`;
+
+    await testCase('POST /api/v1/auth/register rechaza contraseñas menores a 12 caracteres', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombres: 'María Elena',
+          apellidos: 'Vera Saltos',
+          username: `shortpass.${timestampTest}`,
+          email: `shortpass.${timestampTest}@uleam.edu.ec`,
+          password: 'corta',
+          confirmPassword: 'corta',
+          aceptaTerminos: true,
+        }),
+      });
+      assert.strictEqual(res.status, 400);
+      const body = await res.json();
+      assert.strictEqual(body.success, false);
+      assert.ok(body.message.includes('12 caracteres'));
+    });
+
+    await testCase('POST /api/v1/auth/register rechaza contraseñas comunes (OWASP)', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombres: 'María Elena',
+          apellidos: 'Vera Saltos',
+          username: `common.${timestampTest}`,
+          email: `common.${timestampTest}@uleam.edu.ec`,
+          password: '123456789012',
+          confirmPassword: '123456789012',
+          aceptaTerminos: true,
+        }),
+      });
+      assert.strictEqual(res.status, 400);
+      const body = await res.json();
+      assert.strictEqual(body.success, false);
+      assert.ok(body.message.includes('común') || body.message.includes('insegura'));
+    });
+
+    await testCase('POST /api/v1/auth/register crea nuevo usuario con datos completos y términos aceptados', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombres: 'María Elena',
+          apellidos: 'Vera Saltos',
+          username: testNewUsername,
+          email: testNewUserEmail,
+          password: 'PasswordSegura2026.Uleam',
+          confirmPassword: 'PasswordSegura2026.Uleam',
+          rol: 'investigador',
+          aceptaTerminos: true,
+        }),
+      });
+      assert.strictEqual(res.status, 201, `Se esperaba 201 Created pero se obtuvo ${res.status}`);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      assert.ok(body.data.token);
+      assert.strictEqual(body.data.user.email, testNewUserEmail);
+      assert.strictEqual(body.data.user.username, testNewUsername);
+    });
+
+    // --- TEST 2.2: Recuperación de Contraseña (/forgot-password y /reset-password) ---
+    let recoveryToken = null;
+    await testCase('POST /api/v1/auth/forgot-password genera token temporal de recuperación', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: testNewUserEmail,
+        }),
+      });
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      assert.ok(body.data && body.data.dev_token);
+      recoveryToken = body.data.dev_token;
+    });
+
+    await testCase('POST /api/v1/auth/reset-password restablece la contraseña usando el token', async () => {
+      assert.ok(recoveryToken, 'Token de recuperación requerido');
+      const res = await fetch(`${baseUrl}/api/v1/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: recoveryToken,
+          password: 'NuevaPasswordSegura2026#',
+          confirmPassword: 'NuevaPasswordSegura2026#',
+        }),
+      });
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+    });
+
+    await testCase('POST /api/v1/auth/login permite ingresar con la nueva contraseña restablecida', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identificador: testNewUsername,
+          password: 'NuevaPasswordSegura2026#',
+        }),
+      });
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      assert.ok(body.data.token);
     });
 
     // --- TEST 3: POST /api/ai/simulate ---

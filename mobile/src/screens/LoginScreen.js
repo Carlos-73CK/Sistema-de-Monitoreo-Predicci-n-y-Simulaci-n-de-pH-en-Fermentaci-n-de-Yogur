@@ -17,26 +17,27 @@ import ScientificIcon from '../components/common/ScientificIcons';
 import theme from '../styles/theme';
 
 export default function LoginScreen({ navigation }) {
-  const { login } = useContext(AuthContext);
-  const [email, setEmail] = useState('');
+  const { login, userToken } = useContext(AuthContext);
+  const [identificador, setIdentificador] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [recordarSesion, setRecordarSesion] = useState(true);
   const [cargando, setCargando] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const quickFillAndLogin = (userEmail, userPassword) => {
-    setEmail(userEmail);
+  const quickFillAndLogin = (userId, userPassword) => {
+    setIdentificador(userId);
     setPassword(userPassword);
     setErrorMsg('');
-    doLogin(userEmail, userPassword);
+    doLogin(userId, userPassword);
   };
 
-  const doLogin = async (overrideEmail, overridePassword) => {
-    const emailToUse = (overrideEmail !== undefined ? overrideEmail : email).trim();
+  const doLogin = async (overrideId, overridePassword) => {
+    const idToUse = (overrideId !== undefined ? overrideId : identificador).trim();
     const passToUse = overridePassword !== undefined ? overridePassword : password;
 
-    if (!emailToUse || !passToUse) {
-      setErrorMsg('⚠️ Ingrese su correo institucional y contraseña.');
+    if (!idToUse || !passToUse) {
+      setErrorMsg('⚠️ Ingrese su correo institucional (o nombre de usuario) y contraseña.');
       return;
     }
 
@@ -44,9 +45,9 @@ export default function LoginScreen({ navigation }) {
       setCargando(true);
       setErrorMsg('');
 
-      const res = await authService.login(emailToUse, passToUse);
+      const res = await authService.login(idToUse, passToUse);
       if (res && res.data) {
-        await login(res.data.token, res.data.user);
+        await login(res.data.token, res.data.user, recordarSesion);
       } else {
         setErrorMsg('⚠️ ' + (res?.message || 'Error al iniciar sesión.'));
       }
@@ -56,8 +57,7 @@ export default function LoginScreen({ navigation }) {
       if (serverMsg) {
         setErrorMsg('⚠️ ' + serverMsg);
       } else {
-        // Fallback defensivo para desarrollo offline
-        setErrorMsg('⚠️ No se pudo conectar con el servidor backend. Verifique que el servicio esté activo.');
+        setErrorMsg('⚠️ No se pudo conectar con el servidor backend. Verifique su conexión de red.');
       }
     } finally {
       setCargando(false);
@@ -74,16 +74,18 @@ export default function LoginScreen({ navigation }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Barra Superior con Retorno al Panel Principal */}
-        <View style={styles.topNavRow}>
-          <Pressable
-            style={styles.backHomeBtn}
-            onPress={() => navigation.navigate('Dashboard')}
-          >
-            <ScientificIcon name="home" size={14} color="#1D4ED8" style={{ marginRight: 6 }} />
-            <Text style={styles.backHomeText}>Volver al Panel Principal</Text>
-          </Pressable>
-        </View>
+        {/* Barra Superior con Retorno al Panel Principal (solo si ya tiene sesión activa) */}
+        {userToken ? (
+          <View style={styles.topNavRow}>
+            <Pressable
+              style={styles.backHomeBtn}
+              onPress={() => navigation.navigate('Dashboard')}
+            >
+              <ScientificIcon name="home" size={14} color="#1D4ED8" style={{ marginRight: 6 }} />
+              <Text style={styles.backHomeText}>Volver al Panel Principal</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.formWrapper}>
           {/* Header Institucional */}
@@ -157,16 +159,15 @@ export default function LoginScreen({ navigation }) {
             ) : null}
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Correo institucional</Text>
+              <Text style={styles.label}>Correo institucional o Nombre de usuario</Text>
               <TextInput
                 style={styles.input}
-                placeholder="usuario@uleam.edu.ec"
+                placeholder="usuario@uleam.edu.ec o carlos.delgado"
                 placeholderTextColor={theme.colors.textMuted}
-                keyboardType="email-address"
                 autoCapitalize="none"
-                value={email}
+                value={identificador}
                 onChangeText={(t) => {
-                  setEmail(t);
+                  setIdentificador(t);
                   setErrorMsg('');
                 }}
               />
@@ -181,7 +182,7 @@ export default function LoginScreen({ navigation }) {
               </View>
               <TextInput
                 style={styles.input}
-                placeholder="••••••••"
+                placeholder="••••••••••••"
                 placeholderTextColor={theme.colors.textMuted}
                 secureTextEntry={!showPassword}
                 value={password}
@@ -190,6 +191,25 @@ export default function LoginScreen({ navigation }) {
                   setErrorMsg('');
                 }}
               />
+            </View>
+
+            {/* Opciones de Recordar Sesión y Recuperación de Contraseña */}
+            <View style={styles.optionsRow}>
+              <Pressable
+                style={styles.rememberRow}
+                onPress={() => setRecordarSesion(!recordarSesion)}
+              >
+                <View style={[styles.checkbox, recordarSesion && styles.checkboxActive]}>
+                  {recordarSesion ? (
+                    <ScientificIcon name="check" size={12} color="#FFFFFF" />
+                  ) : null}
+                </View>
+                <Text style={styles.rememberText}>Recordar sesión</Text>
+              </Pressable>
+
+              <Pressable onPress={() => navigation.navigate('RecuperarPassword')}>
+                <Text style={styles.forgotPassLink}>¿Olvidaste tu contraseña?</Text>
+              </Pressable>
             </View>
 
             <Pressable
@@ -225,6 +245,42 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+    marginTop: 2,
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#94A3B8',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  checkboxActive: {
+    backgroundColor: '#0284C7',
+    borderColor: '#0284C7',
+  },
+  rememberText: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  forgotPassLink: {
+    fontSize: 13,
+    color: '#0284C7',
+    fontWeight: '600',
+  },
   screen: {
     flex: 1,
     width: '100%',

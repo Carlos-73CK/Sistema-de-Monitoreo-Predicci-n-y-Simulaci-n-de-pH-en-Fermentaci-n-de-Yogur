@@ -141,7 +141,7 @@ export default function BioquimicaScreen({ navigation }) {
           <Text style={styles.cardTitle}>Las 3 Etapas Bioquímicas de la Fermentación</Text>
         </View>
         <Text style={styles.cardSubtitle}>
-          Metabolismo de bacterias de Chivería (<em>Lactobacillus bulgaricus</em> y <em>Streptococcus thermophilus</em>):
+          Metabolismo de bacterias de Chivería (<Text style={{ fontStyle: 'italic' }}>Lactobacillus bulgaricus</Text> y <Text style={{ fontStyle: 'italic' }}>Streptococcus thermophilus</Text>):
         </Text>
 
         <View style={styles.etapasList}>

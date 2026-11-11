@@ -86,12 +86,51 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
+    apellidos TEXT DEFAULT '',
+    username TEXT DEFAULT '',
     correo TEXT UNIQUE NOT NULL,
     contrasena TEXT NOT NULL,
     rol TEXT DEFAULT 'estudiante',
+    intentos_fallidos INTEGER DEFAULT 0,
+    bloqueado_hasta TEXT DEFAULT NULL,
+    reset_token TEXT DEFAULT NULL,
+    reset_token_expira TEXT DEFAULT NULL,
+    activo INTEGER DEFAULT 1,
     creado_en TEXT NOT NULL
   );
 `);
+
+// Migración defensiva de columnas en usuarios
+try { db.exec(`ALTER TABLE usuarios ADD COLUMN apellidos TEXT DEFAULT ''`); } catch (e) {}
+try { db.exec(`ALTER TABLE usuarios ADD COLUMN username TEXT DEFAULT ''`); } catch (e) {}
+try { db.exec(`ALTER TABLE usuarios ADD COLUMN intentos_fallidos INTEGER DEFAULT 0`); } catch (e) {}
+try { db.exec(`ALTER TABLE usuarios ADD COLUMN bloqueado_hasta TEXT DEFAULT NULL`); } catch (e) {}
+try { db.exec(`ALTER TABLE usuarios ADD COLUMN reset_token TEXT DEFAULT NULL`); } catch (e) {}
+try { db.exec(`ALTER TABLE usuarios ADD COLUMN reset_token_expira TEXT DEFAULT NULL`); } catch (e) {}
+try { db.exec(`ALTER TABLE usuarios ADD COLUMN activo INTEGER DEFAULT 1`); } catch (e) {}
+
+// Sembrar usuarios predeterminados si la tabla está vacía
+try {
+  const countUsers = db.prepare(`SELECT COUNT(*) as total FROM usuarios`).get();
+  if (!countUsers || countUsers.total === 0) {
+    const saltRounds = 10;
+    const insertUser = db.prepare(`
+      INSERT INTO usuarios (nombre, apellidos, username, correo, contrasena, rol, creado_en)
+      VALUES (?, ?, ?, LOWER(?), ?, ?, ?)
+    `);
+    const now = new Date().toISOString();
+    insertUser.run('Dr. Stalin', 'Santacruz Terán', 'stalin.santacruz', 'dr.santacruz@uleam.edu.ec', bcrypt.hashSync('santacruz2026', saltRounds), 'investigador', now);
+    insertUser.run('Carlos', 'Delgado', 'carlos.delgado', 'carlos.delgado@uleam.edu.ec', bcrypt.hashSync('carlos2026', saltRounds), 'investigador', now);
+    insertUser.run('Estudiante', 'ULEAM', 'estudiante.uleam', 'estudiante@uleam.edu.ec', bcrypt.hashSync('estudiante2026', saltRounds), 'estudiante', now);
+  } else {
+    // Backfill para usuarios base preexistentes que no tenían username o apellidos
+    db.prepare(`UPDATE usuarios SET username = 'stalin.santacruz', apellidos = 'Santacruz Terán' WHERE LOWER(correo) = 'dr.santacruz@uleam.edu.ec' AND (username IS NULL OR username = '')`).run();
+    db.prepare(`UPDATE usuarios SET username = 'carlos.delgado', apellidos = 'Delgado' WHERE LOWER(correo) = 'carlos.delgado@uleam.edu.ec' AND (username IS NULL OR username = '')`).run();
+    db.prepare(`UPDATE usuarios SET username = 'estudiante.uleam', apellidos = 'ULEAM' WHERE LOWER(correo) = 'estudiante@uleam.edu.ec' AND (username IS NULL OR username = '')`).run();
+  }
+} catch (e) {
+  console.warn('[SQLite] Aviso al sembrar usuarios base:', e.message);
+}
 
 // Migración defensiva de columnas en ensayos_laboratorio
 try {
@@ -100,24 +139,6 @@ try {
 try {
   db.exec(`ALTER TABLE ensayos_laboratorio ADD COLUMN usuario_email TEXT DEFAULT 'carlos.delgado@uleam.edu.ec'`);
 } catch (e) {}
-
-// Sembrar usuarios predeterminados si la tabla está vacía
-try {
-  const countUsers = db.prepare(`SELECT COUNT(*) as total FROM usuarios`).get();
-  if (!countUsers || countUsers.total === 0) {
-    const saltRounds = 10;
-    const insertUser = db.prepare(`
-      INSERT INTO usuarios (nombre, correo, contrasena, rol, creado_en)
-      VALUES (?, LOWER(?), ?, ?, ?)
-    `);
-    const now = new Date().toISOString();
-    insertUser.run('Dr. Stalin Santacruz Terán', 'dr.santacruz@uleam.edu.ec', bcrypt.hashSync('santacruz2026', saltRounds), 'investigador', now);
-    insertUser.run('Carlos Delgado', 'carlos.delgado@uleam.edu.ec', bcrypt.hashSync('carlos2026', saltRounds), 'investigador', now);
-    insertUser.run('Estudiante ULEAM', 'estudiante@uleam.edu.ec', bcrypt.hashSync('estudiante2026', saltRounds), 'estudiante', now);
-  }
-} catch (e) {
-  console.warn('[SQLite] Aviso al sembrar usuarios base:', e.message);
-}
 
 // Vincular lote de prueba existente al investigador Carlos Delgado
 try {
@@ -620,18 +641,46 @@ function eliminarLecturaDeEnsayo(loteId, min) {
 /**
  * Crea un nuevo usuario en la base de datos SQLite local
  */
-function crearUsuarioSQLite(nombre, correo, contrasenaHash, rol = 'estudiante') {
+function crearUsuarioSQLite(nombreOData, correoLegacy, contrasenaHashLegacy, rolLegacy = 'estudiante') {
   const now = new Date().toISOString();
+  let nombre, apellidos, username, correo, contrasenaHash, rol;
+
+  if (typeof nombreOData === 'object' && nombreOData !== null) {
+    nombre = nombreOData.nombre || '';
+    apellidos = nombreOData.apellidos || '';
+    username = nombreOData.username || '';
+    correo = nombreOData.correo || nombreOData.email || '';
+    contrasenaHash = nombreOData.contrasenaHash || nombreOData.contrasena || nombreOData.password;
+    rol = nombreOData.rol || 'estudiante';
+  } else {
+    nombre = nombreOData || '';
+    apellidos = '';
+    correo = correoLegacy || '';
+    username = correo ? correo.split('@')[0].replace(/[^a-zA-Z0-9._-]/g, '') : '';
+    contrasenaHash = contrasenaHashLegacy;
+    rol = rolLegacy || 'estudiante';
+  }
+
+  const cleanNombre = String(nombre).trim();
+  const cleanApellidos = String(apellidos).trim();
+  const cleanUsername = String(username).trim().toLowerCase();
+  const cleanCorreo = String(correo).trim().toLowerCase();
+  const cleanRol = String(rol).trim().toLowerCase();
+
   const info = db.prepare(`
-    INSERT INTO usuarios (nombre, correo, contrasena, rol, creado_en)
-    VALUES (?, LOWER(?), ?, ?, ?)
-  `).run(String(nombre).trim(), String(correo).trim(), contrasenaHash, String(rol).trim().toLowerCase(), now);
+    INSERT INTO usuarios (nombre, apellidos, username, correo, contrasena, rol, creado_en)
+    VALUES (?, ?, ?, LOWER(?), ?, ?, ?)
+  `).run(cleanNombre, cleanApellidos, cleanUsername, cleanCorreo, contrasenaHash, cleanRol, now);
 
   return {
     id: info.lastInsertRowid,
-    nombre: String(nombre).trim(),
-    email: String(correo).trim().toLowerCase(),
-    rol: String(rol).trim().toLowerCase(),
+    nombre: cleanNombre,
+    apellidos: cleanApellidos,
+    username: cleanUsername,
+    email: cleanCorreo,
+    correo: cleanCorreo,
+    rol: cleanRol,
+    activo: 1,
     created_at: now,
   };
 }
@@ -645,18 +694,119 @@ function buscarUsuarioPorEmailSQLite(correo) {
 }
 
 /**
+ * Busca un usuario por nombre de usuario en SQLite
+ */
+function buscarUsuarioPorUsernameSQLite(username) {
+  if (!username) return null;
+  return db.prepare(`SELECT * FROM usuarios WHERE LOWER(username) = LOWER(?)`).get(String(username).trim()) || null;
+}
+
+/**
+ * Busca un usuario por identificador (correo o nombre de usuario) en SQLite
+ */
+function buscarUsuarioPorIdentificadorSQLite(identificador) {
+  if (!identificador) return null;
+  const idLimpio = String(identificador).trim().toLowerCase();
+  return db.prepare(`
+    SELECT * FROM usuarios 
+    WHERE LOWER(correo) = ? OR LOWER(username) = ?
+    LIMIT 1
+  `).get(idLimpio, idLimpio) || null;
+}
+
+/**
  * Busca un usuario por ID en SQLite
  */
 function buscarUsuarioPorIdSQLite(id) {
   if (!id) return null;
-  return db.prepare(`SELECT id, nombre, correo, rol, creado_en FROM usuarios WHERE id = ?`).get(Number(id)) || null;
+  return db.prepare(`
+    SELECT id, nombre, apellidos, username, correo, rol, activo, creado_en 
+    FROM usuarios WHERE id = ?
+  `).get(Number(id)) || null;
+}
+
+/**
+ * Busca un usuario por token de recuperación vigente
+ */
+function buscarUsuarioPorResetTokenSQLite(token) {
+  if (!token) return null;
+  return db.prepare(`
+    SELECT * FROM usuarios 
+    WHERE reset_token = ? AND reset_token IS NOT NULL
+    LIMIT 1
+  `).get(String(token).trim()) || null;
+}
+
+/**
+ * Guarda token de recuperación y su expiración para un usuario
+ */
+function guardarResetTokenSQLite(id, token, expiraIso) {
+  if (!id) return false;
+  return db.prepare(`
+    UPDATE usuarios 
+    SET reset_token = ?, reset_token_expira = ? 
+    WHERE id = ?
+  `).run(token, expiraIso, Number(id));
+}
+
+/**
+ * Actualiza la contraseña usando el flujo de reseteo por token
+ */
+function actualizarPasswordPorTokenSQLite(id, contrasenaHash) {
+  if (!id) return false;
+  return db.prepare(`
+    UPDATE usuarios 
+    SET contrasena = ?, reset_token = NULL, reset_token_expira = NULL, intentos_fallidos = 0, bloqueado_hasta = NULL 
+    WHERE id = ?
+  `).run(contrasenaHash, Number(id));
+}
+
+/**
+ * Registra un intento fallido de autenticación. Bloquea si supera 5 intentos.
+ */
+function registrarIntentoFallidoSQLite(id) {
+  if (!id) return null;
+  const user = db.prepare(`SELECT id, intentos_fallidos FROM usuarios WHERE id = ?`).get(Number(id));
+  if (!user) return null;
+
+  const nuevosIntentos = (user.intentos_fallidos || 0) + 1;
+  let bloqueadoHasta = null;
+
+  if (nuevosIntentos >= 5) {
+    // Bloqueo temporal por 15 minutos (OWASP brute force mitigation)
+    const lockoutDate = new Date(Date.now() + 15 * 60 * 1000);
+    bloqueadoHasta = lockoutDate.toISOString();
+  }
+
+  db.prepare(`
+    UPDATE usuarios 
+    SET intentos_fallidos = ?, bloqueado_hasta = ? 
+    WHERE id = ?
+  `).run(nuevosIntentos, bloqueadoHasta, Number(id));
+
+  return { intentos_fallidos: nuevosIntentos, bloqueado_hasta: bloqueadoHasta };
+}
+
+/**
+ * Resetea el contador de intentos fallidos y el bloqueo temporal tras login exitoso
+ */
+function resetearIntentosFallidosSQLite(id) {
+  if (!id) return;
+  db.prepare(`
+    UPDATE usuarios 
+    SET intentos_fallidos = 0, bloqueado_hasta = NULL 
+    WHERE id = ?
+  `).run(Number(id));
 }
 
 /**
  * Lista todos los usuarios registrados en SQLite
  */
 function listarUsuariosSQLite() {
-  return db.prepare(`SELECT id, nombre, correo, rol, creado_en FROM usuarios ORDER BY id ASC`).all();
+  return db.prepare(`
+    SELECT id, nombre, apellidos, username, correo, rol, activo, creado_en 
+    FROM usuarios ORDER BY id ASC
+  `).all();
 }
 
 module.exports = {
@@ -675,6 +825,13 @@ module.exports = {
   eliminarLecturaDeEnsayo,
   crearUsuarioSQLite,
   buscarUsuarioPorEmailSQLite,
+  buscarUsuarioPorUsernameSQLite,
+  buscarUsuarioPorIdentificadorSQLite,
   buscarUsuarioPorIdSQLite,
+  buscarUsuarioPorResetTokenSQLite,
+  guardarResetTokenSQLite,
+  actualizarPasswordPorTokenSQLite,
+  registrarIntentoFallidoSQLite,
+  resetearIntentosFallidosSQLite,
   listarUsuariosSQLite,
 };

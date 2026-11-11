@@ -7,6 +7,10 @@ module.exports = (async () => {
     ...defaultConfig,
     projectRoot: path.resolve(__dirname),
     watchFolders: [path.resolve(__dirname)],
+    serializer: {
+      ...defaultConfig.serializer,
+      getPolyfills: () => require('react-native/rn-get-polyfills')(),
+    },
     transformer: {
       ...defaultConfig.transformer,
       assetRegistryPath: '@react-native/assets-registry/registry.js',

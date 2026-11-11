@@ -17,16 +17,23 @@ DROP TABLE IF EXISTS usuarios CASCADE;
 CREATE TABLE usuarios (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nombre VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL DEFAULT '',
+    username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     rol VARCHAR(30) NOT NULL DEFAULT 'estudiante',
+    intentos_fallidos INTEGER NOT NULL DEFAULT 0,
+    bloqueado_hasta TIMESTAMP WITH TIME ZONE NULL,
+    reset_token VARCHAR(255) NULL,
+    reset_token_expira TIMESTAMP WITH TIME ZONE NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
     CONSTRAINT chk_usuario_rol CHECK (rol IN ('docente', 'estudiante', 'investigador')),
     CONSTRAINT chk_usuario_email_valido CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
 );
 
-COMMENT ON TABLE usuarios IS 'Tabla para el registro, autenticación y roles del personal del proyecto';
+COMMENT ON TABLE usuarios IS 'Tabla para el registro, autenticación, control de fuerza bruta y roles del personal del proyecto PrediYogur';
 
 -- =============================================================================
 -- 2. TABLA: ensayos

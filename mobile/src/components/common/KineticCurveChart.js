@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform, ScrollView } from 'react-native';
 
 /**
  * Gráfico Cinético Dinámico e Interactivo (Modelo Hill - ULEAM)
@@ -145,8 +145,9 @@ export default function KineticCurveChart({
         </View>
       </View>
 
-      {/* Contenedor del Lienzo Gráfico Interactivo SVG */}
-      <View style={styles.svgWrapper}>
+      {/* Contenedor Gráfico: SVG en Web, Vistas Nativas en Móvil Android/iOS */}
+      {Platform.OS === 'web' ? (
+        <View style={styles.svgWrapper}>
         <svg
           viewBox={`0 0 ${width} ${height}`}
           style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
@@ -462,6 +463,95 @@ export default function KineticCurveChart({
           ) : null}
         </svg>
       </View>
+    ) : (
+      /* Renderizado Nativo Seguro en Android / iOS (Vistas puras de React Native) */
+      <View style={styles.nativeChartWrapper}>
+        <View style={styles.nativeMetricsHeader}>
+          <View style={styles.nativeMetricItem}>
+            <Text style={styles.nativeMetricLabel}>pH Inicial</Text>
+            <Text style={styles.nativeMetricVal}>
+              {sortedPuntos[0] ? sortedPuntos[0].ph.toFixed(2) : '6.68'}
+            </Text>
+          </View>
+          <View style={styles.nativeMetricItem}>
+            <Text style={styles.nativeMetricLabel}>Corte Óptimo</Text>
+            <Text style={[styles.nativeMetricVal, { color: '#DC2626' }]}>pH 4.50</Text>
+          </View>
+          <View style={styles.nativeMetricItem}>
+            <Text style={styles.nativeMetricLabel}>Tiempo Estimado</Text>
+            <Text style={[styles.nativeMetricVal, { color: '#0284C7' }]}>
+              {tiempoEstimadoMinutos ? `${tiempoEstimadoMinutos} min` : '255 min'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.nativeCutBanner}>
+          <View style={styles.nativeCutIndicator} />
+          <Text style={styles.nativeCutBannerText}>
+            Línea crítica de coagulación: pH 4.50 (Coagulación óptima de caseínas)
+          </Text>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.nativePointsContainer}
+        >
+          {sortedPuntos.map((pt, idx) => {
+            const isSelected = activeIdx === idx;
+            const isCut = pt.ph <= 4.52;
+            const acidPct = Math.max(12, Math.min(100, ((6.8 - pt.ph) / (6.8 - 4.0)) * 100));
+
+            return (
+              <Pressable
+                key={`pt-native-${idx}`}
+                style={[
+                  styles.nativePointCard,
+                  isSelected && styles.nativePointCardSelected,
+                  isCut && styles.nativePointCardCut,
+                ]}
+                onPress={() => {
+                  setHoverIndex(idx);
+                  if (onSelectPoint) onSelectPoint(pt, idx);
+                }}
+              >
+                <View style={[styles.nativeBadgePh, isCut && styles.nativeBadgePhCut]}>
+                  <Text style={[styles.nativeBadgePhText, isCut && styles.nativeBadgePhTextCut]}>
+                    pH {pt.ph.toFixed(2)}
+                  </Text>
+                </View>
+
+                <View style={styles.nativeBarTrack}>
+                  <View
+                    style={[
+                      styles.nativeBarFill,
+                      { height: `${acidPct}%` },
+                      isCut && { backgroundColor: '#EF4444' },
+                    ]}
+                  />
+                </View>
+
+                <Text style={styles.nativePointTime}>{pt.minutos} min</Text>
+                <Text style={styles.nativePointHours}>
+                  {(pt.minutos / 60).toFixed(1)} h
+                </Text>
+                {pt.brix ? (
+                  <Text style={styles.nativePointBrix}>{pt.brix} °Bx</Text>
+                ) : null}
+                {isCut ? (
+                  <View style={styles.nativeCutTag}>
+                    <Text style={styles.nativeCutTagText}>CORTE</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        <Text style={styles.nativeTouchHint}>
+          💡 Toca un hito de tiempo para inspeccionar sus variables microbiológicas.
+        </Text>
+      </View>
+    )}
 
       {/* Inspector de Punto Seleccionado / Tocado */}
       {activePt ? (
@@ -682,5 +772,153 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#334155',
+  },
+  nativeChartWrapper: {
+    backgroundColor: '#FAFCFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
+  },
+  nativeMetricsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 10,
+    marginBottom: 10,
+  },
+  nativeMetricItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  nativeMetricLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  nativeMetricVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  nativeCutBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FCA5A5',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginBottom: 12,
+    gap: 6,
+  },
+  nativeCutIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#DC2626',
+  },
+  nativeCutBannerText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#991B1B',
+    flex: 1,
+  },
+  nativePointsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingVertical: 8,
+    gap: 8,
+  },
+  nativePointCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    padding: 8,
+    alignItems: 'center',
+    width: 68,
+  },
+  nativePointCardSelected: {
+    borderColor: '#0284C7',
+    backgroundColor: '#F0F9FF',
+  },
+  nativePointCardCut: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  nativeBadgePh: {
+    backgroundColor: '#0284C7',
+    borderRadius: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 5,
+    marginBottom: 6,
+  },
+  nativeBadgePhCut: {
+    backgroundColor: '#DC2626',
+  },
+  nativeBadgePhText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  nativeBadgePhTextCut: {
+    color: '#FFFFFF',
+  },
+  nativeBarTrack: {
+    width: 14,
+    height: 60,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 7,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+    marginVertical: 4,
+  },
+  nativeBarFill: {
+    width: '100%',
+    backgroundColor: '#38BDF8',
+    borderRadius: 7,
+  },
+  nativePointTime: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginTop: 2,
+  },
+  nativePointHours: {
+    fontSize: 9,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  nativePointBrix: {
+    fontSize: 8.5,
+    color: '#D97706',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  nativeCutTag: {
+    backgroundColor: '#DC2626',
+    borderRadius: 3,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    marginTop: 3,
+  },
+  nativeCutTagText: {
+    color: '#FFFFFF',
+    fontSize: 7.5,
+    fontWeight: '900',
+  },
+  nativeTouchHint: {
+    fontSize: 10,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });

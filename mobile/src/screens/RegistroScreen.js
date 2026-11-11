@@ -17,15 +17,18 @@ import ScientificIcon from '../components/common/ScientificIcons';
 import theme from '../styles/theme';
 
 export default function RegistroScreen({ navigation }) {
-  const { login } = useContext(AuthContext);
+  const { login, userToken } = useContext(AuthContext);
 
-  const [nombre, setNombre] = useState('');
+  const [nombres, setNombres] = useState('');
+  const [apellidos, setApellidos] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rol, setRol] = useState('estudiante');
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
 
   const [cargando, setCargando] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -35,11 +38,24 @@ export default function RegistroScreen({ navigation }) {
     setErrorMsg('');
     setSuccessMsg('');
 
-    const cleanNombre = nombre.trim();
+    const cleanNombres = nombres.trim();
+    const cleanApellidos = apellidos.trim();
+    const cleanUsername = username.trim().toLowerCase();
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!cleanNombre || cleanNombre.length < 2) {
-      setErrorMsg('⚠️ El nombre completo debe tener al menos 2 caracteres.');
+    if (!cleanNombres || cleanNombres.length < 2) {
+      setErrorMsg('⚠️ Ingrese sus nombres completos (mínimo 2 letras).');
+      return;
+    }
+
+    if (!cleanApellidos || cleanApellidos.length < 2) {
+      setErrorMsg('⚠️ Ingrese sus apellidos completos (mínimo 2 letras).');
+      return;
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9._-]+$/;
+    if (!cleanUsername || cleanUsername.length < 3 || !usernameRegex.test(cleanUsername)) {
+      setErrorMsg('⚠️ Ingrese un nombre de usuario válido (3 a 30 caracteres alfanuméricos, puntos o guiones).');
       return;
     }
 
@@ -49,27 +65,37 @@ export default function RegistroScreen({ navigation }) {
       return;
     }
 
-    if (!password || password.length < 6) {
-      setErrorMsg('⚠️ La contraseña debe tener al menos 6 caracteres.');
+    if (!password || password.length < 12) {
+      setErrorMsg('⚠️ Por seguridad (OWASP), la contraseña debe tener al menos 12 caracteres.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMsg('⚠️ Las contraseñas no coinciden. Verifíquelas.');
+      setErrorMsg('⚠️ Las contraseñas no coinciden. Por favor verifíquelas.');
+      return;
+    }
+
+    if (!aceptaTerminos) {
+      setErrorMsg('⚠️ Debe aceptar el aviso de privacidad y términos conforme a la LOPDP (Ecuador).');
       return;
     }
 
     try {
       setCargando(true);
       const res = await authService.register({
-        nombre: cleanNombre,
+        nombre: cleanNombres,
+        nombres: cleanNombres,
+        apellidos: cleanApellidos,
+        username: cleanUsername,
         email: cleanEmail,
         password,
+        confirmPassword,
         rol,
+        aceptaTerminos: true,
       });
 
       if (res && res.data) {
-        setSuccessMsg(`¡Bienvenido(a) ${cleanNombre}! Cuenta creada con éxito.`);
+        setSuccessMsg(`¡Bienvenido(a) ${cleanNombres}! Cuenta creada exitosamente.`);
         // Auto-login con el token y datos devueltos
         await login(res.data.token, res.data.user);
       } else {
@@ -98,16 +124,18 @@ export default function RegistroScreen({ navigation }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Barra Superior con Retorno al Panel Principal */}
-        <View style={styles.topNavRow}>
-          <Pressable
-            style={styles.backHomeBtn}
-            onPress={() => navigation.navigate('Dashboard')}
-          >
-            <ScientificIcon name="home" size={14} color="#1D4ED8" style={{ marginRight: 6 }} />
-            <Text style={styles.backHomeText}>Volver al Panel Principal</Text>
-          </Pressable>
-        </View>
+        {/* Barra Superior con Retorno al Panel Principal (solo si ya tiene sesión activa) */}
+        {userToken ? (
+          <View style={styles.topNavRow}>
+            <Pressable
+              style={styles.backHomeBtn}
+              onPress={() => navigation.navigate('Dashboard')}
+            >
+              <ScientificIcon name="home" size={14} color="#1D4ED8" style={{ marginRight: 6 }} />
+              <Text style={styles.backHomeText}>Volver al Panel Principal</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={styles.formWrapper}>
           <View style={styles.header}>
@@ -139,16 +167,47 @@ export default function RegistroScreen({ navigation }) {
             </View>
           ) : null}
 
-          {/* Nombre completo */}
+          {/* Nombres */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nombre completo del investigador / estudiante</Text>
+            <Text style={styles.label}>Nombres</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ej. Ing. Juan Murillo"
+              placeholder="Ej. Juan Alberto"
               placeholderTextColor={theme.colors.textMuted}
-              value={nombre}
+              value={nombres}
               onChangeText={(t) => {
-                setNombre(t);
+                setNombres(t);
+                setErrorMsg('');
+              }}
+            />
+          </View>
+
+          {/* Apellidos */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Apellidos</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ej. Murillo Delgado"
+              placeholderTextColor={theme.colors.textMuted}
+              value={apellidos}
+              onChangeText={(t) => {
+                setApellidos(t);
+                setErrorMsg('');
+              }}
+            />
+          </View>
+
+          {/* Nombre de usuario */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Nombre de usuario único</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ej. juan.murillo"
+              placeholderTextColor={theme.colors.textMuted}
+              autoCapitalize="none"
+              value={username}
+              onChangeText={(t) => {
+                setUsername(t);
                 setErrorMsg('');
               }}
             />
@@ -156,7 +215,7 @@ export default function RegistroScreen({ navigation }) {
 
           {/* Correo institucional */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Correo institucional</Text>
+            <Text style={styles.label}>Correo institucional (@uleam.edu.ec)</Text>
             <TextInput
               style={styles.input}
               placeholder="usuario@uleam.edu.ec"
@@ -204,14 +263,14 @@ export default function RegistroScreen({ navigation }) {
           {/* Contraseña */}
           <View style={styles.inputGroup}>
             <View style={styles.labelRow}>
-              <Text style={styles.label}>Contraseña (mínimo 6 caracteres)</Text>
+              <Text style={styles.label}>Contraseña (mínimo 12 caracteres - OWASP)</Text>
               <Pressable onPress={() => setShowPassword(!showPassword)}>
                 <Text style={styles.toggleEye}>{showPassword ? '🙈 Ocultar' : '👁️ Mostrar'}</Text>
               </Pressable>
             </View>
             <TextInput
               style={styles.input}
-              placeholder="••••••••"
+              placeholder="Mínimo 12 caracteres robustos"
               placeholderTextColor={theme.colors.textMuted}
               secureTextEntry={!showPassword}
               value={password}
@@ -232,7 +291,7 @@ export default function RegistroScreen({ navigation }) {
             </View>
             <TextInput
               style={styles.input}
-              placeholder="Repite tu contraseña"
+              placeholder="Repite tu contraseña de 12+ caracteres"
               placeholderTextColor={theme.colors.textMuted}
               secureTextEntry={!showConfirmPassword}
               value={confirmPassword}
@@ -242,6 +301,21 @@ export default function RegistroScreen({ navigation }) {
               }}
             />
           </View>
+
+          {/* Aceptación de Términos y Aviso de Privacidad (LOPDP Ecuador) */}
+          <Pressable
+            style={styles.termsRow}
+            onPress={() => setAceptaTerminos(!aceptaTerminos)}
+          >
+            <View style={[styles.checkbox, aceptaTerminos && styles.checkboxActive]}>
+              {aceptaTerminos ? (
+                <ScientificIcon name="check" size={12} color="#FFFFFF" />
+              ) : null}
+            </View>
+            <Text style={styles.termsText}>
+              Acepto el aviso de privacidad y el tratamiento de mis datos personales con fines académicos y de investigación conforme a la <Text style={styles.termsHighlight}>Ley Orgánica de Protección de Datos Personales (LOPDP - Ecuador)</Text>.
+            </Text>
+          </Pressable>
 
           <Pressable
             style={[styles.button, styles.primaryButton, cargando && styles.buttonDisabled]}
@@ -451,6 +525,39 @@ const styles = StyleSheet.create({
   },
   roleTextActive: {
     color: theme.colors.surface,
+  },
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 8,
+    marginBottom: 16,
+    paddingRight: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: '#94A3B8',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    marginTop: 2,
+  },
+  checkboxActive: {
+    backgroundColor: '#059669',
+    borderColor: '#059669',
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 18,
+  },
+  termsHighlight: {
+    fontWeight: '700',
+    color: '#0F172A',
   },
   button: {
     height: 48,

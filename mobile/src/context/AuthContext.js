@@ -35,21 +35,16 @@ export const AuthProvider = ({ children }) => {
         if (storedToken) {
           setUserToken(storedToken);
           if (storedUser) {
-            setUser(JSON.parse(storedUser));
+            try {
+              setUser(JSON.parse(storedUser));
+            } catch (e) {
+              setUser(null);
+            }
           }
         } else {
-          // Sesión activa predeterminada (Carlos Delgado - Investigador Titular ULEAM)
-          const defaultUser = {
-            id: 2,
-            nombre: 'Carlos Delgado',
-            email: 'e1312274663@live.uleam.edu.ec',
-            rol: 'investigador',
-          };
-          const defaultToken = 'dev_token_uleam_2026';
-          await storage.setItem(TOKEN_KEY, defaultToken);
-          await storage.setItem(USER_KEY, JSON.stringify(defaultUser));
-          setUserToken(defaultToken);
-          setUser(defaultUser);
+          // Sin sesión previa: el usuario debe iniciar sesión
+          setUserToken(null);
+          setUser(null);
         }
       } catch (error) {
         console.error('[AuthContext] Error al restaurar sesión:', error);
@@ -62,11 +57,15 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Función para autenticar y guardar token/usuario
-  const login = async (token, userData = null) => {
+  const login = async (token, userData = null, rememberMe = true) => {
     try {
-      await storage.setItem(TOKEN_KEY, token);
-      if (userData) {
-        await storage.setItem(USER_KEY, JSON.stringify(userData));
+      if (rememberMe) {
+        await storage.setItem(TOKEN_KEY, token);
+        if (userData) {
+          await storage.setItem(USER_KEY, JSON.stringify(userData));
+        }
+      } else {
+        await storage.multiRemove([TOKEN_KEY, USER_KEY]);
       }
       setUserToken(token);
       setUser(userData);

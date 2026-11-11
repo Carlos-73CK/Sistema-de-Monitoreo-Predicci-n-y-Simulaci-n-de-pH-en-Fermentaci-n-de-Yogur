@@ -123,7 +123,7 @@ const swaggerDocument = {
     },
     '/api/v1/auth/login': {
       post: {
-        summary: 'Inicio de sesión y obtención de token JWT',
+        summary: 'Inicio de sesión y obtención de token JWT (email o username)',
         tags: ['Autenticación'],
         requestBody: {
           required: true,
@@ -131,8 +131,9 @@ const swaggerDocument = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['email', 'password'],
+                required: ['password'],
                 properties: {
+                  identificador: { type: 'string', example: 'carlos.delgado' },
                   email: { type: 'string', example: 'carlos.delgado@uleam.edu.ec' },
                   password: { type: 'string', example: 'carlos2026' },
                 },
@@ -143,6 +144,56 @@ const swaggerDocument = {
         responses: {
           200: { description: 'Autenticación exitosa con token Bearer.' },
           401: { description: 'Credenciales inválidas.' },
+          429: { description: 'Cuenta bloqueada temporalmente por exceso de intentos.' },
+        },
+      },
+    },
+    '/api/v1/auth/forgot-password': {
+      post: {
+        summary: 'Solicitud de recuperación de contraseña con token temporal',
+        tags: ['Autenticación'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['email'],
+                properties: {
+                  email: { type: 'string', example: 'carlos.delgado@uleam.edu.ec' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Solicitud procesada (mensaje genérico OWASP).' },
+        },
+      },
+    },
+    '/api/v1/auth/reset-password': {
+      post: {
+        summary: 'Restablecimiento de contraseña con token de un solo uso',
+        tags: ['Autenticación'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['token', 'password', 'confirmPassword'],
+                properties: {
+                  token: { type: 'string', example: 'e7f8a9...' },
+                  password: { type: 'string', example: 'NuevaContrasenaSegura2026' },
+                  confirmPassword: { type: 'string', example: 'NuevaContrasenaSegura2026' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: 'Contraseña restablecida exitosamente.' },
+          400: { description: 'Token inválido o expirado, o contraseñas no coinciden.' },
         },
       },
     },

@@ -1,11 +1,12 @@
 {
   "name": "prediyogur-mobile",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "main": "App.js",
   "scripts": {
     "start": "react-native start",
     "web": "vite --host",
     "build:web": "vite build",
+    "postinstall": "node patch-gesture-handler.js",
     "android": "react-native run-android",
     "build:apk": "cd android && gradlew assembleRelease",
     "ios": "react-native run-ios"
