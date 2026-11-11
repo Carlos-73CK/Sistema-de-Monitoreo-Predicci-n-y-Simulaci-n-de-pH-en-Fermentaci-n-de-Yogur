@@ -105,8 +105,8 @@ export default function AuthModal({ visible, initialTab, onClose }) {
       return;
     }
 
-    if (password.length < 12) {
-      setRegError('⚠️ Por seguridad (OWASP), la contraseña debe tener al menos 12 caracteres.');
+    if (password.length < 6) {
+      setRegError('⚠️ La contraseña debe tener al menos 6 caracteres.');
       return;
     }
 

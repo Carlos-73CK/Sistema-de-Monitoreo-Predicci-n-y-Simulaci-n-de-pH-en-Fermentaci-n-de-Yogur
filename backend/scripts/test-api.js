@@ -173,7 +173,7 @@ async function runTests() {
     const testNewUserEmail = `investigador.${timestampTest}@uleam.edu.ec`;
     const testNewUsername = `inv.${timestampTest}`;
 
-    await testCase('POST /api/v1/auth/register rechaza contraseñas menores a 12 caracteres', async () => {
+    await testCase('POST /api/v1/auth/register rechaza contraseñas menores a 6 caracteres', async () => {
       const res = await fetch(`${baseUrl}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,15 +182,15 @@ async function runTests() {
           apellidos: 'Vera Saltos',
           username: `shortpass.${timestampTest}`,
           email: `shortpass.${timestampTest}@uleam.edu.ec`,
-          password: 'corta',
-          confirmPassword: 'corta',
+          password: '12345',
+          confirmPassword: '12345',
           aceptaTerminos: true,
         }),
       });
       assert.strictEqual(res.status, 400);
       const body = await res.json();
       assert.strictEqual(body.success, false);
-      assert.ok(body.message.includes('12 caracteres'));
+      assert.ok(body.message.includes('6 caracteres'));
     });
 
     await testCase('POST /api/v1/auth/register rechaza contraseñas comunes (OWASP)', async () => {

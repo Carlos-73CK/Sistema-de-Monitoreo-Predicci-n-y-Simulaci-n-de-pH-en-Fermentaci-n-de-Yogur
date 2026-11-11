@@ -43,10 +43,10 @@ export function evaluatePasswordStrength(password = '') {
   }
 
   const isCommon = PASSWORDS_COMUNES.has(pass.toLowerCase().trim());
-  const isRepetitive = /^(.)\1{11,}$/.test(pass);
+  const isRepetitive = /^(.)\1{5,}$/.test(pass);
 
   const checks = {
-    length: pass.length >= 12,
+    length: pass.length >= 6,
     upperLower: /[a-z]/.test(pass) && /[A-Z]/.test(pass),
     numbers: /[0-9]/.test(pass),
     symbols: /[^a-zA-Z0-9]/.test(pass),
@@ -64,32 +64,26 @@ export function evaluatePasswordStrength(password = '') {
   }
 
   let score = 0;
+  if (pass.length >= 6) score += 1;
   if (pass.length >= 8) score += 1;
-  if (pass.length >= 12) score += 1;
   if (checks.upperLower) score += 1;
-  if (checks.numbers) score += 1;
-  if (checks.symbols) score += 1;
+  if (checks.numbers || checks.symbols) score += 1;
 
-  // Para ser aceptable, DEBE tener al menos 12 caracteres y no ser común
+  // Para ser aceptable, DEBE tener al menos 6 caracteres y no ser común
   const isAcceptable = checks.length && checks.notCommon;
 
   let label = 'Muy débil';
   let color = '#EF4444';
 
-  if (pass.length < 12) {
-    if (score <= 1) {
-      label = 'Muy débil (mínimo 12 caracteres)';
-      color = '#EF4444';
-    } else {
-      label = 'Incompleta (faltan caracteres para 12)';
-      color = '#F97316';
-    }
+  if (pass.length < 6) {
+    label = 'Muy corta (mínimo 6 caracteres)';
+    color = '#EF4444';
   } else {
-    if (score <= 2) {
-      label = 'Aceptable (12 caracteres básicos)';
+    if (score <= 1) {
+      label = 'Aceptable (6 caracteres básicos)';
       color = '#EAB308';
-    } else if (score <= 4) {
-      label = 'Robusta (recomendada)';
+    } else if (score === 2) {
+      label = 'Buena (8+ caracteres)';
       color = '#10B981';
     } else {
       label = 'Robusta y Segura (óptima)';
@@ -111,7 +105,7 @@ export default function PasswordStrengthBar({ password = '' }) {
     return (
       <View style={styles.hintContainer}>
         <Text style={styles.hintInitialText}>
-          🔒 La contraseña debe contener al menos 12 caracteres conforme a los estándares de ciberseguridad OWASP y LOPDP.
+          🔒 La contraseña debe contener al menos 6 caracteres para poder registrar tu cuenta.
         </Text>
       </View>
     );
@@ -145,15 +139,15 @@ export default function PasswordStrengthBar({ password = '' }) {
       {isAcceptable ? (
         <View style={styles.acceptableBadge}>
           <ScientificIcon name="check" size={13} color="#059669" style={{ marginRight: 6 }} />
-          <Text style={styles.acceptableText}>Contraseña robusta y aceptada para el registro</Text>
+          <Text style={styles.acceptableText}>Contraseña aceptada para el registro</Text>
         </View>
       ) : (
         <View style={styles.pendingBadge}>
           <ScientificIcon name="alert" size={13} color="#B45309" style={{ marginRight: 6 }} />
           <Text style={styles.pendingText}>
-            {password.length < 12
-              ? `Faltan ${12 - password.length} caracter(es) para alcanzar el mínimo de 12`
-              : 'Se requiere una contraseña más compleja'}
+            {password.length < 6
+              ? `Faltan ${6 - password.length} caracter(es) para alcanzar el mínimo de 6`
+              : 'Se requiere una contraseña no repetitiva'}
           </Text>
         </View>
       )}
@@ -165,7 +159,7 @@ export default function PasswordStrengthBar({ password = '' }) {
             {checks.length ? '✓' : '○'}
           </Text>
           <Text style={[styles.checkText, checks.length && styles.checkTextValid]}>
-            Mínimo 12 caracteres ({password.length}/12)
+            Mínimo 6 caracteres ({password.length}/6)
           </Text>
         </View>
 

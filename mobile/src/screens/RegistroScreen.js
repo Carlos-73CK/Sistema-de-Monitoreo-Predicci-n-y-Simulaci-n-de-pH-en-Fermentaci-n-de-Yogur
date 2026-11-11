@@ -66,8 +66,8 @@ export default function RegistroScreen({ navigation }) {
       return;
     }
 
-    if (!password || password.length < 12) {
-      setErrorMsg('⚠️ Por seguridad (OWASP), la contraseña debe tener al menos 12 caracteres.');
+    if (!password || password.length < 6) {
+      setErrorMsg('⚠️ La contraseña debe tener al menos 6 caracteres.');
       return;
     }
 
@@ -264,14 +264,14 @@ export default function RegistroScreen({ navigation }) {
           {/* Contraseña */}
           <View style={styles.inputGroup}>
             <View style={styles.labelRow}>
-              <Text style={styles.label}>Contraseña (mínimo 12 caracteres - OWASP)</Text>
+              <Text style={styles.label}>Contraseña (mínimo 6 caracteres)</Text>
               <Pressable onPress={() => setShowPassword(!showPassword)}>
                 <Text style={styles.toggleEye}>{showPassword ? '🙈 Ocultar' : '👁️ Mostrar'}</Text>
               </Pressable>
             </View>
             <TextInput
               style={styles.input}
-              placeholder="Mínimo 12 caracteres robustos"
+              placeholder="Mínimo 6 caracteres"
               placeholderTextColor={theme.colors.textMuted}
               secureTextEntry={!showPassword}
               value={password}
@@ -295,7 +295,7 @@ export default function RegistroScreen({ navigation }) {
             </View>
             <TextInput
               style={styles.input}
-              placeholder="Repite tu contraseña de 12+ caracteres"
+              placeholder="Repite tu contraseña de 6+ caracteres"
               placeholderTextColor={theme.colors.textMuted}
               secureTextEntry={!showConfirmPassword}
               value={confirmPassword}

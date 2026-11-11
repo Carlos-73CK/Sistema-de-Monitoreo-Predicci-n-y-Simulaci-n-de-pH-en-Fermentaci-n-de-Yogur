@@ -4,7 +4,7 @@
  * Conforme a LOPDP (Ecuador) y directrices OWASP Authentication / ASVS
  * 
  * Implementa la lógica de negocio para:
- * - Registro con validación rigurosa de identidad y política de contraseñas (min 12 caracteres)
+ * - Registro con validación rigurosa de identidad y política de contraseñas (min 6 caracteres)
  * - Protección contra fuerza bruta con bloqueo temporal progresivo (5 intentos, 15 minutos)
  * - Inicio de sesión por correo electrónico o nombre de usuario
  * - Recuperación segura de contraseña con tokens temporales de un solo uso
@@ -34,16 +34,30 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 // Catálogo de contraseñas comunes y predecibles (OWASP Password Storage & Authentication)
 const PASSWORDS_COMUNES = new Set([
+  '123456',
+  '1234567',
+  '12345678',
+  '123456789',
   '123456789012',
   '1234567890123',
+  'password',
+  'password123',
   'password12345',
+  'contrasena',
+  'contrasenia',
   'contrasenia12',
   'contrasena123',
+  'qwerty',
+  'qwertyuiop',
   'qwertyuiop12',
+  'admin123',
   'admin12345678',
+  'prediyogur',
   'prediyogur123',
   'prediyogur2026',
+  'uleam2026',
   'uleam20261234',
+  'cambiame',
   'cambiame12345',
   'bienvenido123',
   'secret123456',
@@ -82,20 +96,20 @@ function esUsernameValido(username) {
 }
 
 /**
- * Validador de contraseña robusta (OWASP: min 12 caracteres, no comprometida / común)
+ * Validador de contraseña (mínimo 6 caracteres, no comprometida / común)
  */
 function validarSeguridadPassword(pass) {
   if (!pass || typeof pass !== 'string') {
     return 'La contraseña es obligatoria.';
   }
-  if (pass.length < 12) {
-    return 'La contraseña debe tener al menos 12 caracteres como referencia de seguridad.';
+  if (pass.length < 6) {
+    return 'La contraseña debe tener al menos 6 caracteres.';
   }
   if (PASSWORDS_COMUNES.has(pass.toLowerCase().trim())) {
-    return 'La contraseña elegida es demasiado común o insegura. Elija una frase más compleja.';
+    return 'La contraseña elegida es demasiado común o insegura. Elija una clave más compleja.';
   }
-  // Verificar repetición trivial (ej. 111111111111, aaaaaaaaaaaa)
-  if (/^(.)\1{11,}$/.test(pass)) {
+  // Verificar repetición trivial (ej. 111111, aaaaaa)
+  if (/^(.)\1{5,}$/.test(pass)) {
     return 'La contraseña no puede consistir únicamente en caracteres repetidos.';
   }
   return null;
@@ -158,7 +172,7 @@ async function registrarUsuario(datos = {}) {
     errores.push('El nombre de usuario debe tener entre 3 y 30 caracteres alfanuméricos (letras, números, puntos o guiones).');
   }
 
-  // 5. Validar Contraseña (mínimo 12 caracteres por directriz de ciberseguridad)
+  // 5. Validar Contraseña (mínimo 6 caracteres)
   const passError = validarSeguridadPassword(rawPassword);
   if (passError) {
     errores.push(passError);
