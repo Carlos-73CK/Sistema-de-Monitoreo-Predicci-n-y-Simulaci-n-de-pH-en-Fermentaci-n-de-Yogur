@@ -84,9 +84,7 @@ const forgotPassword = async (req, res, next) => {
     const resultado = await authService.solicitarRecuperacionPassword(email || identificador);
     return res.status(200).json({
       success: true,
-      data: {
-        dev_token: resultado.dev_token || null,
-      },
+      data: resultado.dev_token ? { dev_token: resultado.dev_token } : null,
       message: resultado.message,
       error: null,
     });

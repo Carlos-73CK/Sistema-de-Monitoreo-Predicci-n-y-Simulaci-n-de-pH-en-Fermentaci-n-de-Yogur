@@ -139,6 +139,9 @@ try {
 try {
   db.exec(`ALTER TABLE ensayos_laboratorio ADD COLUMN usuario_email TEXT DEFAULT 'carlos.delgado@uleam.edu.ec'`);
 } catch (e) {}
+try {
+  db.exec(`ALTER TABLE ensayos_laboratorio ADD COLUMN viscosidad_final REAL DEFAULT NULL`);
+} catch (e) {}
 
 // Vincular lote de prueba existente al investigador Carlos Delgado
 try {
@@ -626,6 +629,33 @@ function eliminarEnsayoLaboratorio(loteId) {
 }
 
 /**
+ * Finaliza un ensayo experimental en SQLite asignando el estado completado y la viscosidad final medida
+ * @param {string|number} idOLoteId
+ * @param {number} viscosidadFinal
+ */
+function finalizarEnsayoLaboratorioSQLite(idOLoteId, viscosidadFinal) {
+  const ahora = new Date().toISOString();
+  const idNum = Number(idOLoteId);
+  const loteStr = String(idOLoteId).trim();
+
+  if (!Number.isNaN(idNum) && idNum > 0) {
+    db.prepare(`
+      UPDATE ensayos_laboratorio 
+      SET estado = 'completado', viscosidad_final = ?, actualizado_en = ? 
+      WHERE id = ? OR lote_id = ?
+    `).run(Number(viscosidadFinal), ahora, idNum, loteStr);
+  } else {
+    db.prepare(`
+      UPDATE ensayos_laboratorio 
+      SET estado = 'completado', viscosidad_final = ?, actualizado_en = ? 
+      WHERE lote_id = ?
+    `).run(Number(viscosidadFinal), ahora, loteStr);
+  }
+
+  return obtenerEnsayoLaboratorio(idOLoteId);
+}
+
+/**
  * Elimina una lectura periódica específica de un ensayo
  */
 function eliminarLecturaDeEnsayo(loteId, min) {
@@ -823,6 +853,7 @@ module.exports = {
   registrarLecturaEnEnsayo,
   eliminarEnsayoLaboratorio,
   eliminarLecturaDeEnsayo,
+  finalizarEnsayoLaboratorioSQLite,
   crearUsuarioSQLite,
   buscarUsuarioPorEmailSQLite,
   buscarUsuarioPorUsernameSQLite,

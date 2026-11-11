@@ -57,8 +57,10 @@ router.get('/trials/:loteId/report.pdf', (req, res, next) => {
 });
 router.get('/trials/:loteId', getTrial);
 router.post('/trials/:loteId/readings', addTrialReading);
-router.delete('/trials/:loteId/readings/:min', deleteTrialReading);
-router.delete('/trials/:loteId', deleteTrial);
+
+// Eliminación y depuración de muestras protegidas por autenticación
+router.delete('/trials/:loteId/readings/:min', authenticateToken, deleteTrialReading);
+router.delete('/trials/:loteId', authenticateToken, deleteTrial);
 
 // Historial de simulaciones en SQLite local
 router.get('/simulations', getSavedSimulations);

@@ -16,6 +16,7 @@ const {
   registrarLecturaEnEnsayo,
   eliminarEnsayoLaboratorio,
   eliminarLecturaDeEnsayo,
+  finalizarEnsayoLaboratorioSQLite,
   guardarPrediccion,
 } = require('../ai/sqliteStore');
 const {
@@ -367,6 +368,15 @@ async function exportarDatosEnsayo(loteId, formato = 'csv') {
   };
 }
 
+/**
+ * Finaliza un ensayo experimental en SQLite asignando estado completado y viscosidad
+ * @param {string|number} idOLoteId
+ * @param {number} viscosidadFinal
+ */
+function finalizarEnsayo(idOLoteId, viscosidadFinal) {
+  return finalizarEnsayoLaboratorioSQLite(idOLoteId, viscosidadFinal);
+}
+
 module.exports = {
   listarEnsayos,
   obtenerEnsayoDetalle,
@@ -374,5 +384,6 @@ module.exports = {
   agregarLectura,
   eliminarLectura,
   eliminarEnsayo,
+  finalizarEnsayo,
   exportarDatosEnsayo,
 };

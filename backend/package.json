@@ -9,6 +9,9 @@
     "test": "node scripts/test-api.js",
     "db:init": "node scripts/initDb.js"
   },
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

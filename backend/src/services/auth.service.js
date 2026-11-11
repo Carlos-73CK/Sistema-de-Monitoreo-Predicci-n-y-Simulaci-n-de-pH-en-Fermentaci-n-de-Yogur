@@ -377,11 +377,13 @@ async function solicitarRecuperacionPassword(emailOIdentificador) {
     }
   }
 
+  const isDev = process.env.NODE_ENV !== 'production';
+
   return {
     success: true,
     message: 'Si el correo electrónico ingresado está registrado, recibirá las instrucciones para restablecer su contraseña.',
-    // En entorno de laboratorio/desarrollo local se retorna el token para agilizar pruebas
-    dev_token: devToken,
+    // En entorno de producción se omite por completo por seguridad (CWE-640); en desarrollo local agiliza pruebas sin servidor SMTP
+    dev_token: isDev ? devToken : undefined,
   };
 }
 

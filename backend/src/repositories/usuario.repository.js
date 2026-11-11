@@ -129,8 +129,8 @@ async function buscarPorId(id) {
       if (pool && typeof pool.query === 'function') {
         const pgRes = await pool.query(
           `SELECT id, nombre, apellidos, username, email as correo, rol, activo, created_at as creado_en 
-           FROM usuarios WHERE id = $1 LIMIT 1`,
-          [idNum]
+           FROM usuarios WHERE id::text = $1 LIMIT 1`,
+          [String(id)]
         );
         if (pgRes.rowCount > 0) {
           usuario = pgRes.rows[0];
@@ -195,8 +195,8 @@ async function guardarResetToken(id, token, expiraIso) {
   try {
     if (pool && typeof pool.query === 'function') {
       await pool.query(
-        `UPDATE usuarios SET reset_token = $1, reset_token_expira = $2 WHERE id = $3`,
-        [token, expiraIso, id]
+        `UPDATE usuarios SET reset_token = $1, reset_token_expira = $2 WHERE id::text = $3`,
+        [token, expiraIso, String(id)]
       );
     }
   } catch (err) {}
@@ -213,8 +213,8 @@ async function actualizarPassword(id, hashedPassword) {
         `UPDATE usuarios 
          SET password_hash = $1, reset_token = NULL, reset_token_expira = NULL, 
              intentos_fallidos = 0, bloqueado_hasta = NULL 
-         WHERE id = $2`,
-        [hashedPassword, id]
+         WHERE id::text = $2`,
+        [hashedPassword, String(id)]
       );
     }
   } catch (err) {}

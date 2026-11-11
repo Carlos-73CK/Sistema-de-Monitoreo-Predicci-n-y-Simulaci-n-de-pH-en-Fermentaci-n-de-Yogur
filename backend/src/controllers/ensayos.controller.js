@@ -246,7 +246,7 @@ const agregarLectura = async (req, res) => {
     // 1. Intentar en PostgreSQL
     if (pool && typeof pool.query === 'function') {
       try {
-        const ensayoResult = await pool.query('SELECT id, estado FROM ensayos WHERE id = $1 LIMIT 1', [id]);
+        const ensayoResult = await pool.query('SELECT id, estado FROM ensayos WHERE id::text = $1 LIMIT 1', [String(id)]);
         if (ensayoResult.rowCount > 0) {
           const lecturaResult = await pool.query(
             `INSERT INTO lecturas_ensayo (ensayo_id, tiempo_minutos, ph, temperatura, indice_refraccion)
@@ -320,10 +320,10 @@ const finalizarEnsayo = async (req, res) => {
           `UPDATE ensayos
            SET estado = 'completado',
                viscosidad_final = $2
-           WHERE id = $1
+           WHERE id::text = $1
            RETURNING id, usuario_id, nombre_lote, tipo_leche, tipo_azucar, masa_leche, masa_inoculo,
                      temperatura_objetivo, estado, viscosidad_final, created_at`,
-          [id, viscosidadFinal]
+          [String(id), viscosidadFinal]
         );
 
         if (result.rowCount > 0) {
@@ -340,6 +340,9 @@ const finalizarEnsayo = async (req, res) => {
       } catch (pgErr) {}
     }
 
+    // Fallback persistente a SQLite
+    const updated = ensayosService.finalizarEnsayo(id, viscosidadFinal);
+
     return res.status(200).json({
       success: true,
       data: {
@@ -347,8 +350,9 @@ const finalizarEnsayo = async (req, res) => {
         estado: 'completado',
         viscosidad_final: viscosidadFinal,
         fecha_fin: new Date().toISOString(),
+        ...(updated ? mapEnsayo(updated) : {}),
       },
-      message: 'Ensayo finalizado correctamente.',
+      message: 'Ensayo finalizado correctamente en SQLite.',
       error: null,
     });
   } catch (error) {

@@ -28,8 +28,9 @@ const authenticateToken = (req, res, next) => {
     });
   }
 
-  // Soporte directo para demostraciones del prototipo local
-  if (token === 'dev_token_uleam_2026' || token === 'demo_token') {
+  // Soporte directo exclusivo para entornos de pruebas y demostraciones locales (PROHIBIDO EN PRODUCCIÓN)
+  const isDevEnvironment = process.env.NODE_ENV !== 'production';
+  if (isDevEnvironment && (token === 'dev_token_uleam_2026' || token === 'demo_token')) {
     req.user = {
       id: 1,
       rol: 'investigador',
@@ -40,6 +41,9 @@ const authenticateToken = (req, res, next) => {
   }
 
   try {
+    if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'prediyogur_super_secret_key_2026')) {
+      console.warn('⚠️ [ALERTA DE SEGURIDAD] JWT_SECRET inseguro o por defecto detectado en producción.');
+    }
     const secret = process.env.JWT_SECRET || 'prediyogur_super_secret_key_2026';
     let decoded;
 

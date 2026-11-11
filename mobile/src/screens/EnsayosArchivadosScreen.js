@@ -16,6 +16,7 @@ import HeaderBar from '../components/common/HeaderBar';
 import FooterBar from '../components/common/FooterBar';
 import ScreenHeader from '../components/common/ScreenHeader';
 import ensayosService from '../services/ensayosService';
+import api from '../services/api';
 import ScientificIcon from '../components/common/ScientificIcons';
 import theme from '../styles/theme';
 
@@ -95,8 +96,38 @@ export default function EnsayosArchivadosScreen({ navigation }) {
   const handleExportar = async (loteId, formato) => {
     try {
       setExportandoId(loteId);
+      const itemSeleccionado = ensayos.find((e) => e.lote_id === loteId);
 
       if (formato === 'pdf') {
+        // Si el lote existe localmente, intentar sincronizar metadatos y lecturas al servidor para el PDF
+        if (itemSeleccionado) {
+          try {
+            await api.post('/ai/trials', {
+              lote_id: itemSeleccionado.lote_id,
+              investigador: itemSeleccionado.investigador || 'Investigador ULEAM',
+              usuario_email: itemSeleccionado.usuario_email,
+              tipo_sustrato: itemSeleccionado.tipo_sustrato || 'vaca',
+              tipo_azucar: itemSeleccionado.tipo_azucar || 'lactosa',
+              temperatura_c: itemSeleccionado.temperatura_c || 42.0,
+              masa_inoculo_g: itemSeleccionado.masa_inoculo_g || 18.75,
+              volumen_ml: itemSeleccionado.volumen_ml || 250,
+              porcentaje_inoculo: itemSeleccionado.porcentaje_inoculo || 7.5,
+            });
+            for (const lec of (itemSeleccionado.lecturas || [])) {
+              if (lec.minutos > 0) {
+                await api.post(`/ai/trials/${encodeURIComponent(itemSeleccionado.lote_id)}/readings`, {
+                  minutos: lec.minutos,
+                  ph: lec.ph,
+                  temperatura: lec.temperatura,
+                  indice_refraccion: lec.indice_refraccion,
+                });
+              }
+            }
+          } catch (syncErr) {
+            // Continúa hacia la descarga
+          }
+        }
+
         const urlDescarga = ensayosService.obtenerUrlDescarga(loteId, 'pdf');
         if (Platform.OS === 'web') {
           window.open(urlDescarga, '_blank');
@@ -110,7 +141,26 @@ export default function EnsayosArchivadosScreen({ navigation }) {
         return;
       }
 
-      const data = await ensayosService.exportarEnsayo(loteId, formato);
+      let data = null;
+      try {
+        data = await ensayosService.exportarEnsayo(loteId, formato);
+      } catch (exportErr) {
+        // Fallback autónomo offline: generar contenido a partir del ensayo local
+        if (itemSeleccionado) {
+          if (formato === 'csv') {
+            const lecturas = itemSeleccionado.lecturas || [];
+            const rows = ['minutos,tiempo_minutos,ph,temperatura,indice_refraccion'];
+            lecturas.forEach((l) => {
+              rows.push(`${l.minutos ?? l.tiempo_minutos ?? 0},${l.tiempo_minutos ?? l.minutos ?? 0},${l.ph},${l.temperatura},${l.indice_refraccion ?? ''}`);
+            });
+            data = rows.join('\n');
+          } else {
+            data = itemSeleccionado;
+          }
+        } else {
+          throw exportErr;
+        }
+      }
 
       if (formato === 'csv') {
         const csvContent = typeof data === 'string' ? data : JSON.stringify(data);

@@ -111,27 +111,24 @@ async function buscarPorIdOCodigo(idOCodigo) {
     return adaptarEnsayo(trial);
   }
 
-  // 2. Si no está en SQLite, intentar por ID numérico en PostgreSQL
-  const idNum = Number(idOCodigo);
-  if (!Number.isNaN(idNum)) {
-    try {
-      if (pool && typeof pool.query === 'function') {
-        const pgRes = await pool.query(`SELECT * FROM ensayos WHERE id = $1 LIMIT 1`, [idNum]);
-        if (pgRes.rowCount > 0) {
-          const row = pgRes.rows[0];
-          return {
-            id: row.id,
-            codigo: row.nombre_lote || row.lote_codigo,
-            lote_id: row.nombre_lote || row.lote_codigo,
-            tipo_sustrato: row.tipo_leche,
-            temperatura_c: Number(row.temperatura_objetivo || row.temperatura_incubacion),
-            lecturas: [],
-            created_at: row.created_at,
-          };
-        }
+  // 2. Si no está en SQLite, intentar por ID o código en PostgreSQL
+  try {
+    if (pool && typeof pool.query === 'function') {
+      const pgRes = await pool.query(`SELECT * FROM ensayos WHERE id::text = $1 OR nombre_lote = $1 LIMIT 1`, [codigoStr]);
+      if (pgRes.rowCount > 0) {
+        const row = pgRes.rows[0];
+        return {
+          id: row.id,
+          codigo: row.nombre_lote || row.lote_codigo,
+          lote_id: row.nombre_lote || row.lote_codigo,
+          tipo_sustrato: row.tipo_leche,
+          temperatura_c: Number(row.temperatura_objetivo || row.temperatura_incubacion),
+          lecturas: [],
+          created_at: row.created_at,
+        };
       }
-    } catch (_) {}
-  }
+    }
+  } catch (_) {}
 
   return null;
 }
