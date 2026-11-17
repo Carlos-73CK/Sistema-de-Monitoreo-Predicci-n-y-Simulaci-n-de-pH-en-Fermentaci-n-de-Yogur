@@ -193,7 +193,7 @@ async function registrarUsuario(datos = {}) {
   if (rolSolicitado.includes('admin')) {
     errores.push('No está permitido asignarse privilegios administrativos en el registro.');
   }
-  const rolesValidos = ['estudiante', 'investigador', 'docente'];
+  const rolesValidos = ['estudiante', 'investigador', 'docente', 'usuario'];
   const rolFinal = rolesValidos.includes(rolSolicitado) ? rolSolicitado : 'estudiante';
 
   if (errores.length > 0) {
@@ -319,7 +319,7 @@ async function autenticarUsuario({ identificador, email, username, password }) {
   const passwordValido = await bcrypt.compare(passToUse, usuario.contrasena || usuario.password_hash);
   if (!passwordValido) {
     // Registrar intento fallido
-    const resultadoFallo = registrarIntentoFallido(usuario.id);
+    const resultadoFallo = registrarIntentoFallido(usuario.id, usuario.correo || usuario.email);
     if (resultadoFallo && resultadoFallo.intentos_fallidos >= 5) {
       const error = new Error('Ha superado el límite de 5 intentos fallidos. Su cuenta ha sido bloqueada temporalmente por 15 minutos.');
       error.statusCode = 429;
@@ -330,7 +330,7 @@ async function autenticarUsuario({ identificador, email, username, password }) {
   }
 
   // 5. Restablecer contador de intentos fallidos tras login exitoso
-  resetearIntentosFallidos(usuario.id);
+  resetearIntentosFallidos(usuario.id, usuario.correo || usuario.email);
 
   // 6. Firmar token JWT
   const payload = {

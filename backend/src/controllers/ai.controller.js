@@ -91,7 +91,8 @@ const predictPoint = (req, res, next) => {
  */
 const simulateTrajectory = (req, res, next) => {
   try {
-    const resultado = kineticService.simularTrayectoriaCompleta(req.body);
+    const usuarioAuth = extraerUsuarioDePeticion(req);
+    const resultado = kineticService.simularTrayectoriaCompleta(req.body, usuarioAuth);
     return res.status(200).json({
       success: true,
       data: resultado,
@@ -138,7 +139,8 @@ const getSavedSimulations = (req, res, next) => {
  */
 const submitFeedbackBatch = (req, res, next) => {
   try {
-    const resultado = kineticService.registrarLoteFeedback(req.body);
+    const usuarioAuth = extraerUsuarioDePeticion(req);
+    const resultado = kineticService.registrarLoteFeedback(req.body, usuarioAuth);
     return res.status(201).json({
       success: true,
       data: resultado,
@@ -414,6 +416,79 @@ const exportTrialData = async (req, res, next) => {
   }
 };
 
+/**
+ * Actualiza un ensayo experimental existente
+ */
+const updateTrial = (req, res, next) => {
+  try {
+    const { loteId } = req.params;
+    const trial = ensayosService.actualizarEnsayo(loteId, req.body || {});
+    return res.status(200).json({
+      success: true,
+      data: { trial },
+      message: `Ensayo '${loteId}' actualizado exitosamente.`,
+      error: null,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        data: null,
+        message: error.message,
+        error: error.errorCode || 'ERROR',
+      });
+    }
+    return next(error);
+  }
+};
+
+/**
+ * Archiva un ensayo experimental cambiando su estado a 'archivado'
+ */
+const archiveTrial = (req, res, next) => {
+  try {
+    const { loteId } = req.params;
+    const trial = ensayosService.archivarEnsayo(loteId);
+    return res.status(200).json({
+      success: true,
+      data: { trial },
+      message: `Ensayo '${loteId}' archivado exitosamente.`,
+      error: null,
+    });
+  } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({
+        success: false,
+        data: null,
+        message: error.message,
+        error: error.errorCode || 'ERROR',
+      });
+    }
+    return next(error);
+  }
+};
+
+/**
+ * Consulta la bitácora de auditoría de operaciones del sistema
+ */
+const getAuditLogs = (req, res, next) => {
+  try {
+    const limite = Number(req.query?.limit || 100);
+    const logs = ensayosService.listarAuditoria(limite);
+    return res.status(200).json({
+      success: true,
+      data: {
+        total: logs.length,
+        logs,
+      },
+      message: 'Registros de auditoría recuperados con éxito.',
+      error: null,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getModelMetrics,
   getExperimentalDataset,
@@ -425,8 +500,11 @@ module.exports = {
   listTrials,
   getTrial,
   createTrial,
+  updateTrial,
+  archiveTrial,
   addTrialReading,
   deleteTrial,
   deleteTrialReading,
   exportTrialData,
+  getAuditLogs,
 };

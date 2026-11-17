@@ -37,12 +37,14 @@ const healthCheckHandler = async (req, res) => {
     sqliteStatus = 'error: ' + err.message;
   }
 
-  let pgStatus = 'optional_standby (modo prototipo local activo)';
-  try {
-    await pool.query('SELECT 1');
-    pgStatus = 'connected';
-  } catch (error) {
-    pgStatus = 'standby (almacenamiento local SQLite activo)';
+  let pgStatus = 'standby (DATABASE_URL no configurada en .env — SQLite autónomo activo)';
+  if (pool.isNeonConfigured()) {
+    try {
+      await pool.query('SELECT 1');
+      pgStatus = 'connected (Neon PostgreSQL SSL)';
+    } catch (error) {
+      pgStatus = 'standby_fallback (SQLite activo): ' + error.message;
+    }
   }
 
   return res.status(200).json({

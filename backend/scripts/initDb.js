@@ -1,77 +1,59 @@
 /**
- * Script de Inicialización y Carga de Semillas en PostgreSQL
- * PrediYogur - Cátedra de Química de Alimentos (ULEAM)
- * 
- * Lee y ejecuta automáticamente schema.sql y seeds.sql contra la base de datos configurada.
+ * Script de Inicialización y Aprovisionamiento en Neon PostgreSQL — PrediYogur
+ * Cátedra de Química de Alimentos (ULEAM)
+ *
+ * Ejecuta en orden estricto:
+ * 1. database/neon_schema.sql
+ * 2. database/neon_seeds.sql
+ * 3. database/neon_views.sql
  */
+
 const fs = require('fs');
 const path = require('path');
-const dotenv = require('dotenv');
-const { Pool } = require('pg');
-
-// Cargar variables de entorno desde backend/.env o valores por defecto
-const envPath = path.resolve(__dirname, '../.env');
-if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath });
-} else {
-  dotenv.config({ path: path.resolve(__dirname, '../.env.example') });
-}
-
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  database: process.env.DB_NAME || 'prediyogur_db',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-});
+const pool = require('../src/config/database');
 
 async function run() {
   console.log('------------------------------------------------------------');
-  console.log('🚀 [PrediYogur] Inicializando Aprovisionamiento de Base de Datos');
-  console.log(`🔌 Conectando a: ${process.env.DB_USER || 'postgres'}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}/${process.env.DB_NAME || 'prediyogur_db'}`);
+  console.log('🚀 [PrediYogur] Inicializando Aprovisionamiento en Neon PostgreSQL');
   console.log('------------------------------------------------------------');
 
   try {
-    // 1. Probar conectividad inicial
-    await pool.query('SELECT 1');
-    console.log('✅ Conexión con PostgreSQL establecida con éxito.');
-
-    // 2. Ruta a los archivos SQL
-    const schemaPath = path.resolve(__dirname, '../../database/schema.sql');
-    const seedsPath = path.resolve(__dirname, '../../database/seeds.sql');
-
-    if (!fs.existsSync(schemaPath)) {
-      throw new Error(`No se encontró el archivo de esquema en: ${schemaPath}`);
+    const prueba = await pool.probarConexionNeon();
+    if (!prueba.conectado) {
+      console.error(`❌ No fue posible conectar a Neon PostgreSQL: ${prueba.mensaje}`);
+      console.error('💡 Configure DATABASE_URL en backend/.env antes de ejecutar npm run db:init.');
+      process.exit(1);
     }
 
-    if (!fs.existsSync(seedsPath)) {
-      throw new Error(`No se encontró el archivo de semillas en: ${seedsPath}`);
+    console.log(`✅ Conectado a: ${prueba.detalle.base_datos} como ${prueba.detalle.usuario_actual}`);
+
+    const schemaPath = path.resolve(__dirname, '../../database/neon_schema.sql');
+    const seedsPath = path.resolve(__dirname, '../../database/neon_seeds.sql');
+    const viewsPath = path.resolve(__dirname, '../../database/neon_views.sql');
+
+    for (const [nombre, ruta] of [
+      ['1. Esquema relacional (neon_schema.sql)', schemaPath],
+      ['2. Semillas científicas de referencia (neon_seeds.sql)', seedsPath],
+      ['3. Vistas analíticas y de auditoría (neon_views.sql)', viewsPath],
+    ]) {
+      if (!fs.existsSync(ruta)) {
+        throw new Error(`No se encontró el archivo requerido: ${ruta}`);
+      }
+      console.log(`📄 Ejecutando ${nombre}...`);
+      const sql = fs.readFileSync(ruta, 'utf-8');
+      await pool.query(sql);
+      console.log(`✅ ${nombre} aplicado con éxito.`);
     }
-
-    // 3. Ejecutar schema.sql
-    console.log('📄 Aplicando esquema DDL (schema.sql)...');
-    const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
-    await pool.query(schemaSql);
-    console.log('✅ Tablas, extensiones, índices y restricciones biológicas creadas con éxito.');
-
-    // 4. Ejecutar seeds.sql
-    console.log('🌱 Cargando datos semilla y lotes experimentales del Dr. Stalin Santacruz (seeds.sql)...');
-    const seedsSql = fs.readFileSync(seedsPath, 'utf-8');
-    await pool.query(seedsSql);
-    console.log('✅ 6 lotes experimentales reales (40 °C, 42 °C y 44 °C) y sus series cinéticas cargados con éxito.');
 
     console.log('------------------------------------------------------------');
-    console.log('🎉 ¡Base de datos de PrediYogur aprovisionada y lista para operar!');
+    console.log('🎉 ¡Base de datos Neon PostgreSQL aprovisionada y verificada!');
     console.log('------------------------------------------------------------');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error crítico al aprovisionar la base de datos:', error.message);
-    if (error.code === '3D000') {
-      console.error('💡 Pista: La base de datos especificada no existe. Créala primero ejecutando: CREATE DATABASE prediyogur_db;');
-    }
+    console.error('❌ Error al aprovisionar Neon PostgreSQL:', error.message);
     process.exit(1);
   } finally {
-    await pool.end();
+    await pool.cerrarPool();
   }
 }
 

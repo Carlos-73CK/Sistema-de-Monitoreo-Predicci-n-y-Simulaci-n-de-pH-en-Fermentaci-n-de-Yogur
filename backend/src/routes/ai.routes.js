@@ -12,10 +12,13 @@ const {
   listTrials,
   getTrial,
   createTrial,
+  updateTrial,
+  archiveTrial,
   addTrialReading,
   deleteTrial,
   deleteTrialReading,
   exportTrialData,
+  getAuditLogs,
 } = require('../controllers/ai.controller');
 
 const router = express.Router();
@@ -47,7 +50,7 @@ router.post('/simulate', simulateTrajectory);
 // Recalibración Dinámica en Tiempo Real con Asimilación de Datos Observados
 router.post('/recalibrate', recalibrateDynamicTrajectory);
 
-// Gestión y Persistencia de Ensayos Experimentales de Laboratorio (SQLite)
+// Gestión y Persistencia de Ensayos Experimentales de Laboratorio (SQLite + Neon)
 router.get('/trials', listTrials);
 router.post('/trials', createTrial);
 router.get('/trials/:loteId/export', exportTrialData);
@@ -56,17 +59,19 @@ router.get('/trials/:loteId/report.pdf', (req, res, next) => {
   return exportTrialData(req, res, next);
 });
 router.get('/trials/:loteId', getTrial);
+router.put('/trials/:loteId', updateTrial);
+router.patch('/trials/:loteId/archive', archiveTrial);
 router.post('/trials/:loteId/readings', addTrialReading);
 
 // Eliminación y depuración de muestras protegidas por autenticación
 router.delete('/trials/:loteId/readings/:min', authenticateToken, deleteTrialReading);
 router.delete('/trials/:loteId', authenticateToken, deleteTrial);
 
-// Historial de simulaciones en SQLite local
+// Historial de simulaciones y bitácora de auditoría
 router.get('/simulations', getSavedSimulations);
+router.get('/audit', getAuditLogs);
 
 // Feedback Loop: Enriquecimiento dinámico del dataset (requiere usuario autenticado)
 router.post('/feedback', authenticateToken, submitFeedbackBatch);
 
 module.exports = router;
-

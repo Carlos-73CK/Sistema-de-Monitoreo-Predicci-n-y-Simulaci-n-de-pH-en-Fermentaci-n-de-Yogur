@@ -14,8 +14,9 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
-      - ./database/seeds.sql:/docker-entrypoint-initdb.d/02_seeds.sql:ro
+      - ./database/neon_schema.sql:/docker-entrypoint-initdb.d/01_neon_schema.sql:ro
+      - ./database/neon_seeds.sql:/docker-entrypoint-initdb.d/02_neon_seeds.sql:ro
+      - ./database/neon_views.sql:/docker-entrypoint-initdb.d/03_neon_views.sql:ro
     networks:
       - prediyogur_network
     healthcheck:

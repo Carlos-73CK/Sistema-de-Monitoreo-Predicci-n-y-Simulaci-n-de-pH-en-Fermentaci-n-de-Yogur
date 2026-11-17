@@ -2,11 +2,15 @@
 node_modules/
 package-lock.json
 
-# Environment variables
+# Environment variables (credenciales locales y secretos excluidos del control de versiones)
 .env
 .env.local
 .env.*.local
 *.env
+backend/.env
+**/.env
+!.env.example
+!backend/.env.example
 
 # React Native & Android builds / cache
 .expo/

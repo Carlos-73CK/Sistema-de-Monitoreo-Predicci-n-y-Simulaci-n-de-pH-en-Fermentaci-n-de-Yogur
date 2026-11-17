@@ -17,7 +17,11 @@ const {
   eliminarEnsayoLaboratorio,
   eliminarLecturaDeEnsayo,
   finalizarEnsayoLaboratorioSQLite,
+  archivarEnsayoLaboratorioSQLite,
   guardarPrediccion,
+  registrarAuditoriaSQLite,
+  listarAuditoriaSQLite,
+  obtenerUltimoUsuarioActivoSQLite,
 } = require('../ai/sqliteStore');
 const {
   predecirTiempoCorte,
@@ -86,7 +90,13 @@ function crearNuevoEnsayo(body, usuarioAuth = null) {
 
   const params = validacion.parametrosSaneados;
   const loteId = String(body.lote_id || body.loteId || 'LOTE-EXP-' + Date.now()).trim();
-  const investigador = String(body.investigador || 'Lab. Química de Alimentos — ULEAM').trim();
+  const ultimoUsuario = obtenerUltimoUsuarioActivoSQLite();
+  const investigador = String(
+    body.investigador ||
+    (usuarioAuth && usuarioAuth.nombre) ||
+    (ultimoUsuario && `${ultimoUsuario.nombre} ${ultimoUsuario.apellidos || ''}`.trim()) ||
+    'Lab. Química de Alimentos — ULEAM'
+  ).trim();
 
   let usuarioEmail = (body.usuario_email || (usuarioAuth && usuarioAuth.email) || '').trim().toLowerCase();
   let usuarioId = body.usuario_id || (usuarioAuth && usuarioAuth.id) || null;
@@ -95,6 +105,9 @@ function crearNuevoEnsayo(body, usuarioAuth = null) {
     if (investigador.toLowerCase().includes('santacruz')) {
       usuarioEmail = 'dr.santacruz@uleam.edu.ec';
       usuarioId = 1;
+    } else if (ultimoUsuario && ultimoUsuario.correo) {
+      usuarioEmail = ultimoUsuario.correo.toLowerCase();
+      usuarioId = ultimoUsuario.id;
     } else {
       usuarioEmail = 'carlos.delgado@uleam.edu.ec';
       usuarioId = 2;
@@ -157,7 +170,10 @@ function crearNuevoEnsayo(body, usuarioAuth = null) {
   guardarPrediccion({
     lote_id: loteId,
     investigador,
+    usuario_email: usuarioEmail,
+    usuario_id: usuarioId,
     tipo_sustrato: params.tipoSustrato,
+    tipo_azucar: params.tipoAzucar,
     temperatura_c: params.temperaturaC,
     masa_inoculo_g: params.masaInoculoG,
     volumen_ml: params.volumenMl,
@@ -322,6 +338,14 @@ async function exportarDatosEnsayo(loteId, formato = 'csv') {
   }
 
   const formatoNorm = String(formato || 'csv').trim().toLowerCase();
+  registrarAuditoriaSQLite({
+    usuarioEmail: trial.usuario_email,
+    accion: 'EXPORTAR_DATOS',
+    entidadAfectada: 'ensayos',
+    registroAfectadoId: trial.lote_id,
+    datosPosteriores: { formato: formatoNorm, total_lecturas: (trial.lecturas || []).length },
+  });
+
   if (formatoNorm === 'json') {
     return {
       tipo: 'json',
@@ -377,13 +401,59 @@ function finalizarEnsayo(idOLoteId, viscosidadFinal) {
   return finalizarEnsayoLaboratorioSQLite(idOLoteId, viscosidadFinal);
 }
 
+/**
+ * Archiva un ensayo experimental cambiando su estado a 'archivado'
+ * @param {string|number} idOLoteId
+ */
+function archivarEnsayo(idOLoteId) {
+  const trial = obtenerEnsayoLaboratorio(idOLoteId);
+  if (!trial) {
+    const error = new Error(`El ensayo '${idOLoteId}' no existe.`);
+    error.statusCode = 404;
+    error.errorCode = 'TRIAL_NOT_FOUND';
+    throw error;
+  }
+  return archivarEnsayoLaboratorioSQLite(idOLoteId);
+}
+
+/**
+ * Actualiza los metadatos o parámetros de un ensayo existente
+ * @param {string|number} idOLoteId
+ * @param {Object} cambios
+ */
+function actualizarEnsayo(idOLoteId, cambios = {}) {
+  const actual = obtenerEnsayoLaboratorio(idOLoteId);
+  if (!actual) {
+    const error = new Error(`El ensayo '${idOLoteId}' no existe.`);
+    error.statusCode = 404;
+    error.errorCode = 'TRIAL_NOT_FOUND';
+    throw error;
+  }
+  return guardarEnsayoLaboratorio({
+    ...actual,
+    ...cambios,
+    lote_id: actual.lote_id,
+    lecturas: Array.isArray(cambios.lecturas) ? cambios.lecturas : actual.lecturas,
+  });
+}
+
+/**
+ * Consulta la bitácora de auditoría de operaciones
+ */
+function listarAuditoria(limite = 100) {
+  return listarAuditoriaSQLite(limite);
+}
+
 module.exports = {
   listarEnsayos,
   obtenerEnsayoDetalle,
   crearNuevoEnsayo,
+  actualizarEnsayo,
   agregarLectura,
   eliminarLectura,
   eliminarEnsayo,
   finalizarEnsayo,
+  archivarEnsayo,
   exportarDatosEnsayo,
+  listarAuditoria,
 };

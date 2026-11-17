@@ -511,6 +511,120 @@ async function runTests() {
       assert.ok(doc.paths && doc.paths['/api/ai/simulate'], 'Debe contener la ruta de simulación documentada');
     });
 
+    // --- TEST 13: Ciclo de vida completo de Ensayos (/api/ensayos: Crear, Consultar, Actualizar, Finalizar, Archivar) ---
+    const loteCiclo = `LOTE-CICLO-${Date.now()}`;
+    await testCase('Ciclo de vida de Ensayo: crear, consultar, actualizar, finalizar y archivar', async () => {
+      // 1. Crear ensayo
+      const createRes = await fetch(`${baseUrl}/api/ensayos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          codigo: loteCiclo,
+          tipo_sustrato: 'vaca',
+          tipo_azucar: 'lactosa',
+          masa_inoculo_g: 18.75,
+          temperatura_objetivo: 42.0,
+          volumen_ml: 250,
+        }),
+      });
+      assert.strictEqual(createRes.status, 201, `Fallo al crear ensayo: ${createRes.status}`);
+
+      // 2. Consultar ensayo
+      const getRes = await fetch(`${baseUrl}/api/ensayos/${encodeURIComponent(loteCiclo)}`);
+      assert.strictEqual(getRes.status, 200);
+      const getBody = await getRes.json();
+      assert.strictEqual(getBody.data.codigo, loteCiclo);
+
+      // 3. Actualizar ensayo
+      const updRes = await fetch(`${baseUrl}/api/ensayos/${encodeURIComponent(loteCiclo)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          diagnostico: 'Actualización de diagnóstico cinético verificada',
+        }),
+      });
+      assert.strictEqual(updRes.status, 200);
+
+      // 4. Finalizar ensayo con viscosidad Brookfield
+      const finRes = await fetch(`${baseUrl}/api/ensayos/${encodeURIComponent(loteCiclo)}/finalizar`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ viscosidad_final: 2639 }),
+      });
+      assert.strictEqual(finRes.status, 200);
+      const finBody = await finRes.json();
+      assert.strictEqual(finBody.data.estado, 'completado');
+      assert.strictEqual(finBody.data.viscosidad_final, 2639);
+
+      // 5. Archivar ensayo
+      const archRes = await fetch(`${baseUrl}/api/ensayos/${encodeURIComponent(loteCiclo)}/archivar`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
+      assert.strictEqual(archRes.status, 200);
+      const archBody = await archRes.json();
+      assert.strictEqual(archBody.data.estado, 'archivado');
+    });
+
+    // --- TEST 14: Verificación de los 6 Lotes Experimentales de Referencia del Dr. Santacruz ---
+    await testCase('Verificar que los 6 lotes científicos de referencia (LOTE-CHV-*) están disponibles y sin duplicados', async () => {
+      const res = await fetch(`${baseUrl}/api/ai/trials`);
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      const codigosEsperados = [
+        'LOTE-CHV-40-2.5',
+        'LOTE-CHV-40-7.5',
+        'LOTE-CHV-42-2.5',
+        'LOTE-CHV-42-7.5',
+        'LOTE-CHV-44-2.5',
+        'LOTE-CHV-44-7.5',
+      ];
+      for (const cod of codigosEsperados) {
+        const coincidencias = body.data.trials.filter((t) => t.lote_id === cod);
+        assert.strictEqual(coincidencias.length, 1, `El lote de referencia ${cod} debe existir exactamente 1 vez`);
+      }
+    });
+
+    // --- TEST 15: Historial de Predicciones y Bitácora de Auditoría (sin exponer secretos) ---
+    await testCase('GET /api/ai/simulations y GET /api/ai/audit registran historial sin exponer contraseñas ni tokens', async () => {
+      const simRes = await fetch(`${baseUrl}/api/ai/simulations`);
+      assert.strictEqual(simRes.status, 200);
+      const simBody = await simRes.json();
+      assert.ok(Array.isArray(simBody.data.historial) && simBody.data.historial.length > 0);
+
+      const auditRes = await fetch(`${baseUrl}/api/ai/audit`);
+      assert.strictEqual(auditRes.status, 200);
+      const auditBody = await auditRes.json();
+      assert.ok(Array.isArray(auditBody.data.logs) && auditBody.data.logs.length > 0);
+      const rawJson = JSON.stringify(auditBody.data.logs);
+      assert.ok(!rawJson.includes('password_hash') && !rawJson.includes('carlos2026'), 'La auditoría jamás debe incluir contraseñas');
+    });
+
+    // --- TEST 16: Verificación de Entregables SQL de Neon PostgreSQL ---
+    await testCase('Verificar existencia e integridad de neon_schema.sql, neon_seeds.sql, neon_views.sql y NEON_SETUP.md', async () => {
+      const fs = require('fs');
+      const dbDir = path.resolve(__dirname, '../../database');
+      const archivos = ['neon_schema.sql', 'neon_seeds.sql', 'neon_views.sql', 'NEON_SETUP.md'];
+      for (const arch of archivos) {
+        const fullPath = path.join(dbDir, arch);
+        assert.ok(fs.existsSync(fullPath), `Falta el archivo obligatorio: ${fullPath}`);
+        const contenido = fs.readFileSync(fullPath, 'utf-8');
+        assert.ok(contenido.length > 500, `El archivo ${arch} debe tener contenido completo`);
+      }
+    });
+
   } catch (globalErr) {
     console.error(`\n${colors.red}${colors.bold}Error global durante la ejecución de las pruebas:${colors.reset}`, globalErr);
     failedTests++;
@@ -519,8 +633,17 @@ async function runTests() {
     if (server) {
       await new Promise((resolve) => server.close(resolve));
     }
-    // Cerrar pool PostgreSQL si existe para liberar el event loop
+    // Limpiar registros efímeros creados durante la suite de pruebas y cerrar pool PostgreSQL
     try {
+      const { db } = require('../src/ai/sqliteStore');
+      db.prepare(`DELETE FROM usuarios WHERE correo LIKE 'bruteforce.%' OR correo LIKE 'investigador.1794%'`).run();
+      db.prepare(`DELETE FROM ensayos_laboratorio WHERE lote_id LIKE 'LOTE-TEST-SUITE-%' OR lote_id LIKE 'LOTE-CICLO-%'`).run();
+      db.prepare(`DELETE FROM predicciones_historial WHERE lote_id LIKE 'LOTE-TEST-SUITE-%' OR lote_id LIKE 'LOTE-CICLO-%'`).run();
+      if (pool && pool.isNeonConfigured && pool.isNeonConfigured()) {
+        await pool.query(`DELETE FROM ensayos WHERE codigo LIKE 'LOTE-TEST-SUITE-%' OR codigo LIKE 'LOTE-CICLO-%'`);
+        await pool.query(`DELETE FROM predicciones WHERE lote_codigo LIKE 'LOTE-TEST-SUITE-%' OR lote_codigo LIKE 'LOTE-CICLO-%'`);
+        await pool.query(`DELETE FROM usuarios WHERE email LIKE 'bruteforce.%' OR email LIKE 'investigador.1794%'`);
+      }
       if (pool && typeof pool.end === 'function') {
         await pool.end();
       }

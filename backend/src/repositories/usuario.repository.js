@@ -1,10 +1,10 @@
 /**
  * Repositorio de Usuarios — PrediYogur
  * Cátedra de Química de Alimentos (ULEAM)
- * 
- * Capa de Acceso a Datos (DAL) desacoplada:
- * - Persistencia primaria en SQLite autónomo (modo local confiable).
- * - Preparado para sincronización transparente con PostgreSQL / Supabase mediante variable de entorno.
+ *
+ * Capa de Acceso a Datos (DAL) Híbrida:
+ * - Persistencia local garantizada en SQLite autónomo (`offline-first`).
+ * - Sincronización parametrizada y transaccional con Neon PostgreSQL cuando `DATABASE_URL` está configurada.
  */
 
 const pool = require('../config/db');
@@ -20,46 +20,44 @@ const {
   registrarIntentoFallidoSQLite,
   resetearIntentosFallidosSQLite,
   listarUsuariosSQLite,
+  registrarAuditoriaSQLite,
+  registrarSincronizacionSQLite,
 } = require('../ai/sqliteStore');
 
 /**
- * Busca un usuario por correo electrónico (búsqueda insensible a mayúsculas)
+ * Busca un usuario por correo electrónico (insensible a mayúsculas)
  * @param {string} email
  */
 async function buscarPorEmail(email) {
   if (!email) return null;
   const emailLimpio = String(email).trim().toLowerCase();
 
-  // 1. Consulta en SQLite (motor primario activo)
   let usuario = buscarUsuarioPorEmailSQLite(emailLimpio);
 
-  // 2. Si no existe en SQLite, intentar fallback a PostgreSQL / Supabase
-  if (!usuario) {
+  if (!usuario && pool.isNeonConfigured()) {
     try {
-      if (pool && typeof pool.query === 'function') {
-        const pgRes = await pool.query(
-          `SELECT id, nombre, apellidos, username, email as correo, password_hash as contrasena, rol,
-                  intentos_fallidos, bloqueado_hasta, activo, created_at as creado_en
-           FROM usuarios
-           WHERE LOWER(email) = LOWER($1)
-           LIMIT 1`,
-          [emailLimpio]
-        );
-        if (pgRes.rowCount > 0) {
-          const pgUser = pgRes.rows[0];
-          crearUsuarioSQLite({
-            nombre: pgUser.nombre,
-            apellidos: pgUser.apellidos,
-            username: pgUser.username,
-            correo: pgUser.correo,
-            contrasenaHash: pgUser.contrasena,
-            rol: pgUser.rol,
-          });
-          usuario = buscarUsuarioPorEmailSQLite(emailLimpio);
-        }
+      const pgRes = await pool.query(
+        `SELECT id, sqlite_id, nombre, apellidos, username, email AS correo, password_hash AS contrasena,
+                rol, estado_cuenta, intentos_fallidos, bloqueado_hasta, activo, created_at AS creado_en
+         FROM usuarios
+         WHERE LOWER(email) = LOWER($1) AND deleted_at IS NULL
+         LIMIT 1`,
+        [emailLimpio]
+      );
+      if (pgRes.rowCount > 0) {
+        const pgUser = pgRes.rows[0];
+        crearUsuarioSQLite({
+          nombre: pgUser.nombre,
+          apellidos: pgUser.apellidos,
+          username: pgUser.username,
+          correo: pgUser.correo,
+          contrasenaHash: pgUser.contrasena,
+          rol: pgUser.rol,
+        });
+        usuario = buscarUsuarioPorEmailSQLite(emailLimpio);
       }
     } catch (err) {
-      // PostgreSQL / Supabase en standby (silencioso)
+      console.warn(`[UsuarioRepo] Fallback a SQLite en buscarPorEmail(${emailLimpio}): ${err.message}`);
     }
   }
 
@@ -85,58 +83,61 @@ async function buscarPorIdentificador(identificador) {
   const idLimpio = String(identificador).trim().toLowerCase();
   let usuario = buscarUsuarioPorIdentificadorSQLite(idLimpio);
 
-  if (!usuario) {
+  if (!usuario && pool.isNeonConfigured()) {
     try {
-      if (pool && typeof pool.query === 'function') {
-        const pgRes = await pool.query(
-          `SELECT id, nombre, apellidos, username, email as correo, password_hash as contrasena, rol,
-                  intentos_fallidos, bloqueado_hasta, activo, created_at as creado_en
-           FROM usuarios
-           WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1)
-           LIMIT 1`,
-          [idLimpio]
-        );
-        if (pgRes.rowCount > 0) {
-          const pgUser = pgRes.rows[0];
-          crearUsuarioSQLite({
-            nombre: pgUser.nombre,
-            apellidos: pgUser.apellidos,
-            username: pgUser.username,
-            correo: pgUser.correo,
-            contrasenaHash: pgUser.contrasena,
-            rol: pgUser.rol,
-          });
-          usuario = buscarUsuarioPorIdentificadorSQLite(idLimpio);
-        }
+      const pgRes = await pool.query(
+        `SELECT id, sqlite_id, nombre, apellidos, username, email AS correo, password_hash AS contrasena,
+                rol, estado_cuenta, intentos_fallidos, bloqueado_hasta, activo, created_at AS creado_en
+         FROM usuarios
+         WHERE (LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1))
+           AND deleted_at IS NULL
+         LIMIT 1`,
+        [idLimpio]
+      );
+      if (pgRes.rowCount > 0) {
+        const pgUser = pgRes.rows[0];
+        crearUsuarioSQLite({
+          nombre: pgUser.nombre,
+          apellidos: pgUser.apellidos,
+          username: pgUser.username,
+          correo: pgUser.correo,
+          contrasenaHash: pgUser.contrasena,
+          rol: pgUser.rol,
+        });
+        usuario = buscarUsuarioPorIdentificadorSQLite(idLimpio);
       }
-    } catch (err) {}
+    } catch (err) {
+      console.warn(`[UsuarioRepo] Fallback a SQLite en buscarPorIdentificador(${idLimpio}): ${err.message}`);
+    }
   }
 
   return usuario;
 }
 
 /**
- * Busca un usuario por su ID numérico
+ * Busca un usuario por su ID numérico o UUID
  * @param {number|string} id
  */
 async function buscarPorId(id) {
   if (!id) return null;
   const idNum = Number(id);
 
-  let usuario = buscarUsuarioPorIdSQLite(idNum);
-  if (!usuario) {
+  let usuario = !Number.isNaN(idNum) ? buscarUsuarioPorIdSQLite(idNum) : null;
+  if (!usuario && pool.isNeonConfigured()) {
     try {
-      if (pool && typeof pool.query === 'function') {
-        const pgRes = await pool.query(
-          `SELECT id, nombre, apellidos, username, email as correo, rol, activo, created_at as creado_en 
-           FROM usuarios WHERE id::text = $1 LIMIT 1`,
-          [String(id)]
-        );
-        if (pgRes.rowCount > 0) {
-          usuario = pgRes.rows[0];
-        }
+      const pgRes = await pool.query(
+        `SELECT id, nombre, apellidos, username, email AS correo, rol, estado_cuenta, activo, created_at AS creado_en
+         FROM usuarios
+         WHERE (id::text = $1 OR sqlite_id::text = $1) AND deleted_at IS NULL
+         LIMIT 1`,
+        [String(id)]
+      );
+      if (pgRes.rowCount > 0) {
+        usuario = pgRes.rows[0];
       }
-    } catch (err) {}
+    } catch (err) {
+      console.warn(`[UsuarioRepo] Fallback a SQLite en buscarPorId(${id}): ${err.message}`);
+    }
   }
 
   return usuario;
@@ -152,7 +153,7 @@ async function buscarPorResetToken(token) {
 }
 
 /**
- * Registra un nuevo usuario en la base de datos
+ * Registra un nuevo usuario en SQLite y lo sincroniza transaccionalmente con Neon PostgreSQL
  */
 async function crearUsuario({ nombre, apellidos = '', username = '', email, hashedPassword, rol }) {
   const emailLimpio = String(email).trim().toLowerCase();
@@ -160,7 +161,7 @@ async function crearUsuario({ nombre, apellidos = '', username = '', email, hash
   const apellidosLimpio = String(apellidos).trim();
   const usernameLimpio = String(username).trim().toLowerCase();
 
-  // 1. Guardar en SQLite
+  // 1. Guardar en SQLite local
   const nuevoUsuario = crearUsuarioSQLite({
     nombre: nombreLimpio,
     apellidos: apellidosLimpio,
@@ -170,18 +171,72 @@ async function crearUsuario({ nombre, apellidos = '', username = '', email, hash
     rol,
   });
 
-  // 2. Intentar replicar en PostgreSQL / Supabase si está disponible
-  try {
-    if (pool && typeof pool.query === 'function') {
-      await pool.query(
-        `INSERT INTO usuarios (nombre, apellidos, username, email, password_hash, rol)
-         VALUES ($1, $2, $3, LOWER($4), $5, $6)
-         ON CONFLICT (email) DO NOTHING`,
-        [nombreLimpio, apellidosLimpio, usernameLimpio, emailLimpio, hashedPassword, rol]
-      );
+  registrarAuditoriaSQLite({
+    usuarioId: nuevoUsuario.id,
+    usuarioEmail: emailLimpio,
+    accion: 'REGISTRO_USUARIO',
+    entidadAfectada: 'usuarios',
+    registroAfectadoId: emailLimpio,
+    datosPosteriores: {
+      id: nuevoUsuario.id,
+      nombre: nombreLimpio,
+      apellidos: apellidosLimpio,
+      username: usernameLimpio,
+      email: emailLimpio,
+      rol,
+    },
+  });
+
+  // 2. Replicar en Neon PostgreSQL si está configurado
+  if (pool.isNeonConfigured()) {
+    try {
+      const pgRes = await pool.withTransaction(async (client) => {
+        const r = await client.query(
+          `INSERT INTO usuarios (sqlite_id, nombre, apellidos, username, email, password_hash, rol, estado_cuenta, activo)
+           VALUES ($1, $2, $3, $4, LOWER($5), $6, $7, 'activo', TRUE)
+           ON CONFLICT (email) DO UPDATE SET
+             sqlite_id = EXCLUDED.sqlite_id,
+             nombre = EXCLUDED.nombre,
+             apellidos = EXCLUDED.apellidos,
+             username = EXCLUDED.username,
+             rol = EXCLUDED.rol,
+             updated_at = CURRENT_TIMESTAMP
+           RETURNING id`,
+          [nuevoUsuario.id, nombreLimpio, apellidosLimpio, usernameLimpio, emailLimpio, hashedPassword, rol]
+        );
+
+        await client.query(
+          `INSERT INTO auditoria_operaciones (usuario_id, usuario_email, accion, entidad_afectada, registro_afectado_id, datos_posteriores)
+           VALUES ($1, $2, 'REGISTRO_USUARIO', 'usuarios', $3, $4::jsonb)`,
+          [
+            r.rows[0]?.id || null,
+            emailLimpio,
+            emailLimpio,
+            JSON.stringify({ nombre: nombreLimpio, username: usernameLimpio, email: emailLimpio, rol }),
+          ]
+        );
+        return r.rows[0];
+      });
+
+      registrarSincronizacionSQLite({
+        entidad: 'usuarios',
+        claveUnica: emailLimpio,
+        sqliteId: nuevoUsuario.id,
+        neonUuid: pgRes?.id || null,
+        operacion: 'UPSERT',
+        estado: 'SINCRONIZADO',
+      });
+    } catch (err) {
+      console.warn(`[UsuarioRepo] Sincronización con Neon pendiente para usuario '${emailLimpio}': ${err.message}`);
+      registrarSincronizacionSQLite({
+        entidad: 'usuarios',
+        claveUnica: emailLimpio,
+        sqliteId: nuevoUsuario.id,
+        operacion: 'INSERT',
+        estado: 'PENDIENTE',
+        detalleError: err.message,
+      });
     }
-  } catch (err) {
-    console.warn('[UsuarioRepo] Sincronización secundaria en standby:', err.message);
   }
 
   return nuevoUsuario;
@@ -192,14 +247,17 @@ async function crearUsuario({ nombre, apellidos = '', username = '', email, hash
  */
 async function guardarResetToken(id, token, expiraIso) {
   guardarResetTokenSQLite(id, token, expiraIso);
-  try {
-    if (pool && typeof pool.query === 'function') {
+  if (pool.isNeonConfigured()) {
+    try {
       await pool.query(
-        `UPDATE usuarios SET reset_token = $1, reset_token_expira = $2 WHERE id::text = $3`,
+        `UPDATE usuarios SET reset_token = $1, reset_token_expira = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE id::text = $3 OR sqlite_id::text = $3`,
         [token, expiraIso, String(id)]
       );
+    } catch (err) {
+      console.warn(`[UsuarioRepo] Fallback a SQLite en guardarResetToken: ${err.message}`);
     }
-  } catch (err) {}
+  }
 }
 
 /**
@@ -207,31 +265,65 @@ async function guardarResetToken(id, token, expiraIso) {
  */
 async function actualizarPassword(id, hashedPassword) {
   actualizarPasswordPorTokenSQLite(id, hashedPassword);
-  try {
-    if (pool && typeof pool.query === 'function') {
+  if (pool.isNeonConfigured()) {
+    try {
       await pool.query(
-        `UPDATE usuarios 
-         SET password_hash = $1, reset_token = NULL, reset_token_expira = NULL, 
-             intentos_fallidos = 0, bloqueado_hasta = NULL 
-         WHERE id::text = $2`,
+        `UPDATE usuarios
+         SET password_hash = $1, reset_token = NULL, reset_token_expira = NULL,
+             intentos_fallidos = 0, bloqueado_hasta = NULL, estado_cuenta = 'activo',
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id::text = $2 OR sqlite_id::text = $2`,
         [hashedPassword, String(id)]
       );
+    } catch (err) {
+      console.warn(`[UsuarioRepo] Fallback a SQLite en actualizarPassword: ${err.message}`);
     }
-  } catch (err) {}
+  }
 }
 
 /**
  * Registra un intento fallido (incrementa intentos y bloquea temporalmente si >= 5)
  */
-function registrarIntentoFallido(id) {
-  return registrarIntentoFallidoSQLite(id);
+function registrarIntentoFallido(id, usuarioEmail = null) {
+  const res = registrarIntentoFallidoSQLite(id);
+  registrarAuditoriaSQLite({
+    usuarioId: id,
+    usuarioEmail,
+    accion: 'LOGIN_FALLIDO',
+    entidadAfectada: 'usuarios',
+    registroAfectadoId: String(usuarioEmail || id),
+    datosPosteriores: {
+      intentos_fallidos: res?.intentos_fallidos || 1,
+      bloqueado_hasta: res?.bloqueado_hasta || null,
+    },
+  });
+  return res;
 }
 
 /**
- * Resetea intentos fallidos y bloqueo tras autenticación correcta
+ * Resetea intentos fallidos y registra el último acceso tras autenticación correcta
  */
-function resetearIntentosFallidos(id) {
+function resetearIntentosFallidos(id, usuarioEmail = null) {
   resetearIntentosFallidosSQLite(id);
+  registrarAuditoriaSQLite({
+    usuarioId: id,
+    usuarioEmail,
+    accion: 'LOGIN',
+    entidadAfectada: 'usuarios',
+    registroAfectadoId: String(usuarioEmail || id),
+    datosPosteriores: { login_exitoso: true },
+  });
+
+  if (pool.isNeonConfigured()) {
+    pool.query(
+      `UPDATE usuarios
+       SET intentos_fallidos = 0, bloqueado_hasta = NULL, ultimo_acceso = CURRENT_TIMESTAMP
+       WHERE sqlite_id::text = $1 OR LOWER(email) = LOWER($2)`,
+      [String(id), String(usuarioEmail || '')]
+    ).catch((err) => {
+      console.warn(`[UsuarioRepo] Aviso al actualizar ultimo_acceso en Neon: ${err.message}`);
+    });
+  }
 }
 
 /**

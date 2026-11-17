@@ -105,7 +105,7 @@ function predecirPuntoCinético(body) {
  * Simula la fermentación completa y calcula la trayectoria del modelo Hill
  * @param {Object} body
  */
-function simularTrayectoriaCompleta(body) {
+function simularTrayectoriaCompleta(body, usuarioAuth = null) {
   const validacion = validarParametrosSimulacion(body);
   if (!validacion.esValido) {
     const error = new Error('Parámetros de fermentación inválidos o fuera de rango.');
@@ -161,12 +161,15 @@ function simularTrayectoriaCompleta(body) {
     timestamp: new Date().toISOString(),
   };
 
-  // Persistir en SQLite para trazabilidad
+  // Persistir en SQLite y Neon PostgreSQL para trazabilidad
   try {
     guardarPrediccion({
       lote_id: body.lote_id || `LOTE-SIM-${Date.now().toString(36).toUpperCase()}`,
-      investigador: body.investigador || 'Laboratorio ULEAM',
+      investigador: body.investigador || usuarioAuth?.nombre || 'Laboratorio ULEAM',
+      usuario_email: body.usuario_email || usuarioAuth?.email || null,
+      usuario_id: body.usuario_id || usuarioAuth?.id || null,
       tipo_sustrato: params.tipoSustrato,
+      tipo_azucar: params.tipoAzucar,
       temperatura_c: params.temperaturaC,
       masa_inoculo_g: params.masaInoculoG,
       volumen_ml: params.volumenMl,

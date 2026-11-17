@@ -11,14 +11,17 @@ const server = app.listen(PORT, async () => {
   console.log(`🩺 Health check disponible en: http://localhost:${PORT}/api/health`);
   console.log('====================================================');
 
-  // Verificación no bloqueante de conexión al Pool PostgreSQL
+  // Verificación no bloqueante de conexión al Pool PostgreSQL y sincronización inicial
   try {
     const client = await pool.connect();
     console.log('✅ Conexión inicial al pool de PostgreSQL establecida correctamente.');
     client.release();
+    const { sincronizarTodoANeon } = require('./ai/sqliteStore');
+    await sincronizarTodoANeon();
+    console.log('🔄 Ensayos, lecturas y predicciones sincronizados con Neon PostgreSQL.');
   } catch (error) {
     console.warn('⚠️ Advertencia: No se pudo conectar inmediatamente a PostgreSQL:', error.message);
-    console.warn('💡 Verifica las variables en el archivo .env (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT)');
+    console.warn('💡 Verifica las variables en el archivo .env (DATABASE_URL)');
   }
 });
 

@@ -142,6 +142,117 @@ try {
 try {
   db.exec(`ALTER TABLE ensayos_laboratorio ADD COLUMN viscosidad_final REAL DEFAULT NULL`);
 } catch (e) {}
+try {
+  db.exec(`ALTER TABLE ensayos_laboratorio ADD COLUMN es_referencia_cientifica INTEGER DEFAULT 0`);
+} catch (e) {}
+try {
+  db.exec(`ALTER TABLE ensayos_laboratorio ADD COLUMN parametro_t50 REAL DEFAULT NULL`);
+} catch (e) {}
+try {
+  db.exec(`ALTER TABLE ensayos_laboratorio ADD COLUMN parametro_gamma REAL DEFAULT NULL`);
+} catch (e) {}
+try {
+  db.exec(`ALTER TABLE ensayos_laboratorio ADD COLUMN brix_final REAL DEFAULT NULL`);
+} catch (e) {}
+
+// Tablas de auditoría de operaciones y trazabilidad de sincronización híbrida SQLite <-> Neon
+db.exec(`
+  CREATE TABLE IF NOT EXISTS auditoria_operaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id TEXT DEFAULT NULL,
+    usuario_email TEXT DEFAULT NULL,
+    accion TEXT NOT NULL,
+    entidad_afectada TEXT NOT NULL,
+    registro_afectado_id TEXT DEFAULT NULL,
+    datos_anteriores TEXT DEFAULT NULL,
+    datos_posteriores TEXT DEFAULT NULL,
+    informacion_tecnica TEXT DEFAULT '{}',
+    fecha_evento TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sincronizacion_historial (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entidad TEXT NOT NULL,
+    clave_unica TEXT NOT NULL,
+    sqlite_id INTEGER DEFAULT NULL,
+    neon_uuid TEXT DEFAULT NULL,
+    operacion TEXT NOT NULL DEFAULT 'UPSERT',
+    estado TEXT NOT NULL DEFAULT 'SINCRONIZADO',
+    detalle_error TEXT DEFAULT NULL,
+    sincronizado_en TEXT NOT NULL
+  );
+`);
+
+// Sembrar de forma idempotente los 6 lotes experimentales de referencia científica del Dr. Stalin Santacruz
+try {
+  const { EXPERIMENTAL_BATCHES } = require('./dataset');
+  const paramsGrid = {
+    'LOTE-CHV-40-2.5': { t50: 130, gamma: 2.8, brix: 5.9 },
+    'LOTE-CHV-40-7.5': { t50: 75,  gamma: 1.9, brix: 5.5 },
+    'LOTE-CHV-42-2.5': { t50: 300, gamma: 3.9, brix: 5.1 },
+    'LOTE-CHV-42-7.5': { t50: 125, gamma: 3.0, brix: 5.7 },
+    'LOTE-CHV-44-2.5': { t50: 230, gamma: 3.5, brix: 6.1 },
+    'LOTE-CHV-44-7.5': { t50: 170, gamma: 2.6, brix: 7.4 },
+  };
+
+  const checkRefStmt = db.prepare(`SELECT id FROM ensayos_laboratorio WHERE lote_id = ?`);
+  const insertRefStmt = db.prepare(`
+    INSERT INTO ensayos_laboratorio (
+      lote_id, investigador, tipo_sustrato, tipo_azucar, temperatura_c, masa_inoculo_g, volumen_ml,
+      porcentaje_inoculo, tiempo_corte_inicial_horas, tiempo_corte_inicial_minutos,
+      tiempo_corte_estimado_horas, tiempo_corte_estimado_minutos, diferencia_minutos,
+      estado, lecturas_json, diagnostico, creado_en, actualizado_en, usuario_id, usuario_email,
+      viscosidad_final, es_referencia_cientifica, parametro_t50, parametro_gamma, brix_final
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const nowIso = new Date().toISOString();
+  for (const batch of EXPERIMENTAL_BATCHES) {
+    const existe = checkRefStmt.get(batch.loteId);
+    const meta = paramsGrid[batch.loteId] || { t50: 125, gamma: 3.0, brix: 5.7 };
+    const lecturasReales = batch.lecturas.map((l) => ({
+      tiempo_minutos: l.tiempoMinutos,
+      minutos: l.tiempoMinutos,
+      ph: l.ph,
+      temperatura: l.temperaturaC,
+      indice_refraccion: l.indiceRefraccion,
+      registrado_en: nowIso,
+    }));
+    const tCorteMin = Math.round(batch.tiempoCorteHoras * 60);
+
+    if (!existe) {
+      insertRefStmt.run(
+        batch.loteId,
+        'Dr. Stalin Gustavo Santacruz Terán',
+        'vaca',
+        'lactosa',
+        batch.temperaturaIncubacionC,
+        batch.masaInoculoG,
+        batch.masaLecheG,
+        batch.porcentajeInoculo,
+        batch.tiempoCorteHoras,
+        tCorteMin,
+        batch.tiempoCorteHoras,
+        tCorteMin,
+        0,
+        'finalizado',
+        JSON.stringify(lecturasReales),
+        `Lote experimental de referencia ULEAM (${batch.temperaturaIncubacionC} °C / ${batch.porcentajeInoculo}% Chivería): Viscosidad ${batch.viscosidadFinalMpaS} mPa·s, corte ${batch.tiempoCorteHoras} h.`,
+        nowIso,
+        nowIso,
+        1,
+        'dr.santacruz@uleam.edu.ec',
+        batch.viscosidadFinalMpaS,
+        1,
+        meta.t50,
+        meta.gamma,
+        meta.brix
+      );
+    }
+  }
+} catch (e) {
+  console.warn('[SQLite] Aviso al verificar lotes de referencia científica:', e.message);
+}
 
 // Vincular lote de prueba existente al investigador Carlos Delgado
 try {
@@ -250,13 +361,35 @@ function guardarPrediccion(p) {
     creadoEn
   );
 
-  return {
-    id: info.lastInsertRowid,
+  const predGuardada = {
+    id: Number(info.lastInsertRowid),
     ...p,
     lote_id: loteId,
     investigador,
     creado_en: creadoEn,
   };
+
+  sincronizarPrediccionANeon(predGuardada).catch((err) => {
+    console.warn('[SQLite->Neon] Aviso al sincronizar predicción:', err.message);
+  });
+
+  registrarAuditoriaSQLite({
+    usuarioEmail: p.usuario_email || p.usuarioEmail || null,
+    accion: 'EJECUTAR_PREDICCION',
+    entidadAfectada: 'predicciones',
+    registroAfectadoId: loteId,
+    datosPosteriores: {
+      lote_id: loteId,
+      investigador,
+      tipo_sustrato: p.tipoSustrato || p.tipo_sustrato || 'vaca',
+      temperatura_c: Number(p.temperaturaC || p.temperatura_c || 42),
+      porcentaje_inoculo: Number(p.porcentajeInoculo || p.porcentaje_inoculo || 7.5),
+      tiempo_corte_horas: Number(p.tiempoCorteHoras || p.tiempo_corte_horas || 4.25),
+      viscosidad_predicha_mpas: Number(p.viscosidadPredichaMpaS || p.viscosidad_predicha || 2639),
+    },
+  });
+
+  return predGuardada;
 }
 
 /**
@@ -330,6 +463,19 @@ function insertarMuestrasFeedback(muestras) {
     contador++;
   }
 
+  if (contador > 0) {
+    const primerLote = String(muestras[0]?.loteId || muestras[0]?.lote_id || 'LOTE-FEEDBACK').trim();
+    sincronizarFeedbackANeon(muestras).catch((err) => {
+      console.warn('[SQLite->Neon] Aviso al sincronizar feedback:', err.message);
+    });
+    registrarAuditoriaSQLite({
+      accion: 'REGISTRAR_FEEDBACK',
+      entidadAfectada: 'dataset_retroalimentacion',
+      registroAfectadoId: primerLote,
+      datosPosteriores: { lote_id: primerLote, muestras_incorporadas: contador },
+    });
+  }
+
   return contador;
 }
 
@@ -360,10 +506,14 @@ function obtenerMuestrasFeedback() {
 function contarFeedback() {
   const countMuestras = db.prepare(`SELECT COUNT(*) as total FROM dataset_feedback`).get();
   const countLotes = db.prepare(`SELECT COUNT(DISTINCT lote_id) as total FROM dataset_feedback`).get();
+  const muestrasNuevas = countMuestras ? countMuestras.total : 0;
+  const lotesNuevos = countLotes ? countLotes.total : 0;
 
   return {
-    muestrasNuevas: countMuestras ? countMuestras.total : 0,
-    lotesNuevos: countLotes ? countLotes.total : 0,
+    muestrasNuevas,
+    lotesNuevos,
+    muestras_totales: muestrasNuevas,
+    lotes_incorporados: lotesNuevos,
   };
 }
 
@@ -475,7 +625,28 @@ function guardarEnsayoLaboratorio(e) {
     );
   }
 
-  return obtenerEnsayoLaboratorio(loteId);
+  const resultado = obtenerEnsayoLaboratorio(loteId);
+  sincronizarEnsayoANeon(resultado).catch((err) => {
+    console.warn('[SQLite->Neon] Aviso al sincronizar ensayo:', err.message);
+  });
+
+  registrarAuditoriaSQLite({
+    usuarioId,
+    usuarioEmail,
+    accion: existente ? 'ACTUALIZAR_ENSAYO' : 'CREAR_ENSAYO',
+    entidadAfectada: 'ensayos',
+    registroAfectadoId: loteId,
+    datosAnteriores: existente ? { estado: existente.estado, temperatura_c: existente.temperatura_c } : null,
+    datosPosteriores: {
+      lote_id: loteId,
+      tipo_sustrato: tipoSustrato,
+      temperatura_c: tempC,
+      porcentaje_inoculo: pctInoc,
+      estado,
+    },
+  });
+
+  return resultado;
 }
 
 /**
@@ -513,6 +684,11 @@ function listarEnsayosLaboratorio(limite = 100, filtroUsuarioEmail = null) {
       tiempo_corte_estimado_minutos: r.tiempo_corte_estimado_minutos,
       diferencia_minutos: r.diferencia_minutos,
       estado: r.estado,
+      viscosidad_final: r.viscosidad_final !== undefined ? r.viscosidad_final : null,
+      es_referencia_cientifica: Boolean(r.es_referencia_cientifica),
+      parametro_t50: r.parametro_t50 !== undefined ? r.parametro_t50 : null,
+      parametro_gamma: r.parametro_gamma !== undefined ? r.parametro_gamma : null,
+      brix_final: r.brix_final !== undefined ? r.brix_final : null,
       lecturas,
       total_lecturas: lecturas.length,
       diagnostico: r.diagnostico,
@@ -526,7 +702,11 @@ function listarEnsayosLaboratorio(limite = 100, filtroUsuarioEmail = null) {
  * Obtiene un ensayo específico con sus lecturas completas
  */
 function obtenerEnsayoLaboratorio(loteId) {
-  const r = db.prepare(`SELECT * FROM ensayos_laboratorio WHERE lote_id = ?`).get(String(loteId).trim());
+  const clean = String(loteId).trim();
+  const idNum = Number(clean);
+  const r = (!Number.isNaN(idNum) && idNum > 0)
+    ? db.prepare(`SELECT * FROM ensayos_laboratorio WHERE lote_id = ? OR id = ? LIMIT 1`).get(clean, idNum)
+    : db.prepare(`SELECT * FROM ensayos_laboratorio WHERE lote_id = ? LIMIT 1`).get(clean);
   if (!r) return null;
   let lecturas = [];
   try {
@@ -552,6 +732,11 @@ function obtenerEnsayoLaboratorio(loteId) {
     tiempo_corte_estimado_minutos: r.tiempo_corte_estimado_minutos,
     diferencia_minutos: r.diferencia_minutos,
     estado: r.estado,
+    viscosidad_final: r.viscosidad_final !== undefined ? r.viscosidad_final : null,
+    es_referencia_cientifica: Boolean(r.es_referencia_cientifica),
+    parametro_t50: r.parametro_t50 !== undefined ? r.parametro_t50 : null,
+    parametro_gamma: r.parametro_gamma !== undefined ? r.parametro_gamma : null,
+    brix_final: r.brix_final !== undefined ? r.brix_final : null,
     lecturas,
     total_lecturas: lecturas.length,
     diagnostico: r.diagnostico,
@@ -617,14 +802,37 @@ function registrarLecturaEnEnsayo(loteId, nuevaLectura, recalibracion = {}) {
     loteId
   );
 
-  return obtenerEnsayoLaboratorio(loteId);
+  const actualizado = obtenerEnsayoLaboratorio(loteId);
+  sincronizarEnsayoANeon(actualizado).catch((err) => {
+    console.warn('[SQLite->Neon] Aviso al sincronizar lectura:', err.message);
+  });
+
+  registrarAuditoriaSQLite({
+    usuarioEmail: ensayo.usuario_email,
+    accion: 'REGISTRAR_LECTURA',
+    entidadAfectada: 'lecturas_ensayo',
+    registroAfectadoId: `${loteId}:min_${tMin}`,
+    datosPosteriores: entry,
+  });
+
+  return actualizado;
 }
 
 /**
  * Elimina un ensayo y sus lecturas
  */
 function eliminarEnsayoLaboratorio(loteId) {
+  const previo = obtenerEnsayoLaboratorio(loteId);
   const info = db.prepare(`DELETE FROM ensayos_laboratorio WHERE lote_id = ?`).run(String(loteId).trim());
+  if (info.changes > 0) {
+    registrarAuditoriaSQLite({
+      usuarioEmail: previo?.usuario_email || null,
+      accion: 'ELIMINAR_ENSAYO',
+      entidadAfectada: 'ensayos',
+      registroAfectadoId: String(loteId).trim(),
+      datosAnteriores: previo ? { lote_id: previo.lote_id, estado: previo.estado } : null,
+    });
+  }
   return info.changes > 0;
 }
 
@@ -652,7 +860,15 @@ function finalizarEnsayoLaboratorioSQLite(idOLoteId, viscosidadFinal) {
     `).run(Number(viscosidadFinal), ahora, loteStr);
   }
 
-  return obtenerEnsayoLaboratorio(idOLoteId);
+  const finalizado = obtenerEnsayoLaboratorio(idOLoteId);
+  registrarAuditoriaSQLite({
+    usuarioEmail: finalizado?.usuario_email || null,
+    accion: 'FINALIZAR_ENSAYO',
+    entidadAfectada: 'ensayos',
+    registroAfectadoId: finalizado?.lote_id || loteStr,
+    datosPosteriores: { estado: 'completado', viscosidad_final: Number(viscosidadFinal) },
+  });
+  return finalizado;
 }
 
 /**
@@ -664,7 +880,16 @@ function eliminarLecturaDeEnsayo(loteId, min) {
   const lecturas = ensayo.lecturas.filter((l) => Number(l.tiempo_minutos) !== Number(min));
   db.prepare(`UPDATE ensayos_laboratorio SET lecturas_json = ?, actualizado_en = ? WHERE lote_id = ?`)
     .run(JSON.stringify(lecturas), new Date().toISOString(), loteId);
-  return obtenerEnsayoLaboratorio(loteId);
+  const resultado = obtenerEnsayoLaboratorio(loteId);
+  registrarAuditoriaSQLite({
+    usuarioEmail: ensayo.usuario_email,
+    accion: 'ELIMINAR_LECTURA',
+    entidadAfectada: 'lecturas_ensayo',
+    registroAfectadoId: `${loteId}:min_${min}`,
+    datosAnteriores: { lote_id: loteId, minuto_eliminado: Number(min) },
+  });
+
+  return resultado;
 }
 
 
@@ -822,11 +1047,39 @@ function registrarIntentoFallidoSQLite(id) {
  */
 function resetearIntentosFallidosSQLite(id) {
   if (!id) return;
+  try {
+    db.exec(`ALTER TABLE usuarios ADD COLUMN ultimo_acceso TEXT DEFAULT NULL`);
+  } catch (_) {}
   db.prepare(`
     UPDATE usuarios 
-    SET intentos_fallidos = 0, bloqueado_hasta = NULL 
+    SET intentos_fallidos = 0, bloqueado_hasta = NULL, ultimo_acceso = ? 
     WHERE id = ?
-  `).run(Number(id));
+  `).run(new Date().toISOString(), Number(id));
+}
+
+/**
+ * Obtiene el último usuario que inició sesión o se registró en el sistema
+ */
+function obtenerUltimoUsuarioActivoSQLite() {
+  try {
+    db.exec(`ALTER TABLE usuarios ADD COLUMN ultimo_acceso TEXT DEFAULT NULL`);
+  } catch (_) {}
+  const conAcceso = db.prepare(`
+    SELECT id, nombre, apellidos, username, correo, rol
+    FROM usuarios
+    WHERE ultimo_acceso IS NOT NULL
+    ORDER BY ultimo_acceso DESC, id DESC
+    LIMIT 1
+  `).get();
+  if (conAcceso) return conAcceso;
+
+  return db.prepare(`
+    SELECT id, nombre, apellidos, username, correo, rol
+    FROM usuarios
+    WHERE correo NOT LIKE 'bruteforce.%' AND correo NOT LIKE 'investigador.17%'
+    ORDER BY id DESC
+    LIMIT 1
+  `).get() || null;
 }
 
 /**
@@ -837,6 +1090,601 @@ function listarUsuariosSQLite() {
     SELECT id, nombre, apellidos, username, correo, rol, activo, creado_en 
     FROM usuarios ORDER BY id ASC
   `).all();
+}
+
+/**
+ * Archiva un ensayo experimental en SQLite cambiando su estado a 'archivado'
+ */
+function archivarEnsayoLaboratorioSQLite(idOLoteId) {
+  const ahora = new Date().toISOString();
+  const idNum = Number(idOLoteId);
+  const loteStr = String(idOLoteId).trim();
+
+  if (!Number.isNaN(idNum) && idNum > 0) {
+    db.prepare(`
+      UPDATE ensayos_laboratorio
+      SET estado = 'archivado', actualizado_en = ?
+      WHERE id = ? OR lote_id = ?
+    `).run(ahora, idNum, loteStr);
+  } else {
+    db.prepare(`
+      UPDATE ensayos_laboratorio
+      SET estado = 'archivado', actualizado_en = ?
+      WHERE lote_id = ?
+    `).run(ahora, loteStr);
+  }
+
+  const archivado = obtenerEnsayoLaboratorio(idOLoteId);
+  registrarAuditoriaSQLite({
+    usuarioEmail: archivado?.usuario_email || null,
+    accion: 'ARCHIVAR_ENSAYO',
+    entidadAfectada: 'ensayos',
+    registroAfectadoId: archivado?.lote_id || loteStr,
+    datosPosteriores: { estado: 'archivado' },
+  });
+
+  return archivado;
+}
+
+/**
+ * Sanitiza un objeto antes de registrarlo en auditoría para garantizar que jamás
+ * se almacenen contraseñas, hashes, tokens JWT ni secretos (Sección 5.6).
+ */
+function sanitizarDatosAuditoria(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  const camposProhibidos = new Set([
+    'password',
+    'contrasena',
+    'password_hash',
+    'contrasenaHash',
+    'confirmPassword',
+    'confirmarContrasena',
+    'token',
+    'reset_token',
+    'jwt',
+    'secret',
+    'authorization',
+  ]);
+  const limpio = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (camposProhibidos.has(k) || /password|token|secret|contrasena/i.test(k)) {
+      continue;
+    }
+    limpio[k] = v;
+  }
+  return limpio;
+}
+
+/**
+ * Registra un evento en la tabla de auditoría local SQLite
+ */
+function registrarAuditoriaSQLite({
+  usuarioId = null,
+  usuarioEmail = null,
+  accion,
+  entidadAfectada,
+  registroAfectadoId = null,
+  datosAnteriores = null,
+  datosPosteriores = null,
+  informacionTecnica = {},
+}) {
+  try {
+    const fechaEvento = new Date().toISOString();
+    const antLimpio = sanitizarDatosAuditoria(datosAnteriores);
+    const postLimpio = sanitizarDatosAuditoria(datosPosteriores);
+    const infoLimpia = sanitizarDatosAuditoria(informacionTecnica) || {};
+
+    const info = db.prepare(`
+      INSERT INTO auditoria_operaciones (
+        usuario_id, usuario_email, accion, entidad_afectada, registro_afectado_id,
+        datos_anteriores, datos_posteriores, informacion_tecnica, fecha_evento
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      usuarioId !== null && usuarioId !== undefined ? String(usuarioId) : null,
+      usuarioEmail ? String(usuarioEmail).trim().toLowerCase() : null,
+      String(accion || 'OPERACION'),
+      String(entidadAfectada || 'sistema'),
+      registroAfectadoId !== null && registroAfectadoId !== undefined ? String(registroAfectadoId) : null,
+      antLimpio ? JSON.stringify(antLimpio) : null,
+      postLimpio ? JSON.stringify(postLimpio) : null,
+      JSON.stringify(infoLimpia),
+      fechaEvento
+    );
+
+    const auditEntry = {
+      id: Number(info.lastInsertRowid),
+      usuario_id: usuarioId,
+      usuario_email: usuarioEmail,
+      accion: String(accion || 'OPERACION'),
+      entidad_afectada: String(entidadAfectada || 'sistema'),
+      registro_afectado_id: registroAfectadoId !== null && registroAfectadoId !== undefined ? String(registroAfectadoId) : null,
+      datos_anteriores: antLimpio,
+      datos_posteriores: postLimpio,
+      informacion_tecnica: infoLimpia,
+      fecha_evento: fechaEvento,
+    };
+
+    sincronizarAuditoriaANeon(auditEntry).catch(() => {});
+
+    return auditEntry;
+  } catch (e) {
+    console.warn('[SQLite Auditoría] Aviso al registrar auditoría:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Consulta los registros de auditoría más recientes en SQLite
+ */
+function listarAuditoriaSQLite(limite = 100) {
+  const rows = db.prepare(`
+    SELECT * FROM auditoria_operaciones
+    ORDER BY id DESC
+    LIMIT ?
+  `).all(Number(limite) || 100);
+
+  return rows.map((r) => ({
+    id: r.id,
+    usuario_id: r.usuario_id,
+    usuario_email: r.usuario_email,
+    accion: r.accion,
+    entidad_afectada: r.entidad_afectada,
+    registro_afectado_id: r.registro_afectado_id,
+    datos_anteriores: r.datos_anteriores ? JSON.parse(r.datos_anteriores) : null,
+    datos_posteriores: r.datos_posteriores ? JSON.parse(r.datos_posteriores) : null,
+    informacion_tecnica: r.informacion_tecnica ? JSON.parse(r.informacion_tecnica) : {},
+    fecha_evento: r.fecha_evento,
+  }));
+}
+
+/**
+ * Registra el resultado de una operación de sincronización híbrida SQLite <-> Neon
+ */
+function registrarSincronizacionSQLite({
+  entidad,
+  claveUnica,
+  sqliteId = null,
+  neonUuid = null,
+  operacion = 'UPSERT',
+  estado = 'SINCRONIZADO',
+  detalleError = null,
+}) {
+  try {
+    const ahora = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO sincronizacion_historial (
+        entidad, clave_unica, sqlite_id, neon_uuid, operacion, estado, detalle_error, sincronizado_en
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      String(entidad),
+      String(claveUnica),
+      sqliteId !== null && sqliteId !== undefined ? Number(sqliteId) : null,
+      neonUuid ? String(neonUuid) : null,
+      String(operacion),
+      String(estado),
+      detalleError ? String(detalleError) : null,
+      ahora
+    );
+  } catch (e) {
+    console.warn('[SQLite Sincronización] Aviso al registrar trazabilidad:', e.message);
+  }
+}
+
+/**
+ * Lista el historial de sincronización SQLite <-> Neon
+ */
+function listarSincronizacionSQLite(limite = 50) {
+  return db.prepare(`
+    SELECT * FROM sincronizacion_historial
+    ORDER BY id DESC
+    LIMIT ?
+  `).all(Number(limite) || 50);
+}
+
+/**
+ * Resuelve el UUID de un usuario en Neon PostgreSQL a partir de su email, investigador o sesión activa
+ */
+async function resolverUsuarioUuidNeon(pool, { usuarioEmail, usuarioId, investigador, esReferencia = false }) {
+  if (!pool || !pool.isNeonConfigured()) return { id: null, email: usuarioEmail || null };
+
+  if (esReferencia) {
+    const r = await pool.query(
+      `SELECT id, email FROM usuarios WHERE LOWER(email) = 'dr.santacruz@uleam.edu.ec' LIMIT 1`
+    );
+    if (r.rowCount > 0) return r.rows[0];
+  }
+
+  // 1. Si el email es de un usuario específico (distinto del fallback genérico), buscar por email exacto
+  const emailClean = usuarioEmail ? String(usuarioEmail).trim().toLowerCase() : '';
+  if (emailClean && emailClean !== 'carlos.delgado@uleam.edu.ec') {
+    const r = await pool.query(
+      `SELECT id, email FROM usuarios WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+      [emailClean]
+    );
+    if (r.rowCount > 0) return r.rows[0];
+  }
+
+  // 2. Si el nombre del investigador coincide con un usuario real en Neon (preferir cuentas creadas recientemente)
+  if (investigador) {
+    const invClean = String(investigador).trim();
+    if (invClean && !invClean.toLowerCase().includes('lab.') && !invClean.toLowerCase().includes('uleam')) {
+      const r = await pool.query(
+        `SELECT id, email FROM usuarios
+         WHERE LOWER(TRIM(nombre || ' ' || COALESCE(apellidos, ''))) = LOWER($1)
+            OR LOWER(nombre) = LOWER($1)
+            OR LOWER($1) LIKE '%' || LOWER(nombre) || '%'
+         ORDER BY sqlite_id DESC NULLS LAST
+         LIMIT 1`,
+        [invClean]
+      );
+      if (r.rowCount > 0) return r.rows[0];
+    }
+  }
+
+  // 3. Si tiene usuarioId explícito (> 3)
+  if (usuarioId && Number(usuarioId) > 3) {
+    const r = await pool.query(
+      `SELECT id, email FROM usuarios WHERE sqlite_id = $1 LIMIT 1`,
+      [Number(usuarioId)]
+    );
+    if (r.rowCount > 0) return r.rows[0];
+  }
+
+  // 4. Usar el último usuario real activo en la aplicación
+  const ultimoLocal = obtenerUltimoUsuarioActivoSQLite();
+  if (ultimoLocal && ultimoLocal.correo) {
+    const r = await pool.query(
+      `SELECT id, email FROM usuarios WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+      [ultimoLocal.correo]
+    );
+    if (r.rowCount > 0) return r.rows[0];
+  }
+
+  // 5. Fallback por email si era carlos.delgado@uleam.edu.ec
+  if (emailClean) {
+    const r = await pool.query(
+      `SELECT id, email FROM usuarios WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+      [emailClean]
+    );
+    if (r.rowCount > 0) return r.rows[0];
+  }
+
+  const fallback = await pool.query(
+    `SELECT id, email FROM usuarios ORDER BY sqlite_id DESC NULLS LAST LIMIT 1`
+  );
+  return fallback.rowCount > 0 ? fallback.rows[0] : { id: null, email: usuarioEmail || null };
+}
+
+/**
+ * Sincroniza un ensayo y todas sus lecturas en tiempo real hacia Neon PostgreSQL
+ * vinculando siempre `usuario_id` (UUID) para que aparezca en las relaciones de Neon
+ */
+async function sincronizarEnsayoANeon(trial) {
+  if (!trial) return null;
+  const pool = require('../config/db');
+  if (!pool.isNeonConfigured()) return null;
+
+  const userNeon = await resolverUsuarioUuidNeon(pool, {
+    usuarioEmail: trial.usuario_email,
+    usuarioId: trial.usuario_id,
+    investigador: trial.investigador,
+    esReferencia: Boolean(trial.es_referencia_cientifica),
+  });
+
+  const sustratosValidos = new Set(['vaca', 'avena', 'almendra', 'chocho', 'coco', 'soya', 'otra', 'vegetal_chocho', 'vegetal_coco']);
+  const sustratoNorm = sustratosValidos.has(String(trial.tipo_sustrato).toLowerCase())
+    ? String(trial.tipo_sustrato).toLowerCase()
+    : 'otra';
+
+  const azucaresValidos = new Set(['lactosa', 'sacarosa', 'glucosa', 'mezcla_sacarosa_glucosa']);
+  const azucarNorm = azucaresValidos.has(String(trial.tipo_azucar).toLowerCase())
+    ? String(trial.tipo_azucar).toLowerCase()
+    : 'sacarosa';
+
+  const resEnsayo = await pool.query(
+    `INSERT INTO ensayos (
+       sqlite_id, codigo, nombre_lote, usuario_id, usuario_email, investigador,
+       tipo_sustrato, tipo_azucar, masa_solucion_g, volumen_ml,
+       porcentaje_inoculo, masa_inoculo_g, temperatura_incubacion,
+       tiempo_corte_inicial_horas, tiempo_corte_inicial_minutos,
+       tiempo_corte_estimado_horas, tiempo_corte_estimado_minutos,
+       diferencia_minutos, viscosidad_final_mpas, estado,
+       es_referencia_cientifica, diagnostico, origen_sincronizacion
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 'sqlite_local')
+     ON CONFLICT (codigo) DO UPDATE SET
+       sqlite_id = COALESCE(EXCLUDED.sqlite_id, ensayos.sqlite_id),
+       usuario_id = EXCLUDED.usuario_id,
+       usuario_email = EXCLUDED.usuario_email,
+       investigador = EXCLUDED.investigador,
+       tipo_sustrato = EXCLUDED.tipo_sustrato,
+       tipo_azucar = EXCLUDED.tipo_azucar,
+       masa_solucion_g = EXCLUDED.masa_solucion_g,
+       volumen_ml = EXCLUDED.volumen_ml,
+       porcentaje_inoculo = EXCLUDED.porcentaje_inoculo,
+       masa_inoculo_g = EXCLUDED.masa_inoculo_g,
+       temperatura_incubacion = EXCLUDED.temperatura_incubacion,
+       tiempo_corte_estimado_horas = EXCLUDED.tiempo_corte_estimado_horas,
+       tiempo_corte_estimado_minutos = EXCLUDED.tiempo_corte_estimado_minutos,
+       diferencia_minutos = EXCLUDED.diferencia_minutos,
+       viscosidad_final_mpas = COALESCE(EXCLUDED.viscosidad_final_mpas, ensayos.viscosidad_final_mpas),
+       estado = EXCLUDED.estado,
+       diagnostico = EXCLUDED.diagnostico,
+       updated_at = CURRENT_TIMESTAMP
+     RETURNING id`,
+    [
+      trial.id || null,
+      trial.lote_id,
+      trial.lote_id,
+      userNeon.id,
+      userNeon.email || trial.usuario_email,
+      trial.investigador || 'Investigador ULEAM',
+      sustratoNorm,
+      azucarNorm,
+      Number(trial.volumen_ml || 250),
+      Number(trial.volumen_ml || 250),
+      Number(trial.porcentaje_inoculo || 7.5),
+      Number(trial.masa_inoculo_g || 18.75),
+      Number(trial.temperatura_c || 42.0),
+      Number(trial.tiempo_corte_inicial_horas || 4.25),
+      Number(trial.tiempo_corte_inicial_minutos || 255),
+      Number(trial.tiempo_corte_estimado_horas || 4.25),
+      Number(trial.tiempo_corte_estimado_minutos || 255),
+      Number(trial.diferencia_minutos || 0),
+      trial.viscosidad_final !== undefined && trial.viscosidad_final !== null ? Number(trial.viscosidad_final) : null,
+      trial.estado || 'EN_CURSO',
+      Boolean(trial.es_referencia_cientifica),
+      trial.diagnostico || '',
+    ]
+  );
+
+  const ensayoUuid = resEnsayo.rows[0]?.id;
+  if (ensayoUuid && Array.isArray(trial.lecturas)) {
+    for (const lec of trial.lecturas) {
+      const min = Number(lec.tiempo_minutos ?? lec.minutos ?? 0);
+      const ph = Number(lec.ph ?? 6.25);
+      const temp = Number(lec.temperatura ?? trial.temperatura_c ?? 42.0);
+      const brix = lec.indice_refraccion !== undefined && lec.indice_refraccion !== null
+        ? Number(lec.indice_refraccion)
+        : null;
+
+      await pool.query(
+        `INSERT INTO lecturas_ensayo (ensayo_id, tiempo_minutos, ph, temperatura, indice_refraccion_brix)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (ensayo_id, tiempo_minutos) DO UPDATE SET
+           ph = EXCLUDED.ph,
+           temperatura = EXCLUDED.temperatura,
+           indice_refraccion_brix = EXCLUDED.indice_refraccion_brix`,
+        [ensayoUuid, min, ph, temp, brix]
+      );
+    }
+  }
+
+  return ensayoUuid;
+}
+
+/**
+ * Sincroniza una predicción en tiempo real hacia Neon PostgreSQL vinculando `usuario_id` y `ensayo_id`
+ */
+async function sincronizarPrediccionANeon(p) {
+  if (!p) return null;
+  const pool = require('../config/db');
+  if (!pool.isNeonConfigured()) return null;
+
+  const loteCodigo = String(p.lote_id || p.lote_codigo || 'LOTE-SIM').trim();
+  const ensRes = await pool.query(
+    `SELECT id, usuario_id, investigador FROM ensayos WHERE codigo = $1 LIMIT 1`,
+    [loteCodigo]
+  );
+  const ensayoUuid = ensRes.rowCount > 0 ? ensRes.rows[0].id : null;
+
+  let usuarioUuid = ensRes.rowCount > 0 ? ensRes.rows[0].usuario_id : null;
+  if (!usuarioUuid) {
+    const u = await resolverUsuarioUuidNeon(pool, {
+      usuarioEmail: p.usuario_email,
+      usuarioId: p.usuario_id,
+      investigador: p.investigador,
+    });
+    usuarioUuid = u.id;
+  }
+
+  const sqliteId = p.id ? Number(p.id) : null;
+  await pool.query(
+    `INSERT INTO predicciones (
+       sqlite_id, ensayo_id, lote_codigo, usuario_id, investigador,
+       tipo_sustrato, tipo_azucar, temperatura_c, porcentaje_inoculo,
+       masa_inoculo_g, volumen_ml, tiempo_corte_horas, tiempo_corte_minutos,
+       viscosidad_predicha_mpas, calidad_gel, diagnostico
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+     ON CONFLICT (sqlite_id) DO UPDATE SET
+       ensayo_id = COALESCE(EXCLUDED.ensayo_id, predicciones.ensayo_id),
+       usuario_id = EXCLUDED.usuario_id,
+       tiempo_corte_horas = EXCLUDED.tiempo_corte_horas,
+       viscosidad_predicha_mpas = EXCLUDED.viscosidad_predicha_mpas`,
+    [
+      sqliteId,
+      ensayoUuid,
+      loteCodigo,
+      usuarioUuid,
+      p.investigador || 'Investigador ULEAM',
+      p.tipoSustrato || p.tipo_sustrato || 'vaca',
+      p.tipoAzucar || p.tipo_azucar || 'lactosa',
+      Number(p.temperaturaC || p.temperatura_c || 42.0),
+      Number(p.porcentajeInoculo || p.porcentaje_inoculo || 7.5),
+      Number(p.masaInoculoG || p.masa_inoculo_g || 18.75),
+      Number(p.volumenMl || p.volumen_ml || 250),
+      Number(p.tiempoCorteHoras || p.tiempo_corte_horas || 4.25),
+      Number(p.tiempoCorteMinutos || p.tiempo_corte_minutos || 255),
+      Number(p.viscosidadPredichaMpaS || p.viscosidad_predicha_mpas || 2639),
+      p.calidadGel || p.calidad_gel || 'ESTANDAR',
+      p.diagnostico || '',
+    ]
+  );
+}
+
+/**
+ * Sincroniza un registro de auditoría hacia Neon PostgreSQL vinculando `usuario_id`
+ */
+async function sincronizarAuditoriaANeon(a) {
+  if (!a) return;
+  const pool = require('../config/db');
+  if (!pool.isNeonConfigured()) return;
+
+  const userNeon = await resolverUsuarioUuidNeon(pool, {
+    usuarioEmail: a.usuario_email,
+    usuarioId: a.usuario_id,
+  });
+
+  await pool.query(
+    `INSERT INTO auditoria_operaciones (
+       usuario_id, usuario_email, accion, entidad_afectada, registro_afectado_id,
+       datos_anteriores, datos_posteriores, informacion_tecnica, fecha_evento
+     )
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, $9)`,
+    [
+      userNeon.id,
+      userNeon.email || a.usuario_email,
+      a.accion,
+      a.entidad_afectada,
+      a.registro_afectado_id,
+      a.datos_anteriores ? JSON.stringify(a.datos_anteriores) : null,
+      a.datos_posteriores ? JSON.stringify(a.datos_posteriores) : null,
+      JSON.stringify(a.informacion_tecnica || {}),
+      a.fecha_evento || new Date().toISOString(),
+    ]
+  );
+}
+
+/**
+ * Sincroniza muestras de retroalimentación (Feedback Loop) hacia Neon PostgreSQL
+ */
+async function sincronizarFeedbackANeon(muestras = []) {
+  if (!Array.isArray(muestras) || muestras.length === 0) return;
+  const pool = require('../config/db');
+  if (!pool.isNeonConfigured()) return;
+
+  for (const m of muestras) {
+    const loteCodigo = String(m.loteId || m.lote_id || m.lote_codigo || 'LOTE-FEEDBACK').trim();
+    const ensRes = await pool.query(
+      `SELECT id, usuario_id FROM ensayos WHERE codigo = $1 LIMIT 1`,
+      [loteCodigo]
+    );
+    const ensayoUuid = ensRes.rowCount > 0 ? ensRes.rows[0].id : null;
+    let usuarioUuid = ensRes.rowCount > 0 ? ensRes.rows[0].usuario_id : null;
+    if (!usuarioUuid) {
+      const u = await resolverUsuarioUuidNeon(pool, {
+        usuarioEmail: m.usuario_email,
+        usuarioId: m.usuario_id,
+      });
+      usuarioUuid = u.id;
+    }
+
+    const tMin = Math.round(Number(m.tiempoMinutos ?? m.tiempo_minutos ?? m.minutos ?? 0));
+    const tHoras = Number((tMin / 60).toFixed(2));
+    const phReal = Number(m.phReal ?? m.ph_real ?? m.ph ?? 6.20);
+    const tempIncub = Number(m.temperaturaIncubacionC ?? m.temperatura_incubacion_c ?? m.temperatura_c ?? 42.0);
+    const pctInoc = Number(m.porcentajeInoculo ?? m.porcentaje_inoculo ?? 7.5);
+    const masaInoc = Number(m.masaInoculoG ?? m.masa_inoculo_g ?? 18.75);
+    const tempMed = m.temperaturaRealMedida ?? m.temperatura_real_medida ?? m.temperatura ?? tempIncub;
+    const brixReal = m.indiceRefraccionReal ?? m.indice_refraccion_real ?? m.indice_refraccion ?? null;
+    const viscoReal = m.viscosidadFinalReal ?? m.viscosidad_final_real ?? null;
+    const estadoVal = m.estado_validacion || (loteCodigo.startsWith('LOTE-CHV-4') ? 'referencia_oficial' : 'validado');
+
+    await pool.query(
+      `INSERT INTO dataset_retroalimentacion (
+         ensayo_origen_id, lote_codigo, usuario_responsable_id,
+         temperatura_incubacion_c, porcentaje_inoculo, masa_inoculo_g, volumen_ml,
+         tiempo_minutos, tiempo_horas, ph_real, temperatura_real_medida,
+         indice_refraccion_real, viscosidad_final_real, estado_validacion
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, 250.0, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT (lote_codigo, tiempo_minutos) DO UPDATE SET
+         ensayo_origen_id = COALESCE(EXCLUDED.ensayo_origen_id, dataset_retroalimentacion.ensayo_origen_id),
+         usuario_responsable_id = COALESCE(EXCLUDED.usuario_responsable_id, dataset_retroalimentacion.usuario_responsable_id),
+         ph_real = EXCLUDED.ph_real,
+         viscosidad_final_real = COALESCE(EXCLUDED.viscosidad_final_real, dataset_retroalimentacion.viscosidad_final_real)`,
+      [
+        ensayoUuid,
+        loteCodigo,
+        usuarioUuid,
+        tempIncub,
+        pctInoc,
+        masaInoc,
+        tMin,
+        tHoras,
+        phReal,
+        tempMed !== null && tempMed !== undefined ? Number(tempMed) : null,
+        brixReal !== null && brixReal !== undefined ? Number(brixReal) : null,
+        viscoReal !== null && viscoReal !== undefined ? Number(viscoReal) : null,
+        estadoVal,
+      ]
+    );
+  }
+}
+
+/**
+ * Sincroniza de forma masiva e idempotente todos los ensayos, lecturas, predicciones,
+ * dataset de retroalimentación, auditoría e historial de sincronización hacia Neon PostgreSQL
+ */
+async function sincronizarTodoANeon() {
+  const pool = require('../config/db');
+  if (!pool.isNeonConfigured()) return;
+
+  await pool.query(`ALTER TABLE ensayos DROP CONSTRAINT IF EXISTS ensayos_sqlite_id_key;`);
+
+  const trials = listarEnsayosLaboratorio(200);
+  for (const t of trials) {
+    const neonUuid = await sincronizarEnsayoANeon(t);
+    if (neonUuid) {
+      await pool.query(
+        `INSERT INTO sincronizacion_historial (entidad, clave_unica, sqlite_id, neon_uuid, operacion, estado)
+         VALUES ('ensayos', $1, $2, $3, 'UPSERT', 'SINCRONIZADO')`,
+        [t.lote_id, t.id || null, neonUuid]
+      ).catch(() => {});
+    }
+  }
+
+  const preds = listarPredicciones(200);
+  for (const p of preds) {
+    await sincronizarPrediccionANeon(p);
+  }
+
+  // Sincronizar dataset_retroalimentacion (muestras base + muestras de feedback + lecturas de ensayos de usuarios)
+  const { getFlattenedDataset } = require('./dataset');
+  const muestrasBase = getFlattenedDataset().map((m) => ({ ...m, estado_validacion: 'referencia_oficial' }));
+  const muestrasFeedback = obtenerMuestrasFeedback().map((m) => ({ ...m, estado_validacion: 'validado' }));
+  const muestrasEnsayosUsuarios = [];
+  for (const t of trials) {
+    if (!t.es_referencia_cientifica && Array.isArray(t.lecturas)) {
+      for (const l of t.lecturas) {
+        muestrasEnsayosUsuarios.push({
+          loteId: t.lote_id,
+          usuario_email: t.usuario_email,
+          usuario_id: t.usuario_id,
+          temperaturaIncubacionC: t.temperatura_c,
+          porcentajeInoculo: t.porcentaje_inoculo,
+          masaInoculoG: t.masa_inoculo_g,
+          tiempoMinutos: l.tiempo_minutos ?? l.minutos ?? 0,
+          phReal: l.ph,
+          temperaturaRealMedida: l.temperatura ?? t.temperatura_c,
+          indiceRefraccionReal: l.indice_refraccion ?? null,
+          viscosidadFinalReal: t.viscosidad_final ?? null,
+          estado_validacion: 'validado',
+        });
+      }
+    }
+  }
+  await sincronizarFeedbackANeon([...muestrasBase, ...muestrasFeedback, ...muestrasEnsayosUsuarios]);
+
+  // Sincronizar auditoría local a Neon vinculando usuario_id
+  const audits = listarAuditoriaSQLite(100);
+  const countAuditNeon = await pool.query(`SELECT COUNT(*) AS total FROM auditoria_operaciones`);
+  if (Number(countAuditNeon.rows[0]?.total || 0) < audits.length) {
+    for (const a of audits.slice(0, 30)) {
+      await sincronizarAuditoriaANeon(a);
+    }
+  }
 }
 
 module.exports = {
@@ -854,6 +1702,7 @@ module.exports = {
   eliminarEnsayoLaboratorio,
   eliminarLecturaDeEnsayo,
   finalizarEnsayoLaboratorioSQLite,
+  archivarEnsayoLaboratorioSQLite,
   crearUsuarioSQLite,
   buscarUsuarioPorEmailSQLite,
   buscarUsuarioPorUsernameSQLite,
@@ -864,5 +1713,15 @@ module.exports = {
   actualizarPasswordPorTokenSQLite,
   registrarIntentoFallidoSQLite,
   resetearIntentosFallidosSQLite,
+  obtenerUltimoUsuarioActivoSQLite,
   listarUsuariosSQLite,
+  registrarAuditoriaSQLite,
+  listarAuditoriaSQLite,
+  registrarSincronizacionSQLite,
+  listarSincronizacionSQLite,
+  sanitizarDatosAuditoria,
+  sincronizarEnsayoANeon,
+  sincronizarPrediccionANeon,
+  sincronizarFeedbackANeon,
+  sincronizarTodoANeon,
 };
